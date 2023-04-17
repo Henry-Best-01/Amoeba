@@ -49,7 +49,7 @@ from astropy.io import fits
 
 c = const.c                                        		
 G = const.G	                             
-sigma = const.sigma_sb                  # Stefan_Boltzmann Const     
+sigma = const.sigma_sb                  #Stefan_Boltzmann Const     
 h = const.h                             #Planck Const
 k = const.k_B                           #Boltzmann Const
 M_Proton = const.m_p                    #Mass of Proton
@@ -58,118 +58,111 @@ Thompson_Cross_Section = const.sigma_T
 
 class ThinDisk:
 
-    def __init__(self, mass_exponent, redshift, nGRs, inc_ang, temp_map, vel_map, g_map, name=''):
+    def __init__(self, mass_exp, redshift, numGRs, inc_ang, coronaheight, temp_map, vel_map, g_map, r_map, spin=0, omg0=0.3, omgl=0.7, H0=70, name=''):
 
-        self.name = name            # Label for particularly modelled systems
-        self.mass_exponent = mass_exponent
-        self.mass = 10**mass_exponent * const.M_sun.to(u.kg)
-        self.nGRs = nGRs
+        self.name = name            # Label space for particularly modelled systems
+        self.mass_exp = mass_exp
+        self.mass = 10**mass_exp * const.M_sun.to(u.kg)
+        self.numGRs = numGRs
         self.redshift = redshift
         self.inc_ang = inc_ang
+        self.spin = spin
         self.temp_map = temp_map
-        self.vel_map = vel_map      # Line-of-sight velocity map
-        self.g_map = g_map          # Relativistic boost map
-        self.pxsize = self.GetGeometricUnit() * self.nGRs / np.size(self.temp_map, 0)
+        self.vel_map = vel_map      
+        self.g_map = g_map          
+        self.r_map = r_map
+        self.omg0 = omg0
+        self.omgl = omgl
+        self.little_h = H0/100
+        self.lum_dist = QMF.CalculateLuminosityDistance(self.redshift, Om0=self.omg0, OmL=self.omgl, little_h=self.little_h)
+        self.rg = QMF.GetGeometricUnit(self.mass)
+        self.pxsize = self.rg * self.numGRs * 2 / np.size(self.temp_map, 0)
+        self.c_height = coronaheight
+        
 
-    def CreateRestSurfaceIntensityMap(self, wavelength):
 
-        return QMF.PlanckLaw(self.temp_map, wavelength) * pow(self.g_map, 4.)
-
-    def CreateObservedSurfaceIntensityMap(self, wavelength):
+    def CreateObservedSurfaceIntensityMap(self, wavelength, returnwavelengths=False):
         
         if type(wavelength) != u.Quantity:
             wavelength *= u.nm
         else:
             dummy=wavelength.to(u.nm)
             wavelength=dummy
-        redshiftedwavelength = wavelength / (1 + self.redshift)
-        dopplershiftedwavelength = redshiftedwavelength * (1/(1-(self.vel_map)))
-        output = self.PlanckLaw(self.temp_map, dopplershiftedwavelength) * pow(self.g_map, 4.)
+        
+        event_horizon = (1 + (1 - abs(self.spin))**0.5)
+        radius = self.r_map 
 
-        return output, dopplershiftedwavelength
+        redshiftfactor = 1/(1+self.redshift)
+        gravshiftfactor = (1 - event_horizon/radius)**0.5
+        reldopplershiftfactor = ((1+self.vel_map)/(1-self.vel_map))**0.5
+        totalshiftfactor = redshiftfactor * reldopplershiftfactor * gravshiftfactor
+
+        emittedwavelength = totalshiftfactor * wavelength.value
+        
+        output = np.nan_to_num(QMF.PlanckLaw(self.temp_map, emittedwavelength) * pow(self.g_map, 4.))
+        if returnwavelengths == True: return output, emittedwavelength
+        return output
 
     def CreateReprocessedEmissionMap(self, wavelength):
         
-        if type(wavelength) != u.Quantity:
-            wavelength *= u.nm
-        redshiftedwavelength = wavelength / (1 + self.redshift)
-        dopplershiftedwavelength = redshiftedwavelength * (1/(1-(self.vel_map)))
-        output = self.PlanckTempDerivative(self.temp_map, wavelength) * pow(self.g_map, 4.)
+        event_horizon = (1 + (1 - abs(self.spin))**0.5)
+        radius = self.r_map
+            
+        redshiftfactor = 1/(1+self.redshift)
+        gravshiftfactor = (1 - event_horizon/radius)**0.5
+        reldopplershiftfactor = ((1+self.vel_map)/(1-self.vel_map))**0.5
+        totalshiftfactor = redshiftfactor * reldopplershiftfactor * gravshiftfactor
+
+        emittedwavelength = totalshiftfactor * wavelength
+        output = QMF.PlanckTempDerivativeNumeric(self.temp_map, emittedwavelength) * pow(self.g_map, 4.)
                 
         return np.nan_to_num(output)
-                            
-
-    def PlanckLaw(self, T, lam):
-        '''
-        I plan to pass in lam in units of [nm]. Otherwise, attach the units and it will convert.
-        '''
-        if type(lam) != u.Quantity:
-                lam *= u.nm
         
-        return ((2.0 * h * c**(2.0) * (lam.to(u.m))**(-5.0) * ((np.e**(h * c / (lam.to(u.m) * k * T)).decompose().value - 1.0)**(-1.0))).to(u.W/(u.m**3)))  # This will return the Planck Law wavelength function at the temperature input
 
-    def PlanckTempDerivative(self, T, lam): 
-        '''
-        This is the derivative of Planck's Law, with respect to temperature
-        '''
-        if type(T) != u.Quantity:
-                T *= u.K
-        if type(lam) != u.Quantity:
-                lam *= u.nm
-
-        a = 2 * h**2 * c**4 / ((lam.to(u.m))**6.0 * k * T**2)
-        b = np.e**(h * c / (lam.to(u.m) * k * T)).decompose()
-
-        return a.value * b.value / (b.value - 1)**2
-    
-
-    def GetGeometricUnit(self):
-        '''
-        This function simply returns what the length (in meters) of a geometric unit is for a given mass (in kg)
-        '''
-        if type(self.mass) != u.Quantity:
-                self.mass *= u.kg
-        return (G * self.mass / c**2).decompose()
-
-    def AngDiameterDistance(self, Om0=0.3, OmL=0.7):
-        '''
-        This funciton takes in a redshift value of z, and calculates the angular diameter distance. This is given as the
-        output. This assumes LCDM model.
-        '''
-        z = self.redshift
-        multiplier = (9.26* 10 **25) * (10/7) * (1 / (1 + z))               # This need not be integrated over
-        integrand = lambda z_p: ( Om0 * (1 + z_p)**(3.0) + OmL )**(-0.5)    # This must be integrated over
-        integral, err = quad(integrand, 0, z)
-        output = multiplier * integral * u.m
-        return output
+    def CreateTimeDelayMap(self, coronaheight=None, axisoffset=0, angleoffset=0, unit='hours'):
         
-    def CalculateLuminosityDistance(self, Om0=0.3, OmL=0.7):
-        '''
-        This calculates the luminosity distance using the AngdiameterDistance formula above for flat lam-CDM model
-        '''
-        z = self.redshift
+        if coronaheight: override = coronaheight
+        else: override = 0
+        coronaheight = self.c_height
+        if override > 0: coronaheight = override
         
-        return ((1 + z)**2 * self.AngDiameterDistance(Om0, OmL))
-
-    def CreateTimeDelayMap(self, coronaheight, axisoffset=0, angleoffset=0, unit='hours'):
-        output = QMF.CreateTimeDelayMap(self.temp_map, self.inc_ang, massquasar=self.mass, nGRs=self.nGRs, coronaheight=coronaheight,
-                                        axisoffset=axisoffset, angleoffset=angleoffset, sim5=True, unit='hours')
+        output = QMF.CreateTimeDelayMap(self.temp_map, self.inc_ang, massquasar=self.mass, redshift = self.redshift, numGRs=self.numGRs*2, coronaheight=coronaheight,
+                                        axisoffset=axisoffset, angleoffset=angleoffset, sim5=True, unit=unit)
         return output
 
-    def CreateGeometricFactorMap(self, coronaheight, axisoffset=0, angleoffset=0, albedo=0):
-        output = QMF.ConstructGeometricDiskFactor(self.temp_map, self.inc_ang, self.mass, coronaheight, r=axisoffset,
-                                        phi=angleoffset, albedo=albedo, sim5=True)
+
+    def MakeDTDLxMap(self, wavelength, coronaheight=None, axisoffset=0, angleoffset=0):
+        if coronaheight: override = coronaheight
+        else: override = 0
+        coronaheight = self.c_height
+        if override > 0: coronaheight = override
+        
+        disk_derivative = self.CreateReprocessedEmissionMap(wavelength)
+        output = QMF.MakeDTDLx(disk_derivative, self.temp_map, self.inc_ang, self.mass, coronaheight, axisoffset=axisoffset, angleoffset=angleoffset)
         return output
 
-    def ConstructDiskTransferFunction(self, disk_derivative, coronaheight, axisoffset=0, angleoffset=0, units=u.h, albedo=0, weight=False):
-        output = QMF.ConstructDiskTransferFunction(disk_derivative, self.inc_ang, self.mass, coronaheight, units=units,
-                                        r=axisoffset, phi=angleoffset, albedo=albedo, weight=weight, nGRs=self.nGRs)
-        return output
+
+    def ConstructDiskTransferFunction(self, wavelength, coronaheight=None, axisoffset=0, angleoffset=0, maxlengthoverride=4800, units='hours', albedo=0, weight=True,
+                                      smooth=True, sim5=True, fixedwindowlength=None, spacing='linear'):
+        if coronaheight: override = coronaheight
+        else: override = 0
+        coronaheight = self.c_height
+        if override > 0: coronaheight = override
+        
+        disk_derivative = self.CreateReprocessedEmissionMap(wavelength)
+        if spacing=='linear':
+            output = QMF.ConstructDiskTransferFunction(disk_derivative, self.temp_map, self.inc_ang, self.mass, self.redshift, coronaheight, maxlengthoverride=maxlengthoverride, units=units,
+                                        axisoffset=axisoffset, angleoffset=angleoffset, albedo=albedo, weight=weight, numGRs=self.numGRs*2, smooth=smooth, sim5=sim5, fixedwindowlength=fixedwindowlength, spacing=spacing)
+            return output
+        elif spacing=='log':
+            times, output = QMF.ConstructDiskTransferFunction(disk_derivative, self.temp_map, self.inc_ang, self.mass, self.redshift, coronaheight, maxlengthoverride=maxlengthoverride, units=units,
+                                        axisoffset=axisoffset, angleoffset=angleoffset, albedo=albedo, weight=weight, numGRs=self.numGRs*2, smooth=smooth, sim5=sim5, fixedwindowlength=fixedwindowlength, spacing=spacing)
+            return times, output
 
 class MagnificationMap:
 
     def __init__(self, redshift_quasar, redshift_lens, file_name, convergence, shear,
-                 m_lens = 1 * const.M_sun.to(u.kg), n_einstein = 25, name = ''):
+                 m_lens = 1 * const.M_sun.to(u.kg), n_einstein = 25, Om0=0.3, OmL=0.7, H0 = 70, ismagmap=False, name = ''):
 
         self.name = name
         self.zq = redshift_quasar
@@ -179,6 +172,7 @@ class MagnificationMap:
         self.shear = shear
         self.n_einstein = n_einstein
         self.m_lens = m_lens
+        self.ein_radius = QMF.CalcEinsteinRadius(self.zl, self.zq, M_lens=self.m_lens, Om0=Om0, OmL=OmL, little_h=H0/100)*QMF.AngDiameterDistance(self.zq, Om0=Om0, OmL=OmL, little_h=H0/100).to(u.m).value
 
         if file_name[-4:] == 'fits':
             with fits.open(file_name) as f:
@@ -187,124 +181,70 @@ class MagnificationMap:
             with open(file_name, 'rb') as f:
                 MagMap = np.fromfile(f, 'i', count=-1, sep='')
                 self.ray_map = QMF.ConvertMagMap(MagMap)
+        elif type(file_name) == np.ndarray:
+            if file_name.ndim == 1:
+                self.ray_map = QMF.ConvertMagMap(file_name)
+            elif file_name.ndim == 2:
+                self.ray_map = file_name
         else:
             print("Invalid file name. Please pass in a .fits or .dat file")
             
         self.resolution = np.size(self.ray_map, 0)
         self.ray_to_mag_ratio = (1 / ((1 - self.convergence)**2.0 - self.shear**2.0)) / (np.sum(self.ray_map) / self.resolution**2.0)
-        self.mag_map = self.ray_map * self.ray_to_mag_ratio
-                
+        self.mag_map = self.ray_map
+        if ismagmap == False:
+            self.mag_map = self.ray_map * self.ray_to_mag_ratio
+        self.px_size = self.ein_radius * self.n_einstein / self.resolution
+        self.px_shift = 0
+            
+    def Convolve(self, Disk, obs_wavelength, rotation=False):
+
+        output, px_size, px_shift = QMF.ConvolveSim5Map(self.mag_map, Disk.CreateObservedSurfaceIntensityMap(obs_wavelength), redshift_lens=self.zl, redshift_source=self.zq, mass_exp=Disk.mass_exp,
+                            mlens=self.m_lens, nmapERs=self.n_einstein, numGRs=Disk.numGRs, rotation=rotation)
+        return output, px_size, px_shift
+
+    def PullValue(self, x_val, y_val):
+
+        return QMF.MeasureMLAmp(self.mag_map, x_val+self.px_shift, y_val+self.px_shift)
     
-            
-    def Convolve(self, Disk, disk_intensity_map, rotation=False):
 
-        output, _ = QMF.ConvolveSim5Map(self.mag_map, disk_intensity_map, zlens=self.zl, zquasar=self.zq, mquasarexponent=Disk.mass_exponent,
-                            mlens=self.m_lens, nmapERs=self.n_einstein, numGRs=Disk.nGRs, rotation=rotation)
-        return output
+    def PullRandomLightCurve(self, vtrans, time):
         
+        return QMF.PullRandLC(self.mag_map, self.px_size, vtrans, time, px_shift = self.px_shift)
 
+    
+    def GenerateMicrolensedResponse(self, Disk, wavelength, coronaheight=None, rotation=False, x_position=None,
+                            y_position=None, axisoffset=0, angleoffset=0, unit='hours', smooth=False, returnmaps=False):
 
-
-    def CalcMapPixSize(self):
-        ERsize = self.CalcEinsteinRadius() * self.AngDiameterDistance()
-        pxsize = ERsize / self.resolution
-        return pxsize
-
-
-    def CalcEinsteinRadius(self, Om0=0.3, OmL=0.7):
-        '''
-        This function takes in values of z_lens and z_source (not simply by finding 
-        the difference of the two! See AngDiameterDistanceDifference function above!). The output is the
-        Einstein radius of the lens, in radians. This assumes LCDM model.
-        '''
-        D_lens = self.AngDiameterDistance(Om0, OmL)
-        D_source = self.AngDiameterDistance(Om0, OmL)
-        D_LS = self.AngDiameterDistanceDifference(Om0, OmL)
-        output = ((( 4 * G * self.m_lens / c**2) * D_LS / (D_lens * D_source))**(0.5)).value
-        return output
-            
-
-    def AngDiameterDistanceDifference(self, Om0=0.3, OmL=0.7):
-        '''
-        This function takes in 2 redshifts, designed to be z1 = redshift (lens) and z2 = redshift (source). It then
-        integrates the ang. diameter distance between the two. This assumes LCDM model.
-        '''
-        multiplier = (9.26* 10 **25) * (10/7) * (1 / (1 + self.zq))
-        integrand = lambda z_p: ( Om0 * (1 + self.zl)**(3.0) + OmL )**(-0.5)               # This must be integrated over
-        integral1, err1 = quad(integrand, 0, self.zl)
-        integral2, err2 = quad(integrand, 0, self.zq)
-        output = multiplier * (integral2 - integral1) * u.m
-        return output
-
-    def AngDiameterDistance(self, Om0=0.3, OmL=0.7):
-        '''
-        This funciton takes in a redshift value of z, and calculates the angular diameter distance. This is given as the
-        output. This assumes LCDM model.
-        '''
-        z = self.zq
-        multiplier = (9.26 * 10**25) * (10/7) * (1 / (1 + z))               # This need not be integrated over
-        integrand = lambda z_p: ( Om0 * (1 + z_p)**(3.0) + OmL )**(-0.5)    # This must be integrated over
-        integral, err = quad(integrand, 0, z)
-        output = multiplier * integral * u.m
-        return output
-
-    def PullRandomLightCurve(self, convolution, vtrans, time):
-        output = QMF.PullRandLC(convolution, self.CalcMapPixSize(), vtrans, time)
-        return output
+        if coronaheight: override = coronaheight
+        else: override = 0
+        coronaheight = Disk.c_height
+        if override > 0: coronaheight = override
         
-
-class BroadLineRegion:
-
-    def __init__(self, Disk, zres, rres, phires, maxz, resolution=100):
-        self.massexp = Disk.mass_exponent
-        self.mass = 10**self.massexp * const.M_sun.to(u.kg)
-        self.inc_ang = Disk.inc_ang
-        self.zres = zres
-        self.rres = rres
-        self.phires = phires
-        self.windgrid = np.zeros((rres, zres, phires, 4))
-        self.maxz = maxz
-        self.windparams = []
-        self.projection_resolution = resolution
-
-    def CreateWindLine(self, launch_radius, launch_angle, r0, launch_height=0, maxvel=10**6, launchspeed=0, alpha=1):
-        output = QMF.CreateWindLine(launch_radius, launch_angle, self.maxz, self.zres, r0, centralBHmassexp=self.massexp,
-                                    launchheight=launch_height, maxvel=maxvel, launchspeed=launchspeed, alpha=alpha)
-        return output
-
-    def AddWindRegion(self, sl1, sl2, r0=False, sigma=False, function=1, power=1, overwrite=False, weight=1):
-        if r0 == False:
-            r0 = self.maxz/2
-        if sigma == False:
-            sigma = self.maxz/4
-        output, rlen, zlen, philen, rmin = QMF.CreateWindRegion(sl1, sl2, r_res=self.rres, z_res=self.zres, phi_res=self.phires, centralBHmassexp=self.massexp,
-                                      r0=r0, sigma=sigma, function=function, power=power)
-        mask = self.windgrid == 0
-        if overwrite == False:
-            self.windgrid += mask * output * weight
-        elif overwrite == True:
-            mask = output == 0
-            output += mask * self.windgrid * weight
-            self.windgrid = output
-        self.windparams.append(rlen)
-        self.windparams.append(zlen)
-        self.windparams.append(philen)
-        self.windparams.append(rmin)
-
-    def ProjectBLR(self, sl1, sl2):
-        output = QMF.ProjectWind(self.windgrid, self.windparams[-4], self.windparams[-3], self.windparams[-2],
-                                 self.windparams[-1], self.inc_ang, self.projection_resolution, sl1, sl2, [], mass = self.mass)
-        return output
-
-    def CreateBLRTransferFunction(self, sl1, sl2, units='days', grid=False):
-        output = QMF.CreateBLRTransferFunction(self.windgrid, self.windparams[-4], self.windparams[-3], self.windparams[-2],
-                                               self.inc_ang, self.projection_resolution, sl1, sl2, mass=self.mass, units=units,
-                                               returngrid=grid)
-        return output
-                                               
-                      
+        return QMF.MicrolensedResponse(self, Disk, wavelength, coronaheight, rotation=rotation, x_position=x_position,
+                            y_position=y_position, axisoffset=axisoffset, angleoffset=angleoffset, unit=unit,
+                            smooth=smooth, returnmaps=returnmaps)
 
 
+class MagnifiedConvolution(MagnificationMap):
+
+    def __init__(self, MagMap, Disk, obs_wavelength, rotation=False):
+
+        self.px_size = MagMap.px_size
+        self.n_einstein = MagMap.n_einstein
+        self.m_lens = MagMap.m_lens
+        self.resolution = MagMap.resolution
+        self.mag_map, self.px_shift = MagMap.Convolve(Disk, obs_wavelength, rotation=rotation)
+        self.disk_mass_exp = Disk.mass_exp
+        self.disk_inc_angle = Disk.inc_ang
+        self.disk_rg = Disk.rg
+        self.disk_obs_wavelength = obs_wavelength
+        self.rotation = rotation
+
+    
+
+
+        
 
 
 
