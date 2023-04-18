@@ -23,7 +23,7 @@ Thompson_Cross_Section = const.sigma_T
 pi = np.pi
 
 
-def CreateMapsForDiskClass(mass_exp, redshift, numGRs, inc_ang, resolution, spin=0, disk_acc = const.M_sun.to(u.kg)/u.yr, temp_beta=0, coronaheight=6,
+def CreateMaps(mass_exp, redshift, numGRs, inc_ang, resolution, spin=0, disk_acc = const.M_sun.to(u.kg)/u.yr, temp_beta=0, coronaheight=6,
                            albedo=1, eta=0.1, genericbeta=False, eddingtons=None):
         '''
         This function sets up maps required for the ThinDisk class in Amoeba. The following parameters are required:
@@ -50,7 +50,7 @@ def CreateMapsForDiskClass(mass_exp, redshift, numGRs, inc_ang, resolution, spin
         assert temp_beta >= 0
         bh_mass = 10**mass_exp*const.M_sun.to(u.kg) 
         bh_rms = sim5.r_ms(spin)
-        gravrad = QMF.GetGeometricUnit(bh_mass)
+        gravrad = QMF.CalcRg(bh_mass)
         img_temp = np.zeros((resolution, resolution))
         img_vel = img_temp.copy()
         img_g = img_temp.copy()
@@ -69,7 +69,7 @@ def CreateMapsForDiskClass(mass_exp, redshift, numGRs, inc_ang, resolution, spin
                         if isnan(r): continue
                         if r >= QMF.SpinToISCO(spin):
                                 phi = np.arctan2((ix-resolution/2), (iy-resolution/2))
-                                img_vel[iy, ix] = -QMF.KepVelocity(r * gravrad, bh_mass) * np.sin(inc_ang * np.pi/180) * np.sin(phi) 
+                                img_vel[iy, ix] = -QMF.KepVel(r * gravrad, bh_mass) * np.sin(inc_ang * np.pi/180) * np.sin(phi) 
                                 img_g[iy, ix] = sim5.gfactorK(r, abs(spin), gd.l)
                         img_r[iy, ix] = r
         nISCOs = QMF.SpinToISCO(spin)
@@ -78,7 +78,7 @@ def CreateMapsForDiskClass(mass_exp, redshift, numGRs, inc_ang, resolution, spin
 
 
 
-def KepVelocity (r, M):
+def KepVel (r, M):
         '''
         This calculates the magnitude of Keplerian Velocity at a distance r, on the Acc. Disk
         r should be in meters
@@ -154,12 +154,12 @@ def AccDiskTemp (R, R_min, M, M_acc, beta=0, coronaheight=6, albedo=1, eta=0.1, 
         else:
                 M *= const.M_sun.to(u.kg)  #Assumed was in M_sun
                 M = M.value
-        Rs = 2 * QMF.GetGeometricUnit(M)
+        Rs = 2 * QMF.CalcRg(M)
         r = R/Rs
         r_in = R_min/Rs
         m0_dot = M_acc / (r_in**beta)
         coronaheight += 0.5
-        coronaheight *= QMF.GetGeometricUnit(M)
+        coronaheight *= QMF.CalcRg(M)
 
         zeroes = R>R_min
         
@@ -187,7 +187,7 @@ def PlanckLaw (T, lam):
         return (2.0 * h.value * c.value**(2.0) * (lam)**(-5.0) * ((e**(h.value * c.value / (lam * k.value * T)) - 1.0)**(-1.0)))  # This will return the Planck Law wavelength function at the temperature input
 
 
-def PlanckTempDerivativeNumeric(T, lam):
+def PlanckDerivative(T, lam):
         '''
         Numerical calculation
         '''
@@ -196,7 +196,7 @@ def PlanckTempDerivativeNumeric(T, lam):
         return PlanckB-PlanckA
         
 
-def MeasureMLAmp (MagMap2d, X, Y):
+def PullValue (MagMap2d, X, Y):
         '''
         This takes a generic point (X,Y) off the magnification map and returns its value and includes
         decimal values
@@ -213,7 +213,7 @@ def MeasureMLAmp (MagMap2d, X, Y):
         return (MagMap2d[int(x), int(y)] + dx + dy)
 
 
-def GetGeometricUnit(mass):
+def CalcRg(mass):
         '''
         This function simply returns what the length (in meters) of a geometric unit is for a given mass (in kg)
         '''
@@ -236,7 +236,7 @@ def ConvertMagMap(MagMap):
         return(MapXY)
 
 
-def AngDiameterDistance(redshift, Om0=0.3, OmL=0.7, little_h = 0.7): 
+def CalcAngDiamDist(redshift, Om0=0.3, OmL=0.7, little_h = 0.7): 
         '''
         This funciton takes in a redshift value of z, and calculates the angular diameter distance. This is given as the
         output. This assumes LCDM model.
@@ -249,11 +249,11 @@ def AngDiameterDistance(redshift, Om0=0.3, OmL=0.7, little_h = 0.7):
         return(value)
 
 
-def AngDiameterDistanceDifference(redshift1, redshift2, Om0=0.3, OmL=0.7, little_h = 0.7):
+def CalcAngDiamDistDiff(redshift1, redshift2, Om0=0.3, OmL=0.7, little_h = 0.7):
         '''
         This function takes in 2 redshifts, designed to be z1 = redshift (lens) and z2 = redshift (source). It then
         integrates the ang. diameter distance between the two. This assumes LCDM model.
-        h is defined as in AngDiameterDistance
+        h is defined as in CalcAngDiamDist
         '''
         multiplier = (9.26* 10 **25) * (little_h)**(-1) * (1 / (1 + redshift2))
         integrand = lambda z_p: ( Om0 * (1 + z_p)**(3.0) + OmL )**(-0.5)               # This must be integrated over
@@ -263,27 +263,26 @@ def AngDiameterDistanceDifference(redshift1, redshift2, Om0=0.3, OmL=0.7, little
         return(value)
 
 
-def CalculateLuminosityDistance(redshift, Om0=0.3, OmL=0.7, little_h = 0.7): 
+def CalcLumDist(redshift, Om0=0.3, OmL=0.7, little_h = 0.7): 
         '''
-        This calculates the luminosity distance using the AngdiameterDistance formula above for flat lam-CDM model
+        This calculates the luminosity distance using the CalcAngDiamDist formula above for flat lam-CDM model
         '''
-        return (1 + redshift)**2 * QMF.AngDiameterDistance(redshift, Om0=Om0, OmL=OmL, little_h = little_h)
+        return (1 + redshift)**2 * QMF.CalcAngDiamDist(redshift, Om0=Om0, OmL=OmL, little_h = little_h)
 
 
-def CalcEinsteinRadius (redshift_lens, redshift_source, M_lens=((1)) * const.M_sun.to(u.kg), Om0=0.3, OmL=0.7, little_h=0.7):#
+def CalcRe (redshift_lens, redshift_source, M_lens=((1)) * const.M_sun.to(u.kg), Om0=0.3, OmL=0.7, little_h=0.7):#
         '''
-        This function takes in values of z_lens and z_source (not simply by finding 
-        the difference of the two! See AngDiameterDistanceDifference function above!). The output is the
+        This function takes in values of z_lens and z_source. The output is the
         Einstein radius of the lens, in radians. This assumes LCDM model.
         '''
-        D_lens = AngDiameterDistance(redshift_lens, Om0=Om0, OmL=OmL, little_h=little_h)
-        D_source = AngDiameterDistance(redshift_source, Om0=Om0, OmL=OmL, little_h=little_h)
-        D_LS = AngDiameterDistanceDifference(redshift_lens, redshift_source, Om0=Om0, OmL=OmL, little_h=little_h)
+        D_lens = CalcAngDiamDist(redshift_lens, Om0=Om0, OmL=OmL, little_h=little_h)
+        D_source = CalcAngDiamDist(redshift_source, Om0=Om0, OmL=OmL, little_h=little_h)
+        D_LS = CalcAngDiamDistDiff(redshift_lens, redshift_source, Om0=Om0, OmL=OmL, little_h=little_h)
         value =( (( 4 * G * M_lens / c**2) * D_LS / (D_lens * D_source))**(0.5)).value
         return(value)
 
 
-def ConvolveSim5Map(MagMap, disk, redshift_lens = 0.5, redshift_source = 2.1, mass_exp = 8.0, mlens = 1.0*const.M_sun.to(u.kg),
+def ConvolveMaps(MagMap, disk, redshift_lens = 0.5, redshift_source = 2.1, mass_exp = 8.0, mlens = 1.0*const.M_sun.to(u.kg),
                 nmapERs = 25, numGRs = 100, rotation=False, verbose=False, returnmag2d=False): 
         '''
         This makes the convolution between a Sim5 disk and a magnification map. The difference is we physically know the screen size
@@ -314,8 +313,8 @@ def ConvolveSim5Map(MagMap, disk, redshift_lens = 0.5, redshift_source = 2.1, ma
                 MagMap2d = QMF.ConvertMagMap(MagMap)
                 if verbose==True: print('Magnification Map Changed. Shape =', np.shape(MagMap2d))
         mquasar = 10**mass_exp*const.M_sun.to(u.kg)
-        diskpxsize = numGRs * QMF.GetGeometricUnit(mquasar)*u.m / diskres
-        pixelsize = QMF.CalcEinsteinRadius(redshift_lens, redshift_source, M_lens = mlens) * QMF.AngDiameterDistance(redshift_source) * nmapERs / np.size(MagMap2d, 0)
+        diskpxsize = numGRs * QMF.CalcRg(mquasar)*u.m / diskres
+        pixelsize = QMF.CalcRe(redshift_lens, redshift_source, M_lens = mlens) * QMF.CalcAngDiamDist(redshift_source) * nmapERs / np.size(MagMap2d, 0)
         if verbose==True: print('A pixel on the mag map is', pixelsize)
         if verbose==True: print('A pixel on the disk map is', diskpxsize)
 
@@ -338,10 +337,8 @@ def ConvolveSim5Map(MagMap, disk, redshift_lens = 0.5, redshift_source = 2.1, ma
         return output, pixelsize, pixel_shift
 
         
-def PullRandLC(convolution, pixelsize, vtrans, time, px_shift=0, x_start=None, y_start=None, phi_angle=None, returntrack=False): 
+def PullLC(convolution, pixelsize, vtrans, time, px_shift=0, x_start=None, y_start=None, phi_angle=None, returntrack=False): 
         '''
-        Almost identical to PullLightCurve function above, but this time a random curve is drawn instead of
-        a specific one.
         Returning the track will allow both plotting tracks on the magnification map and also comparing different
         models along identical tracks.
         '''
@@ -381,7 +378,7 @@ def PullRandLC(convolution, pixelsize, vtrans, time, px_shift=0, x_start=None, y
         ypositions = np.linspace(startposition[1], startposition[1]+ytraversed, px_traversed) + px_shift
         light_curve = []
         for tt in range(px_traversed):
-                light_curve.append(MeasureMLAmp(convolution, xpositions[tt], ypositions[tt]))
+                light_curve.append(PullValue(convolution, xpositions[tt], ypositions[tt]))
 
         track = [xpositions, ypositions]
 
@@ -391,7 +388,7 @@ def PullRandLC(convolution, pixelsize, vtrans, time, px_shift=0, x_start=None, y
                 return light_curve
         
 
-def CreateTimeDelayMap(disk, inc_ang, massquasar = 10**8 * const.M_sun.to(u.kg), redshift = 0.0, diskres = 300, fov = 0.12, geounits = 4000,
+def MakeTimeDelayMap(disk, inc_ang, massquasar = 10**8 * const.M_sun.to(u.kg), redshift = 0.0, diskres = 300, fov = 0.12, geounits = 4000,
                        numGRs = 100, coronaheight = 5, axisoffset=0, angleoffset=0, sim5 = True, unit='hours'): 
         '''
         This aims to create a time delay mapping for the accretion disk for reverberation of the disk itself.
@@ -440,11 +437,11 @@ def CreateTimeDelayMap(disk, inc_ang, massquasar = 10**8 * const.M_sun.to(u.kg),
                 print('Invalid unit deteted. Try "days", "hours", "minutes", "seconds" or an astropy.unit.\nReverting to hours.')
                 steptimescale = 3e8*60*60
         if sim5 == True:
-                rstep = numGRs * QMF.GetGeometricUnit(massquasar) / diskres
+                rstep = numGRs * QMF.CalcRg(massquasar) / diskres
         else:
-                rstep = fov * geounits * QMF.GetGeometricUnit(massquasar) / diskres
+                rstep = fov * geounits * QMF.CalcRg(massquasar) / diskres
 
-        gr = QMF.GetGeometricUnit(massquasar)
+        gr = QMF.CalcRg(massquasar)
 
         xoffset = axisoffset*gr*np.sin(angleoffset)
         yoffset = axisoffset*gr*np.cos(angleoffset)
@@ -457,7 +454,7 @@ def CreateTimeDelayMap(disk, inc_ang, massquasar = 10**8 * const.M_sun.to(u.kg),
         xx = np.linspace(-diskres/2 * rstep, diskres/2 * rstep, diskres) 
         yy = np.linspace(-diskres/2 * rstep, diskres/2 * rstep, diskres) / np.cos(inc_ang)
         xxx, yyy = np.meshgrid(xx, yy)
-        rrr, phiphiphi = QMF.ConvertToPolar(xxx-xoffset, yyy-yoffset)
+        rrr, phiphiphi = QMF.CartToPolar(xxx-xoffset, yyy-yoffset)
         if sim5 == True:
                 phiphiphi += np.pi/2  #There is a rotation of x and y axes for these maps. Adjusting angle to compensate.
         rrr += rstep/2
@@ -481,7 +478,7 @@ def ConstructGeometricDiskFactor(disk, inc_ang, massquasar, coronaheight, axisof
                 output = np.zeros(np.shape(disk[:,:,-1]))
         assert albedo <= 1 and albedo >= 0
         inc_ang *= np.pi/180
-        gr = QMF.GetGeometricUnit(massquasar)
+        gr = QMF.CalcRg(massquasar)
         if sim5 == True:
                 rstep = numGRs * gr / np.size(disk, 0)
         else:
@@ -498,7 +495,7 @@ def ConstructGeometricDiskFactor(disk, inc_ang, massquasar, coronaheight, axisof
         xx = np.linspace(-diskres/2 * rstep, diskres/2 * rstep, diskres)
         yy = np.linspace(-diskres/2 * rstep, diskres/2 * rstep, diskres) / np.cos(inc_ang)
         xxx, yyy = np.meshgrid(xx, yy)
-        rrr, phiphiphi = QMF.ConvertToPolar(xxx-xoffset, yyy-yoffset)
+        rrr, phiphiphi = QMF.CartToPolar(xxx-xoffset, yyy-yoffset)
         if sim5 == True:
                 phiphiphi += np.pi/2  #There is a rotation of x and y axes for these maps. Adjusting angle to compensate.
         rrr += rstep/2
@@ -544,7 +541,7 @@ def ConstructDiskTransferFunction(image_der_f, temp_map, inc_ang, massquasar, re
         import astropy.constants as const
 
         if image_der_f.ndim == 2:
-                diskdelays = QMF.CreateTimeDelayMap(image_der_f, inc_ang, massquasar = massquasar, redshift = redshift, coronaheight = coronaheight, unit = units,
+                diskdelays = QMF.MakeTimeDelayMap(image_der_f, inc_ang, massquasar = massquasar, redshift = redshift, coronaheight = coronaheight, unit = units,
                                                     axisoffset = axisoffset, angleoffset = angleoffset, numGRs = numGRs, sim5=sim5)
                 minlength = int(np.min(diskdelays * (diskdelays>0)))
                 maxlength = int(np.max(diskdelays)+10)
@@ -554,7 +551,7 @@ def ConstructDiskTransferFunction(image_der_f, temp_map, inc_ang, massquasar, re
                 output = np.zeros((maxlength))
                 
         elif image_der_f.ndim == 3:
-                diskdelays = QMF.CreateTimeDelayMap(image_der_f[:,:,-1], inc_ang, massquasar = massquasar, redshift = redshift, coronaheight = coronaheight, unit = units,
+                diskdelays = QMF.MakeTimeDelayMap(image_der_f[:,:,-1], inc_ang, massquasar = massquasar, redshift = redshift, coronaheight = coronaheight, unit = units,
                                                     axisoffset = axisoffset, angleoffset = angleoffset, numGRs = numGRs, sim5=sim5)
                 minlength = int(np.min(diskdelays * (diskdelays>0)))
                 maxlength = int(np.max(diskdelays)+10)
@@ -635,11 +632,11 @@ def MicrolensedResponse(MagMap, AccDisk, wavelength, coronaheight, rotation=Fals
         from skimage.transform import rescale
         from numpy.random import rand
         from scipy.signal import savgol_filter
-        reprocessedmap = AccDisk.CreateReprocessedEmissionMap(wavelength)
+        reprocessedmap = AccDisk.MakeDBDTMap(wavelength)
         pxratio = AccDisk.pxsize/MagMap.px_size
         adjusteddisk = rescale(reprocessedmap*AccDisk.MakeDTDLxMap(wavelength, axisoffset=axisoffset,
                                                            angleoffset=angleoffset), pxratio)
-        adjustedtimedelays = rescale(AccDisk.CreateTimeDelayMap(axisoffset=axisoffset, 
+        adjustedtimedelays = rescale(AccDisk.MakeTimeDelayMap(axisoffset=axisoffset, 
                                                             angleoffset=angleoffset, unit=unit), pxratio)
         edgesize = np.size(adjusteddisk, 0) # This is the edge length we must avoid
     
@@ -709,7 +706,7 @@ def Correlate(LightCurve, LightCurve2 = False):
         return lags, correlation, FWHM, peak 
         
 
-def SetupDRW(t_max, delta_t, SF_inf, tau):
+def MakeDRW(t_max, delta_t, SF_inf, tau):
         '''
         This sets up a Damped Random Walk for input into an intrinsic variability model. It uses the recursion formula
         found in Kelly, Bechtold & Siemiginowska (2009). This gets added to the continuum light curve after convoultion with a transfer function.
@@ -739,7 +736,7 @@ def SetupDRW(t_max, delta_t, SF_inf, tau):
         return variability_lc
         
 
-def ConvertToPolar(x, y):
+def CartToPolar(x, y):
         '''
         This simply converts x, y coords into r, theta coords
         '''
@@ -751,7 +748,7 @@ def ConvertToPolar(x, y):
         return(r, theta)
 
 
-def ConvertToCart(r, theta):
+def PolarToCart(r, theta):
         '''
         This function switches r, theta coords back to x, y coords
         Theta is in radians
