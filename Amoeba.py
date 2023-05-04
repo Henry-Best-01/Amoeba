@@ -101,7 +101,7 @@ class ThinDisk:
         return np.nan_to_num(output)
         
 
-    def MakeTimeDelayMap(self, coronaheight=None, axisoffset=0, angleoffset=0, unit='hours'):
+    def MakeTimeDelayMap(self, coronaheight=None, axisoffset=0, angleoffset=0, unit='hours', jitters=True):
         
         if coronaheight: override = coronaheight
         else: override = 0
@@ -109,7 +109,7 @@ class ThinDisk:
         if override > 0: coronaheight = override
         
         output = QMF.MakeTimeDelayMap(self.temp_map, self.inc_ang, massquasar=self.mass, redshift = self.redshift, numGRs=self.numGRs*2, coronaheight=coronaheight,
-                                        axisoffset=axisoffset, angleoffset=angleoffset, sim5=True, unit=unit)
+                                        axisoffset=axisoffset, angleoffset=angleoffset, unit=unit, jitters=jitters)
         return output
 
 
@@ -120,26 +120,23 @@ class ThinDisk:
         if override > 0: coronaheight = override
         
         disk_derivative = self.MakeDBDTMap(wavelength)
-        output = QMF.MakeDTDLx(disk_derivative, self.temp_map, self.inc_ang, self.mass, coronaheight, axisoffset=axisoffset, angleoffset=angleoffset)
+        output = QMF.MakeDTDLx(disk_derivative, self.temp_map, self.inc_ang, self.mass, coronaheight, numGRs=self.numGRs*2, axisoffset=axisoffset, angleoffset=angleoffset)
         return output
 
 
-    def ConstructDiskTransferFunction(self, wavelength, coronaheight=None, axisoffset=0, angleoffset=0, maxlengthoverride=4800, units='hours', albedo=0, weight=True,
-                                      smooth=True, sim5=True, fixedwindowlength=None, spacing='linear'):
+    def ConstructDiskTransferFunction(self, wavelength, coronaheight=None, axisoffset=0, angleoffset=0, maxlengthoverride=4800, units='hours', albedo=0,
+                                      smooth=True, fixedwindowlength=None):
         if coronaheight: override = coronaheight
         else: override = 0
         coronaheight = self.c_height
         if override > 0: coronaheight = override
         
         disk_derivative = self.MakeDBDTMap(wavelength)
-        if spacing=='linear':
-            output = QMF.ConstructDiskTransferFunction(disk_derivative, self.temp_map, self.inc_ang, self.mass, self.redshift, coronaheight, maxlengthoverride=maxlengthoverride, units=units,
-                                        axisoffset=axisoffset, angleoffset=angleoffset, albedo=albedo, weight=weight, numGRs=self.numGRs*2, smooth=smooth, sim5=sim5, fixedwindowlength=fixedwindowlength, spacing=spacing)
-            return output
-        elif spacing=='log':
-            times, output = QMF.ConstructDiskTransferFunction(disk_derivative, self.temp_map, self.inc_ang, self.mass, self.redshift, coronaheight, maxlengthoverride=maxlengthoverride, units=units,
-                                        axisoffset=axisoffset, angleoffset=angleoffset, albedo=albedo, weight=weight, numGRs=self.numGRs*2, smooth=smooth, sim5=sim5, fixedwindowlength=fixedwindowlength, spacing=spacing)
-            return times, output
+
+        output = QMF.ConstructDiskTransferFunction(disk_derivative, self.temp_map, self.inc_ang, self.mass, self.redshift, coronaheight, maxlengthoverride=maxlengthoverride, units=units,
+                                        axisoffset=axisoffset, angleoffset=angleoffset, albedo=albedo, numGRs=self.numGRs*2, smooth=smooth, fixedwindowlength=fixedwindowlength)
+        return output
+
 
 class MagnificationMap:
 
@@ -173,6 +170,12 @@ class MagnificationMap:
             
         self.resolution = np.size(self.ray_map, 0)
         self.ray_to_mag_ratio = (1 / ((1 - self.convergence)**2.0 - self.shear**2.0)) / (np.sum(self.ray_map) / self.resolution**2.0)
+
+        print(self.resolution)
+        print(self.ray_to_mag_ratio)
+        print(np.sum(self.ray_map)/ self.resolution**2)
+        print(np.sum(self.ray_map))
+        
         self.mag_map = self.ray_map
         if ismagmap == False:
             self.mag_map = self.ray_map * self.ray_to_mag_ratio
@@ -216,7 +219,7 @@ class ConvolvedMap(MagnificationMap):
         self.n_einstein = MagMap.n_einstein
         self.m_lens = MagMap.m_lens
         self.resolution = MagMap.resolution
-        self.mag_map, self.px_shift = MagMap.Convolve(Disk, obs_wavelength, rotation=rotation)
+        self.mag_map, self.px_size, self.px_shift = MagMap.Convolve(Disk, obs_wavelength, rotation=rotation)
         self.disk_mass_exp = Disk.mass_exp
         self.disk_inc_angle = Disk.inc_ang
         self.disk_rg = Disk.rg

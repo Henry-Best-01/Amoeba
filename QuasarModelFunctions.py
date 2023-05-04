@@ -33,12 +33,12 @@ def CreateMaps(mass_exp, redshift, numGRs, inc_ang, resolution, spin=0, disk_acc
          -inc_ang, the inclination angle of the thin disk
          -resolution, the amount of pixels along 1 axis. All images are created square.
          -spin, the dimensionless spin parameter of the modeled black hole, bounded on [-1, 1]
-         -disk_acc, the amount of mass accreted by the accretion disk
-         -temp_beta, a wind parameter which serves to adjust the temperature profile (genericbeta==True will force r^-beta dependence instead)
+         -disk_acc, the amount of mass accreted by the accretion disk per time. If a number is given, units of solar_masses/year are assumed.
+         -temp_beta, a wind parameter which serves to adjust the temperature profile (genericbeta==True will force r^-beta dependence instead by calculating required "beta")
          -height, number of grav. radii above the accretion disk the assumed lamppost is
          -albedo, reflectivity of disk. Setting to 0 will make the disk absorb emission, heating it up
-         -eta, lamp post source luminosity coefficient. Defined as Lx = eta * L_bol
-        The output is 4 values, mass_exp, redshift, numGRs, inc_ang and 3 surface maps, img_temp, img_vel, img_g
+         -eta, lamp post source luminosity coefficient. Defined as Lx = eta * M_dot * c^2
+        The output is 6 values (mass_exp, redshift, numGRs, inc_ang, coronaheight, spin) and 3 surface maps (img_temp, img_vel, img_g, img_r)
         These are all recorded for conveninence, as they all get put into the ThinDisk constructor in order.
         '''
         import sim5
@@ -128,7 +128,7 @@ def AccDiskTemp (R, R_min, M, M_acc, beta=0, coronaheight=6, albedo=1, eta=0.1, 
                 beta > 0  is the wind strength. This directly effects the temperature gradient. See Sun+ 2018
         A corona heating effect due to lamp post geometry (Cacket+ 2007) may add:
                 coronaheight = lamp post height in gravitational radii. Default is 6, the Schwarzschild ISCO case.
-                albedo = absorption coefficent, 0 being perfect absorption and 1 being perfect reflectivity. Default is 1, meaning no heating from lamp post term.
+                albedo = reflection coefficent, 0 being perfect absorption and 1 being perfect reflectivity. Default is 1, meaning no heating from lamp post term.
                 eta = strength coefficient of lamp post source, defined as Lx = eta * L_bol, where L_bol = M_acc c^2.
         Two further arguments are included:
                 genericbeta = True if you want your profile to take the form r^(-beta). The beta relating to the disk+wind model will be worked out and used.
@@ -158,7 +158,7 @@ def AccDiskTemp (R, R_min, M, M_acc, beta=0, coronaheight=6, albedo=1, eta=0.1, 
         r = R/Rs
         r_in = R_min/Rs
         m0_dot = M_acc / (r_in**beta)
-        coronaheight += 0.5
+        coronaheight += 0.5               # Avoid singularities
         coronaheight *= QMF.CalcRg(M)
 
         zeroes = R>R_min
@@ -184,7 +184,7 @@ def PlanckLaw (T, lam):
                 dummyval = lam * u.nm.to(u.m)
                 lam = dummyval
         
-        return (2.0 * h.value * c.value**(2.0) * (lam)**(-5.0) * ((e**(h.value * c.value / (lam * k.value * T)) - 1.0)**(-1.0)))  # This will return the Planck Law wavelength function at the temperature input
+        return (2.0 * h.value * c.value * (lam)**(-3.0) * ((e**(h.value * c.value / (lam * k.value * T)) - 1.0)**(-1.0)))  # This will return the Planck Law wavelength function at the temperature input
 
 
 def PlanckDerivative(T, lam):
@@ -285,7 +285,7 @@ def CalcRe (redshift_lens, redshift_source, M_lens=((1)) * const.M_sun.to(u.kg),
 def ConvolveMaps(MagMap, disk, redshift_lens = 0.5, redshift_source = 2.1, mass_exp = 8.0, mlens = 1.0*const.M_sun.to(u.kg),
                 nmapERs = 25, numGRs = 100, rotation=False, verbose=False, returnmag2d=False): 
         '''
-        This makes the convolution between a Sim5 disk and a magnification map. The difference is we physically know the screen size
+        This makes the convolution between a disk and a magnification map. The difference is we physically know the screen size
         in physical units, as opposed to the field of view calculation required for GYOTO disks.
         
         '''
@@ -345,13 +345,16 @@ def PullLC(convolution, pixelsize, vtrans, time, px_shift=0, x_start=None, y_sta
         if type(vtrans) == u.Quantity:
                 vtrans = vtrans.to(u.m/u.s) 
         else:
-                vtrans *= u.km.to(u.m)*u.m/u.s
+                vtrans *= u.km.to(u.m)
         if type(time) == u.Quantity:
                 time = time.to(u.s)
         else:
-                time *= u.yr.to(u.s) * u.s
-        pixelsize *= u.m
+                time *= u.yr.to(u.s)
         length_traversed = vtrans * time
+        
+        if type(length_traversed/pixelsize) == u.Quantity:
+                length_traversed = (length_traversed/pixelsize).value
+                pixelsize=1
         px_traversed = int(length_traversed / pixelsize + 0.5)
 
         xbounds = [abs(px_traversed)+2*px_shift, np.size(convolution, 0)-abs(px_traversed)]
@@ -366,7 +369,7 @@ def PullLC(convolution, pixelsize, vtrans, time, px_shift=0, x_start=None, y_sta
                 ystart = y_start
         else: ystart = ybounds[0] + rand() * (ybounds[1] - ybounds[0])
         if phi_angle:
-                angle = phi_angle
+                angle = phi_angle*np.pi/180
         else: angle = rand() * 2*np.pi
                 
         startposition = [xstart, ystart]
@@ -388,8 +391,8 @@ def PullLC(convolution, pixelsize, vtrans, time, px_shift=0, x_start=None, y_sta
                 return light_curve
         
 
-def MakeTimeDelayMap(disk, inc_ang, massquasar = 10**8 * const.M_sun.to(u.kg), redshift = 0.0, diskres = 300, fov = 0.12, geounits = 4000,
-                       numGRs = 100, coronaheight = 5, axisoffset=0, angleoffset=0, sim5 = True, unit='hours'): 
+def MakeTimeDelayMap(disk, inc_ang, massquasar = 10**8 * const.M_sun.to(u.kg), redshift = 0.0, diskres = 300,
+                       numGRs = 100, coronaheight = 5, axisoffset=0, angleoffset=0, unit='hours', jitters=True): 
         '''
         This aims to create a time delay mapping for the accretion disk for reverberation of the disk itself.
         The input disk should be some accretion disk map which is just used to determine where the accretion disk appears
@@ -402,17 +405,8 @@ def MakeTimeDelayMap(disk, inc_ang, massquasar = 10**8 * const.M_sun.to(u.kg), r
         '''
         inc_ang *= np.pi/180
         angleoffset *= np.pi/180
-        if type(disk) == str and sim5 == False:
-                ii = 0
-                dummyhdu = np.zeros([int(diskres), int(diskres)])
-                with open(disk, 'r') as f:
-                    for line in f:
-                        line = line.strip()
-                        columns = line.split()
-                        dummyhdu[:, ii] = np.asarray(columns, dtype=float)
-                        ii += 1
-                disk = dummyhdu
-        elif type(disk) == str and sim5 == True:
+
+        if type(disk) == str:
                 with fits.open(disk) as f:
                         disk = f[0].data
                 diskres = np.size(disk, 0)
@@ -436,12 +430,16 @@ def MakeTimeDelayMap(disk, inc_ang, massquasar = 10**8 * const.M_sun.to(u.kg), r
         else:
                 print('Invalid unit deteted. Try "days", "hours", "minutes", "seconds" or an astropy.unit.\nReverting to hours.')
                 steptimescale = 3e8*60*60
-        if sim5 == True:
-                rstep = numGRs * QMF.CalcRg(massquasar) / diskres
-        else:
-                rstep = fov * geounits * QMF.CalcRg(massquasar) / diskres
+        rstep = numGRs * QMF.CalcRg(massquasar) / diskres
+
 
         gr = QMF.CalcRg(massquasar)
+        time_resolution = rstep/steptimescale
+        
+        if jitters==True:
+                timeshifts = np.random.uniform(size=np.shape(disk)) * time_resolution/np.cos(inc_ang)  # Helps smooth the transfer function by essentially randomizing position in pixel
+        else:
+                timeshifts = np.zeros(np.shape(disk))
 
         xoffset = axisoffset*gr*np.sin(angleoffset)
         yoffset = axisoffset*gr*np.cos(angleoffset)
@@ -455,10 +453,11 @@ def MakeTimeDelayMap(disk, inc_ang, massquasar = 10**8 * const.M_sun.to(u.kg), r
         yy = np.linspace(-diskres/2 * rstep, diskres/2 * rstep, diskres) / np.cos(inc_ang)
         xxx, yyy = np.meshgrid(xx, yy)
         rrr, phiphiphi = QMF.CartToPolar(xxx-xoffset, yyy-yoffset)
-        if sim5 == True:
-                phiphiphi += np.pi/2  #There is a rotation of x and y axes for these maps. Adjusting angle to compensate.
+        phiphiphi += np.pi/2  #There is a rotation of x and y axes for these maps. Adjusting angle to compensate.
         rrr += rstep/2
         output = ((rrr**2 + zp**2)**0.5 + zp*np.cos(inc_ang) - rrr*np.cos(phiphiphi)*np.sin(inc_ang))/steptimescale
+        safe_mask = output < (np.max(output) - time_resolution/np.cos(inc_ang))  #We don't want to *sometimes* increase the maximum time lag based on random variance.
+        output += timeshifts * safe_mask
 
         mask2 = output >= 0
         mask = np.logical_and(mask1, mask2)
@@ -467,7 +466,7 @@ def MakeTimeDelayMap(disk, inc_ang, massquasar = 10**8 * const.M_sun.to(u.kg), r
         return output
 
 
-def ConstructGeometricDiskFactor(disk, inc_ang, massquasar, coronaheight, axisoffset=0, angleoffset=0, numGRs=100, albedo=0, geounits = 4000, fov=0.12, sim5=True):
+def ConstructGeometricDiskFactor(disk, inc_ang, massquasar, coronaheight, axisoffset=0, angleoffset=0, numGRs=100, albedo=0):
         '''
         This function creates the geometric factor of the accretion disk:
         (1-A)cos(theta_x)/(4*pi*sigma*R_{*}^{2})  #Additional term which multiplies Lx in Eq. 2 of Cackett+ 2007
@@ -479,10 +478,8 @@ def ConstructGeometricDiskFactor(disk, inc_ang, massquasar, coronaheight, axisof
         assert albedo <= 1 and albedo >= 0
         inc_ang *= np.pi/180
         gr = QMF.CalcRg(massquasar)
-        if sim5 == True:
-                rstep = numGRs * gr / np.size(disk, 0)
-        else:
-                rstep = fov * geounits * gr / np.size(disk, 0)
+        rstep = numGRs * gr / np.size(disk, 0)
+
         axisoffset = axisoffset
         angleoffset = angleoffset * np.pi/180
         sig = const.sigma_sb.value
@@ -496,8 +493,7 @@ def ConstructGeometricDiskFactor(disk, inc_ang, massquasar, coronaheight, axisof
         yy = np.linspace(-diskres/2 * rstep, diskres/2 * rstep, diskres) / np.cos(inc_ang)
         xxx, yyy = np.meshgrid(xx, yy)
         rrr, phiphiphi = QMF.CartToPolar(xxx-xoffset, yyy-yoffset)
-        if sim5 == True:
-                phiphiphi += np.pi/2  #There is a rotation of x and y axes for these maps. Adjusting angle to compensate.
+        phiphiphi += np.pi/2  #There is a rotation of x and y axes for these maps. Adjusting angle to compensate.
         rrr += rstep/2
         coronaheight += 1/2
         distance = (rrr**2 + ((coronaheight) * gr)**2)**0.5
@@ -519,13 +515,13 @@ def MakeDTDLx(disk_der, temp_map, inc_ang, massquasar, coronaheight, numGRs = 10
         '''
         T_orig = temp_map
         weightingmap = QMF.ConstructGeometricDiskFactor(disk_der, inc_ang, massquasar, coronaheight, numGRs=numGRs, axisoffset=axisoffset, angleoffset=angleoffset)
-        output = weightingmap/(4*T_orig**3)
+        output = weightingmap/(4*(T_orig)**3)
         
         return output
                                 
 
-def ConstructDiskTransferFunction(image_der_f, temp_map, inc_ang, massquasar, redshift, coronaheight, maxlengthoverride=4800, units=u.h, axisoffset=0, angleoffset=0, numGRs =100, sim5=True, weight=False,
-                                  albedo=0, geounits=4000, fov=0.12, smooth=True, spacing='linear', fixedwindowlength=None): 
+def ConstructDiskTransferFunction(image_der_f, temp_map, inc_ang, massquasar, redshift, coronaheight, maxlengthoverride=4800, units=u.h, axisoffset=0, angleoffset=0, numGRs =100, 
+                                  albedo=0, smooth=True, fixedwindowlength=None): 
         '''
         This takes in disk objects and parameters in order to construct its transfer function
         The disk should be the derivative of the Planck function w.r.t Temperature
@@ -540,9 +536,12 @@ def ConstructDiskTransferFunction(image_der_f, temp_map, inc_ang, massquasar, re
         import astropy.units as u
         import astropy.constants as const
 
+        dummy=np.nan_to_num(image_der_f)
+        image_der_f = dummy
+
         if image_der_f.ndim == 2:
                 diskdelays = QMF.MakeTimeDelayMap(image_der_f, inc_ang, massquasar = massquasar, redshift = redshift, coronaheight = coronaheight, unit = units,
-                                                    axisoffset = axisoffset, angleoffset = angleoffset, numGRs = numGRs, sim5=sim5)
+                                                    axisoffset = axisoffset, angleoffset = angleoffset, numGRs = numGRs)
                 minlength = int(np.min(diskdelays * (diskdelays>0)))
                 maxlength = int(np.max(diskdelays)+10)
                 dummy = min(maxlength, maxlengthoverride)
@@ -552,7 +551,7 @@ def ConstructDiskTransferFunction(image_der_f, temp_map, inc_ang, massquasar, re
                 
         elif image_der_f.ndim == 3:
                 diskdelays = QMF.MakeTimeDelayMap(image_der_f[:,:,-1], inc_ang, massquasar = massquasar, redshift = redshift, coronaheight = coronaheight, unit = units,
-                                                    axisoffset = axisoffset, angleoffset = angleoffset, numGRs = numGRs, sim5=sim5)
+                                                    axisoffset = axisoffset, angleoffset = angleoffset, numGRs = numGRs)
                 minlength = int(np.min(diskdelays * (diskdelays>0)))
                 maxlength = int(np.max(diskdelays)+10)
                 dummy = min(maxlength, maxlengthoverride)
@@ -564,64 +563,45 @@ def ConstructDiskTransferFunction(image_der_f, temp_map, inc_ang, massquasar, re
                 return null
         if fixedwindowlength: windowlength = fixedwindowlength
         if windowlength %2 == 0: windowlength += 1  # Savgol filter window must be odd
-        if weight==True:
-                weight = QMF.MakeDTDLx(image_der_f, temp_map, inc_ang, massquasar, coronaheight, numGRs=numGRs, axisoffset=axisoffset, angleoffset=angleoffset)
-        else:
-                weight = np.ones(np.shape(image_der_f))
+        weight = QMF.MakeDTDLx(image_der_f, temp_map, inc_ang, massquasar, coronaheight, numGRs=numGRs, axisoffset=axisoffset, angleoffset=angleoffset)
 
-        if spacing == 'linear':
+        output = np.histogram(diskdelays, range=(0, np.max(diskdelays)+1), bins=int(np.max(diskdelays)+1), weights=np.nan_to_num(weight*image_der_f), density=True)[0]
 
-                for jj in range(maxlength):  # Loop over each time delay
-                        maskin = (diskdelays >= jj - 0.5)
-                        maskout = (diskdelays < jj + 0.5)
-                        mask = maskin*maskout
-                        if image_der_f.ndim == 2:
-                                output[jj] = np.sum(np.nan_to_num(mask * image_der_f * weight), (0, 1)) 
-
-                        else:
-                                for band in range(np.size(image_der_f, 2)):
-                                        output[jj, band] = np.sum(np.nan_to_num(mask * image_der_f[:,:,band] * weight), (0, 1))
-                if smooth==True:
-                        zeromask = (output != 0)  # Keep zeros zero
-                        if image_der_f.ndim==2:
-                                smoothedoutput = savgol_filter(output, windowlength, 3)
-                                smoothedoutput *= (smoothedoutput>0) * zeromask
-                                smoothedoutput /= np.sum(smoothedoutput)
-                        else:
-                                smoothedoutput = np.zeros(np.shape(output))
-                                for band in range(np.size(image_der_f, 2)):
-                                        smoothedoutput[:,band] = savgol_filter(output[:,band], windowlength, 3)
-                                smoothedoutput *= (smoothedoutput>0) * zeromask
-                                for band in range(np.size(image_der_f, 2)):
-                                        smoothedoutput[:,band] /= np.sum(smoothedoutput[:,band])
-                        return smoothedoutput
+        if smooth==True:
+#                zeromask = (output != 0)  # Keep zeros zero, but was introducing strange artifacts. Adjusting method to remove savgol artifacts.
+                zeromask = np.ones(np.shape(output))
                 if image_der_f.ndim==2:
-                        output /= np.sum(output)
+                        
+                        if np.argmax(output) > 1:
+                                dummy_slice = output[:np.argmax(output)] * (output[:np.argmax(output)] > 0)
+                                last_zero = np.size(dummy_slice) - np.argmin(np.flip(dummy_slice)) # last_zero is defined as the shortest time delay in the transfef function
+                                zeromask[:last_zero] = 0
+                                
+                                                                             
+                        smoothedoutput = savgol_filter(output, windowlength, 3)
+                        smoothedoutput *= (smoothedoutput>0) * zeromask
+                        smoothedoutput /= np.sum(smoothedoutput)
                 else:
+                        smoothedoutput = np.zeros(np.shape(output))
+                        
+                                
                         for band in range(np.size(image_der_f, 2)):
-                                output[:,band] /= np.sum(output[:,band])
-                return output
+                                if np.argmax(output[band, :]) > 1:
+                                        dummy_slice = output[band, :np.argmax(output)] * (output[band, np.argmax(output[band, :])] > 0)
+                                        last_zero = np.size(dummy_slice) - np.argmin(np.flip(dummy_slice))
+                                        zeromask[band, :last_zero] = 0
+                                smoothedoutput[:,band] = savgol_filter(output[:,band], windowlength, 3)
+                        smoothedoutput *= (smoothedoutput>0) * zeromask
+                        for band in range(np.size(image_der_f, 2)):
+                                smoothedoutput[:,band] /= np.sum(smoothedoutput[:,band])
+                return smoothedoutput
+        if image_der_f.ndim==2:
+                output /= np.sum(output)
+        else:
+                for band in range(np.size(image_der_f, 2)):
+                        output[:,band] /= np.sum(output[:,band])
+        return output
 
-        elif spacing == 'log':
-                times = (np.logspace(-1, np.log10(maxlength)))
-                for jj in range(len(times)):
-                        if jj == 0: output = np.zeros(np.shape(times))
-                        delta_t = times[jj] - times[jj-1]
-                        maskin = diskdelays >= times[jj] - delta_t/2
-                        maskout = diskdelays < times[jj] + delta_t/2
-                        mask = np.logical_and(maskin,maskout)
-                        if image_der_f.ndim == 2:
-                                output[jj] = np.sum(mask * image_der_f[:,:] * weight, (0, 1)) / delta_t 
-                        else:
-                                if jj == 0: output = np.zeros((np.size(times), np.size(image_der_f, 2))) #Adjust shape of output
-                                for band in range(np.size(image_der_f, 2)):
-                                        output[jj, band] = np.sum((mask * image_der_f[:,:,band] * weight, (0, 1))) / delta_t
-                if image_der_f.ndim == 2:
-                        output /= np.sum(output)
-                else:
-                        for band in range(np.size(image_der_f, 2)):
-                                output[:, band] /= np.sum(output[:, band])
-                return times, output
 
 def MicrolensedResponse(MagMap, AccDisk, wavelength, coronaheight, rotation=False, x_position=None, y_position=None,
                         axisoffset=0, angleoffset=0, unit='hours', smooth=False, returnmaps=False):
@@ -639,6 +619,14 @@ def MicrolensedResponse(MagMap, AccDisk, wavelength, coronaheight, rotation=Fals
         adjustedtimedelays = rescale(AccDisk.MakeTimeDelayMap(axisoffset=axisoffset, 
                                                             angleoffset=angleoffset, unit=unit), pxratio)
         edgesize = np.size(adjusteddisk, 0) # This is the edge length we must avoid
+
+        while 3*edgesize > MagMap.resolution:
+                print("Disk too large, or Magnification Map must be larger! Adjusting...")
+                smallerdisk = adjusteddisk[edgesize//2-edgesize//4:edgesize//2+edgesize//4, edgesize//2-edgesize//4:edgesize//2+edgesize//4]
+                smallerTDs = adjustedtimedelays[edgesize//2-edgesize//4:edgesize//2+edgesize//4, edgesize//2-edgesize//4:edgesize//2+edgesize//4]
+                edgesize = np.size(smallerdisk, 0)
+                adjusteddisk = smallerdisk
+                adjustedtimedelays = smallerTDs
     
         if x_position: 
                 if x_position - edgesize > 0 and x_position + edgesize//2 < MagMap.resolution:
@@ -662,14 +650,17 @@ def MicrolensedResponse(MagMap, AccDisk, wavelength, coronaheight, rotation=Fals
         magnifiedresponse = np.nan_to_num(adjusteddisk * MagMap.mag_map[yposition:yposition+edgesize, xposition:xposition+edgesize])
     
         if returnmaps==True:
-                return adjustedtimedelays, np.nan_to_num(magnifiedresponse), xposition+edgesize//2, yposition+edgesize//2
-        for jj in range(int(np.max(adjustedtimedelays))):
-                if jj == 0: output = np.zeros(int(np.max(adjustedtimedelays)))
-                maskin = adjustedtimedelays >= jj - 0.5
-                maskout = adjustedtimedelays < jj + 0.5
-                mask = np.logical_and(maskin, maskout)
-                output[jj] = np.sum(mask * np.nan_to_num(magnifiedresponse), (0, 1))
-        output /= np.sum(output)
+                return adjustedtimedelays, magnifiedresponse, xposition+edgesize//2, yposition+edgesize//2
+
+        output = np.histogram(adjustedtimedelays, range=(0, np.max(adjustedtimedelays)+1), bins=int(np.max(adjustedtimedelays)+1), weights=np.nan_to_num(magnifiedresponse), density=True)[0]
+        
+#        for jj in range(int(np.max(adjustedtimedelays))):
+#                if jj == 0: output = np.zeros(int(np.max(adjustedtimedelays)))
+#                maskin = adjustedtimedelays >= jj - 0.5
+#                maskout = adjustedtimedelays < jj + 0.5
+#                mask = np.logical_and(maskin, maskout)
+#                output[jj] = np.sum(mask * np.nan_to_num(magnifiedresponse), (0, 1))
+#        output /= np.sum(output)
         if smooth==True:
                 if unit=='hours': windowlength = np.size(output)//50 + 5
                 elif unit=='days': windowlength = np.size(output)//2 + 5
