@@ -1,4 +1,4 @@
-# PublicQuasarVariabilityModeling
+# Amoeba
 This repository contains a few examples of my modeling of quasar variability, both intrinsically and extrinsically.
 
 I cannot upload a magnification map sample due to size limits. My code was written to use microlensing magnification maps which are pre-calculated, where many can be found on the GERLUMPH database. 
