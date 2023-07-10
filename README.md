@@ -10,4 +10,5 @@ If you would like to run the Examples.ipynb notebook, you will be required to ch
 Broad Line Region (BLR) models have been removed for now while they receive some TLC. 
 
 
-Thank you for taking notice of my code! I would be happy to answer any questions.
+Thank you for taking notice of my code! I would be happy to answer any questions. I can be contacted directly at hbest@gradcenter.cuny.edu
+
