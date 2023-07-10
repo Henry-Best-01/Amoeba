@@ -1,5 +1,5 @@
 # Amoeba
-This repository contains a few examples of my modeling of quasar variability, both intrinsically and extrinsically.
+Amoeba is a new, modular, and open source quasar modeling code designed to model intrinsic and extrinsic variability. It treats both emissions and reverberations together with corrections from Doppler shifting, relativistic corrections, and geodesic ray tracing around the central black hole. We can simulate any inclination angle, where moderate to edge-on cases can significantly deviate from the case without including these effects. We allow for a flexible temperature profile which can include contributions from lamp post heating and variable accretion flows, which smoothly converges to the thin disk temperature profile. Beyond this temperature profile, Amoeba allows for any input (effective) temperature mapping to be used to create arbitrary surface brightness / response maps. Transfer functions may be constructed from these response maps under the assumed lamp post model, which may be extended by combining multiple lampposts to build up any arbitrary driving source.
 
 I cannot upload a magnification map sample due to size limits. My code was written to use microlensing magnification maps which are pre-calculated, where many can be found on the GERLUMPH database (Vernardos+ 2014). 
 
