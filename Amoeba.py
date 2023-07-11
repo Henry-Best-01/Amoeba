@@ -2,20 +2,20 @@
 This file holds various classes for Amoeba.
 Also required is "QuasarModelFunctions.py" in the same directory.
 There are 3 objects included:
-    -ThinDisk object which represents an accretion disk. QMF has a function to help generate the required maps
+    -FlatDisk object which represents an accretion disk. QMF has a function to help generate the required maps
        assuming Sim5 is installed, named "CreateMaps".
-       ThinDisk.MakeSurfaceIntensityMap() creates an intensity map while adjusting the wavelengths at each pixel due to redshift+doppler
-       ThinDisk.MakeDBDTMap() creates a map of dB(T; lambda)/dT for the reprocessing model
-       ThinDisk.MakeTimeDelayMap() creates a map of time delays between a point source above the accretion disk and the accretion disk
-       ThinDisk.MakeDTDLxMap() creates a map of the geometric weights associated with the reprocessing model
-       ThinDisk.ConstructDiskTransferFunction() calculates the model transfer function of the accretion disk under the lamppost model geometry
+       FlatDisk.MakeSurfaceIntensityMap() creates an intensity map while adjusting the wavelengths at each pixel due to redshift+doppler
+       FlatDisk.MakeDBDTMap() creates a map of dB(T; lambda)/dT for the reprocessing model
+       FlatDisk.MakeTimeDelayMap() creates a map of time delays between a point source above the accretion disk and the accretion disk
+       FlatDisk.MakeDTDLxMap() creates a map of the geometric weights associated with the reprocessing model
+       FlatDisk.ConstructDiskTransferFunction() calculates the model transfer function of the accretion disk under the lamppost model geometry
 
     -MagnificationMap object is an object set up to hold a magnification map with functions relating to microlensing. It is constructed with
        either a binary .dat file or a fits file, and information regarding the redshifts, convergence, shear, mass of microlenses, and number
        of einstein radii must be included.
        MagnificationMap.Convolve() makes the convolution between this magnification map and an accretion disk image, defined with Disk and disk_intensity_map. An optional rotation is allowed.
        MagnificationMap.PullLightCurve() pulls a light curve off the convolution, assuming some relative transferse velocity vtrans (km/s) and a time period time (years).
-       MagnificationMap.GenerateMicrolensedResponse() magnifies a ThinDisk response function.
+       MagnificationMap.GenerateMicrolensedResponse() magnifies a FlatDisk response function.
 
 '''
 
@@ -39,7 +39,7 @@ M_Proton = const.m_p                    #Mass of Proton
 Thompson_Cross_Section = const.sigma_T  
 
 
-class ThinDisk:
+class FlatDisk:
 
     def __init__(self, mass_exp, redshift, numGRs, inc_ang, coronaheight, temp_map, vel_map, g_map, r_map, spin=0, omg0=0.3, omgl=0.7, H0=70, name=''):
 
