@@ -26,11 +26,11 @@ pi = np.pi
 def CreateMaps(mass_exp, redshift, numGRs, inc_ang, resolution, spin=0, disk_acc = const.M_sun.to(u.kg)/u.yr, temp_beta=0, coronaheight=6,
                            albedo=1, eta=0.1, genericbeta=False, eddingtons=None):
         '''
-        This function sets up maps required for the ThinDisk class in Amoeba. The following parameters are required:
+        This function sets up maps required for the FlatDisk class in Amoeba. The following parameters are required:
          -mass_exp, the exponent to how many solar masses the black hole is modeled to have. M_bh = 10**mass_exp * M_sun
          -redshift, the position of the modeled quasar
          -numGRs, the amount of gravitational radii the disk is calculated out to
-         -inc_ang, the inclination angle of the thin disk
+         -inc_ang, the inclination angle of the accretion disk
          -resolution, the amount of pixels along 1 axis. All images are created square.
          -spin, the dimensionless spin parameter of the modeled black hole, bounded on [-1, 1]
          -disk_acc, the amount of mass accreted by the accretion disk per time. If a number is given, units of solar_masses/year are assumed.
@@ -39,7 +39,7 @@ def CreateMaps(mass_exp, redshift, numGRs, inc_ang, resolution, spin=0, disk_acc
          -albedo, reflectivity of disk. Setting to 0 will make the disk absorb emission, heating it up
          -eta, lamp post source luminosity coefficient. Defined as Lx = eta * M_dot * c^2
         The output is 6 values (mass_exp, redshift, numGRs, inc_ang, coronaheight, spin) and 3 surface maps (img_temp, img_vel, img_g, img_r)
-        These are all recorded for conveninence, as they all get put into the ThinDisk constructor in order.
+        These are all recorded for conveninence, as they all get put into the FlatDisk constructor in order.
         '''
         import sim5
 
