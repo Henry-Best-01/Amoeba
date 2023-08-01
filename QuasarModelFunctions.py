@@ -121,7 +121,7 @@ def AccDiskTemp (R, R_min, M, M_acc, beta=0, coronaheight=6, albedo=1, eta=0.1, 
                 R = radius [m]
                 R_min = ISCO radius [m]
                 M = mass [kg]
-                M_acc = Accretion rate at ISCO [kg / s]
+                M_acc = Accretion rate at ISCO [M_sun / yr]
         Keep all other defaults to output Thin disk model.
         
         A wind effect which acts to remove accreting material and adjusts the slope may add:
@@ -423,6 +423,8 @@ def MakeTimeDelayMap(disk, inc_ang, massquasar = 10**8 * const.M_sun.to(u.kg), r
                         steptimescale = 3e8*60
                 elif unit == 'seconds' or unit == 'Seconds':
                         steptimescale = 3e8
+                elif unit == 'GR' or unit == 'Gr' or unit == 'gr' or unit == 'Rg' or unit == 'rg' or unit == 'RG' or unit == 'R_g' or unit == 'r_g' or unit == 'R_G':
+                        steptimescale = QMF.CalcRg(massquasar)
                 else:
                         print('Invalid string deteted. Try "days", "hours", "minutes", "seconds" or an astropy.unit.\nReverting to hours.')
                         steptimescale = 3e8*60*60
@@ -564,7 +566,7 @@ def ConstructDiskTransferFunction(image_der_f, temp_map, inc_ang, massquasar, re
                 return null
         if fixedwindowlength: windowlength = fixedwindowlength
         if windowlength %2 == 0: windowlength += 1  # Savgol filter window must be odd
-        weight = QMF.MakeDTDLx(image_der_f, temp_map, inc_ang, massquasar, coronaheight, numGRs=numGRs, axisoffset=axisoffset, angleoffset=angleoffset)
+        weight = np.nan_to_num(QMF.MakeDTDLx(image_der_f, temp_map, inc_ang, massquasar, coronaheight, numGRs=numGRs, axisoffset=axisoffset, angleoffset=angleoffset))
 
         output = np.histogram(diskdelays, range=(0, np.max(diskdelays)+1), bins=int(np.max(diskdelays)+1), weights=np.nan_to_num(weight*image_der_f), density=True)[0]
 
@@ -616,10 +618,13 @@ def MicrolensedResponse(MagMap, AccDisk, wavelength, coronaheight, rotation=0, x
         from scipy.signal import savgol_filter
         reprocessedmap = AccDisk.MakeDBDTMap(wavelength)
         pxratio = AccDisk.pxsize/MagMap.px_size
-        print(pxratio, AccDisk.pxsize, MagMap.px_size)
         adjusteddisk = np.nan_to_num(rescale(reprocessedmap*AccDisk.MakeDTDLxMap(wavelength, axisoffset=axisoffset,
                                                            angleoffset=angleoffset), pxratio))
-        adjustedtimedelays = rescale(AccDisk.MakeTimeDelayMap(axisoffset=axisoffset, 
+        if returnmaps == True:
+                adjustedtimedelays = rescale(AccDisk.MakeTimeDelayMap(axisoffset=axisoffset, 
+                                                            angleoffset=angleoffset, unit=unit, jitters=False), pxratio)
+        else:
+                adjustedtimedelays = rescale(AccDisk.MakeTimeDelayMap(axisoffset=axisoffset, 
                                                             angleoffset=angleoffset, unit=unit), pxratio)
         maxrange =np.max(adjustedtimedelays)+1
         edgesize = np.size(adjusteddisk, 0) # This is the edge length we must avoid
@@ -763,7 +768,49 @@ def PolarToCart(r, theta):
         return(x, y)
 
         
+
+def MakeSnapshots(DiskEmission, DiskReprocess, DiskLags, SnapshotTimesteps, SignalWeighting=1, Signal=None,
+                  SF_inf=None, tau=None, returnsignal = False):
+        '''
+        This function takes in maps of the emission, response, and timelags. Additionally, a
+        list of timestamps are required. SignalWeighting is the relative strength of the
+        heating signal. Signal, if given, is the driving signal. If not given, a DRW will
+        be created.
+        '''
         
+        maxtime = np.max(DiskLags) + SnapshotTimesteps[-1] + 100  # The longest signal we need for desired timesteps
+        diskmask = np.nan_to_num(DiskReprocess) > 1e-25
+        print(np.sum(diskmask))
+
+        if Signal is not None:
+                if len(Signal) < maxtime:
+                        print("Input signal is not long enough to cover all snapshots!")
+                        return
+        else:
+                maxtime /= (365*24)  #Convert to hours
+                from QuasarModelFunctions import MakeDRW
+                if SF_inf is None: SF_inf = np.random.rand() * 300  # if not SF_inf, generate a random one between 0 to 300
+                if tau is None: tau = np.random.rand() * 100  #if not tau, generate a random one between 0 and 100
+                Signal = MakeDRW(maxtime, 1/24, SF_inf, tau)
+                Signal -= np.mean(Signal)
+                Signal /= np.std(Signal)
+                Signal -= np.min(Signal)
+                                 
+                
+        output = []
+
+        for jj in SnapshotTimesteps:
+                timestamps = DiskLags.astype(int) + jj
+                output.append(np.nan_to_num(DiskEmission + SignalWeighting * DiskReprocess * Signal[timestamps]) * diskmask)
+        if returnsignal == True:
+                return output, Signal
+        return output
+
+
+
+
+
+
         
 
 

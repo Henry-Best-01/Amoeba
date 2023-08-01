@@ -193,9 +193,9 @@ class MagnificationMap:
         return QMF.PullValue(self.mag_map, x_val+self.px_shift, y_val+self.px_shift)
     
 
-    def PullLightCurve(self, vtrans, time, x_start=None, y_start=None, phi_angle=None):
+    def PullLightCurve(self, vtrans, time, x_start=None, y_start=None, phi_angle=None, returntrack=False):
         
-        return QMF.PullLC(self.mag_map, self.px_size, vtrans, time, px_shift = self.px_shift, x_start=x_start, y_start=y_start, phi_angle=phi_angle)
+        return QMF.PullLC(self.mag_map, self.px_size, vtrans, time, px_shift = self.px_shift, x_start=x_start, y_start=y_start, phi_angle=phi_angle, returntrack=returntrack)
 
     
     def GenerateMicrolensedResponse(self, Disk, wavelength, coronaheight=None, rotation=0, x_position=None,
