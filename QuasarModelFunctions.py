@@ -433,10 +433,9 @@ def MakeTimeDelayMap(disk, inc_ang, massquasar = 10**8 * const.M_sun.to(u.kg), r
         else:
                 print('Invalid unit deteted. Try "days", "hours", "minutes", "seconds" or an astropy.unit.\nReverting to hours.')
                 steptimescale = 3e8*60*60
-        rstep = numGRs * QMF.CalcRg(massquasar) / diskres
 
-
-        gr = QMF.CalcRg(massquasar)
+        gr = QMF.CalcRg(massquasar)        
+        rstep = numGRs * gr / diskres
         time_resolution = rstep/steptimescale
         
         if jitters==True:
@@ -456,11 +455,11 @@ def MakeTimeDelayMap(disk, inc_ang, massquasar = 10**8 * const.M_sun.to(u.kg), r
         yy = np.linspace(-diskres/2 * rstep, diskres/2 * rstep, diskres) / np.cos(inc_ang)
         xxx, yyy = np.meshgrid(xx, yy)
         rrr, phiphiphi = QMF.CartToPolar(xxx-xoffset, yyy-yoffset)
-        phiphiphi += np.pi/2  #There is a rotation of x and y axes for these maps. Adjusting angle to compensate.
+        phiphiphi += np.pi/2  #There is a rotation of x and y axes between these maps. Adjusting angle to compensate.
         rrr += rstep/2
         output = ((rrr**2 + zp**2)**0.5 + zp*np.cos(inc_ang) - rrr*np.cos(phiphiphi)*np.sin(inc_ang))/steptimescale
         safe_mask = output < (np.max(output) - time_resolution/np.cos(inc_ang))  #We don't want to *sometimes* increase the maximum time lag based on random variance.
-        output += timeshifts * safe_mask
+        output += timeshifts * safe_mask 
 
         mask2 = output >= 0
         mask = np.logical_and(mask1, mask2)
