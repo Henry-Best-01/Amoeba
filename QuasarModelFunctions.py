@@ -69,9 +69,9 @@ def CreateMaps(mass_exp, redshift, numGRs, inc_ang, resolution, spin=0, disk_acc
                         if isnan(r): continue
                         if r >= QMF.SpinToISCO(spin):
                                 phi = np.arctan2((ix-resolution/2), (iy-resolution/2))
-                                img_vel[iy, ix] = -QMF.KepVel(r * gravrad, bh_mass) * np.sin(inc_ang * np.pi/180) * np.sin(phi) 
-                                img_g[iy, ix] = sim5.gfactorK(r, abs(spin), gd.l)
-                        img_r[iy, ix] = r
+                                img_vel[ix, iy] = -QMF.KepVel(r * gravrad, bh_mass) * np.sin(inc_ang * np.pi/180) * np.sin(phi) 
+                                img_g[ix, iy] = sim5.gfactorK(r, abs(spin), gd.l)
+                        img_r[ix, iy] = r
         nISCOs = QMF.SpinToISCO(spin)
         img_temp = QMF.AccDiskTemp(img_r*gravrad, nISCOs*gravrad, bh_mass, disk_acc, beta=temp_beta, coronaheight=coronaheight, albedo=albedo, eta=eta, genericbeta=genericbeta, eddingtons=eddingtons)
         return mass_exp, redshift, numGRs, inc_ang, coronaheight, spin, img_temp, img_vel, img_g, img_r
@@ -393,7 +393,7 @@ def PullLC(convolution, pixelsize, vtrans, time, px_shift=0, x_start=None, y_sta
         
 
 def MakeTimeDelayMap(disk, inc_ang, massquasar = 10**8 * const.M_sun.to(u.kg), redshift = 0.0, diskres = 300,
-                       numGRs = 100, coronaheight = 5, axisoffset=0, angleoffset=0, unit='hours', jitters=True): 
+                       numGRs = 100, coronaheight = 5, axisoffset=0, angleoffset=0, unit='hours', jitters=True, radiimap=None): 
         '''
         This aims to create a time delay mapping for the accretion disk for reverberation of the disk itself.
         The input disk should be some accretion disk map which is just used to determine where the accretion disk appears
@@ -455,8 +455,9 @@ def MakeTimeDelayMap(disk, inc_ang, massquasar = 10**8 * const.M_sun.to(u.kg), r
         yy = np.linspace(-diskres/2 * rstep, diskres/2 * rstep, diskres) / np.cos(inc_ang)
         xxx, yyy = np.meshgrid(xx, yy)
         rrr, phiphiphi = QMF.CartToPolar(xxx-xoffset, yyy-yoffset)
-        phiphiphi += np.pi/2  #There is a rotation of x and y axes between these maps. Adjusting angle to compensate.
-        rrr += rstep/2
+        phiphiphi += np.pi/2                                                    # 0 degrees should be to observer, aimed at negative y direction
+        if radiimap is not None:
+                rrr = radiimap * gr
         output = ((rrr**2 + zp**2)**0.5 + zp*np.cos(inc_ang) - rrr*np.cos(phiphiphi)*np.sin(inc_ang))/steptimescale
         safe_mask = output < (np.max(output) - time_resolution/np.cos(inc_ang))  #We don't want to *sometimes* increase the maximum time lag based on random variance.
         output += timeshifts * safe_mask 
@@ -468,10 +469,18 @@ def MakeTimeDelayMap(disk, inc_ang, massquasar = 10**8 * const.M_sun.to(u.kg), r
         return output
 
 
-def ConstructGeometricDiskFactor(disk, inc_ang, massquasar, coronaheight, axisoffset=0, angleoffset=0, numGRs=100, albedo=0):
+def ConstructGeometricDiskFactor(disk, inc_ang, massquasar, coronaheight, axisoffset=0, angleoffset=0, numGRs=100, albedo=0, radiimap=None):
         '''
         This function creates the geometric factor of the accretion disk:
         (1-A)cos(theta_x)/(4*pi*sigma*R_{*}^{2})  #Additional term which multiplies Lx in Eq. 2 of Cackett+ 2007
+        This takes parameters:
+        disk is a two dimensional map
+        inc_ang is the inclination angle of the disk
+        massquasar is the mass of the central black hole
+        coronaheight is the height of the flaring source in Rg
+        axisoffset / angleoffset determines how off axis the flaring source is, in Rg and degrees respectively
+        numGRs is the number of gravitational radii the accretion disk map is calculated out to (radially)
+        albedo is the reflectivity of the accretion disk in the range 0, 1
         '''
         if disk.ndim == 2:
                 output = np.zeros(np.shape(disk))
@@ -495,9 +504,10 @@ def ConstructGeometricDiskFactor(disk, inc_ang, massquasar, coronaheight, axisof
         yy = np.linspace(-diskres/2 * rstep, diskres/2 * rstep, diskres) / np.cos(inc_ang)
         xxx, yyy = np.meshgrid(xx, yy)
         rrr, phiphiphi = QMF.CartToPolar(xxx-xoffset, yyy-yoffset)
-        phiphiphi += np.pi/2  #There is a rotation of x and y axes for these maps. Adjusting angle to compensate.
-        rrr += rstep/2
-        coronaheight += 1/2
+        phiphiphi += np.pi/2
+        if radiimap is not None:                                                            # allow passing in radii map if precalculated
+                rrr = radiimap * gr
+        coronaheight += 1/2                                                     # adding 0.5 Rg to h avoids dividing by zero
         distance = (rrr**2 + ((coronaheight) * gr)**2)**0.5
         costheta =((coronaheight) * gr)/distance
         output = (1-albedo) * costheta / (4 * np.pi * sig * distance**2)
@@ -507,7 +517,7 @@ def ConstructGeometricDiskFactor(disk, inc_ang, massquasar, coronaheight, axisof
         return output
 
 
-def MakeDTDLx(disk_der, temp_map, inc_ang, massquasar, coronaheight, numGRs = 100, axisoffset=0, angleoffset=0):
+def MakeDTDLx(disk_der, temp_map, inc_ang, massquasar, coronaheight, numGRs = 100, axisoffset=0, angleoffset=0, radiimap=None):
         '''
         Approximates DT/DLx on the accretion disk assuming the irradiated disk model, such that:
         T_disk**4 = T_viscous**4 + T_irradiation
@@ -516,14 +526,14 @@ def MakeDTDLx(disk_der, temp_map, inc_ang, massquasar, coronaheight, numGRs = 10
         delta_T / delta_Lx ~ geometric_factor / (4*T_disk**3)
         '''
         T_orig = temp_map
-        weightingmap = QMF.ConstructGeometricDiskFactor(disk_der, inc_ang, massquasar, coronaheight, numGRs=numGRs, axisoffset=axisoffset, angleoffset=angleoffset)
+        weightingmap = QMF.ConstructGeometricDiskFactor(disk_der, inc_ang, massquasar, coronaheight, numGRs=numGRs, axisoffset=axisoffset, angleoffset=angleoffset, radiimap=radiimap)
         output = weightingmap/(4*(T_orig)**3)
         
         return output
                                 
 
-def ConstructDiskTransferFunction(image_der_f, temp_map, inc_ang, massquasar, redshift, coronaheight, maxlengthoverride=4800, units=u.h, axisoffset=0, angleoffset=0, numGRs =100, 
-                                  albedo=0, smooth=True, fixedwindowlength=None): 
+def ConstructDiskTransferFunction(image_der_f, temp_map, inc_ang, massquasar, redshift, coronaheight, maxlengthoverride=4800, units='hours', axisoffset=0, angleoffset=0, numGRs =100, 
+                                  albedo=0, smooth=True, fixedwindowlength=None, radiimap=None): 
         '''
         This takes in disk objects and parameters in order to construct its transfer function
         The disk should be the derivative of the Planck function w.r.t Temperature
@@ -543,7 +553,7 @@ def ConstructDiskTransferFunction(image_der_f, temp_map, inc_ang, massquasar, re
 
         if image_der_f.ndim == 2:
                 diskdelays = QMF.MakeTimeDelayMap(image_der_f, inc_ang, massquasar = massquasar, redshift = redshift, coronaheight = coronaheight, unit = units,
-                                                    axisoffset = axisoffset, angleoffset = angleoffset, numGRs = numGRs)
+                                                    axisoffset = axisoffset, angleoffset = angleoffset, numGRs = numGRs, radiimap=radiimap)
                 minlength = int(np.min(diskdelays * (diskdelays>0)))
                 maxlength = int(np.max(diskdelays)+10)
                 dummy = min(maxlength, maxlengthoverride)
@@ -553,7 +563,7 @@ def ConstructDiskTransferFunction(image_der_f, temp_map, inc_ang, massquasar, re
                 
         elif image_der_f.ndim == 3:
                 diskdelays = QMF.MakeTimeDelayMap(image_der_f[:,:,-1], inc_ang, massquasar = massquasar, redshift = redshift, coronaheight = coronaheight, unit = units,
-                                                    axisoffset = axisoffset, angleoffset = angleoffset, numGRs = numGRs)
+                                                    axisoffset = axisoffset, angleoffset = angleoffset, numGRs = numGRs, radiimap=radiimap)
                 minlength = int(np.min(diskdelays * (diskdelays>0)))
                 maxlength = int(np.max(diskdelays)+10)
                 dummy = min(maxlength, maxlengthoverride)
@@ -564,8 +574,8 @@ def ConstructDiskTransferFunction(image_der_f, temp_map, inc_ang, massquasar, re
                 print("Invalid dimensionality of input disk")
                 return null
         if fixedwindowlength: windowlength = fixedwindowlength
-        if windowlength %2 == 0: windowlength += 1  # Savgol filter window must be odd
-        weight = np.nan_to_num(QMF.MakeDTDLx(image_der_f, temp_map, inc_ang, massquasar, coronaheight, numGRs=numGRs, axisoffset=axisoffset, angleoffset=angleoffset))
+        if windowlength %2 == 0: windowlength += 1                                                              # Savgol filter window must be odd
+        weight = np.nan_to_num(QMF.MakeDTDLx(image_der_f, temp_map, inc_ang, massquasar, coronaheight, numGRs=numGRs, axisoffset=axisoffset, angleoffset=angleoffset, radiimap=radiimap))
 
         output = np.histogram(diskdelays, range=(0, np.max(diskdelays)+1), bins=int(np.max(diskdelays)+1), weights=np.nan_to_num(weight*image_der_f), density=True)[0]
 
@@ -576,7 +586,7 @@ def ConstructDiskTransferFunction(image_der_f, temp_map, inc_ang, massquasar, re
                         
                         if np.argmax(output) > 1:
                                 dummy_slice = output[:np.argmax(output)] * (output[:np.argmax(output)] > 0)
-                                last_zero = np.size(dummy_slice) - np.argmin(np.flip(dummy_slice)) # last_zero is defined as the shortest time delay in the transfer function
+                                last_zero = np.size(dummy_slice) - np.argmin(np.flip(dummy_slice))              # last_zero is defined as the shortest time delay in the transfer function
                                 zeromask[:last_zero] = 0
                                 
                                                                              
@@ -606,7 +616,7 @@ def ConstructDiskTransferFunction(image_der_f, temp_map, inc_ang, massquasar, re
 
 
 def MicrolensedResponse(MagMap, AccDisk, wavelength, coronaheight, rotation=0, x_position=None, y_position=None,
-                        axisoffset=0, angleoffset=0, unit='hours', smooth=False, returnmaps=False):
+                        axisoffset=0, angleoffset=0, unit='hours', smooth=False, returnmaps=False, radiimap=None):
         '''
         This function aims to microlens the response from a fluctuation in the lamppost geometry at some position
         on the magnification map
@@ -625,8 +635,8 @@ def MicrolensedResponse(MagMap, AccDisk, wavelength, coronaheight, rotation=0, x
         else:
                 adjustedtimedelays = rescale(AccDisk.MakeTimeDelayMap(axisoffset=axisoffset, 
                                                             angleoffset=angleoffset, unit=unit), pxratio)
-        maxrange =np.max(adjustedtimedelays)+1
-        edgesize = np.size(adjusteddisk, 0) # This is the edge length we must avoid
+        maxrange = np.max(adjustedtimedelays)+1
+        edgesize = np.size(adjusteddisk, 0)                                             # This is the edge length we must avoid
 
         if type(rotation) != int and type(rotation) != float:
                 rotation = np.random.rand() * 360

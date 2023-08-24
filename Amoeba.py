@@ -109,7 +109,7 @@ class FlatDisk:
         if override > 0: coronaheight = override
         
         output = QMF.MakeTimeDelayMap(self.temp_map, self.inc_ang, massquasar=self.mass, redshift = self.redshift, numGRs=self.numGRs*2, coronaheight=coronaheight,
-                                        axisoffset=axisoffset, angleoffset=angleoffset, unit=unit, jitters=jitters)
+                                        axisoffset=axisoffset, angleoffset=angleoffset, unit=unit, jitters=jitters, radiimap=self.r_map)
         return output
 
 
@@ -120,7 +120,7 @@ class FlatDisk:
         if override > 0: coronaheight = override
         
         disk_derivative = self.MakeDBDTMap(wavelength)
-        output = QMF.MakeDTDLx(disk_derivative, self.temp_map, self.inc_ang, self.mass, coronaheight, numGRs=self.numGRs*2, axisoffset=axisoffset, angleoffset=angleoffset)
+        output = QMF.MakeDTDLx(disk_derivative, self.temp_map, self.inc_ang, self.mass, coronaheight, numGRs=self.numGRs*2, axisoffset=axisoffset, angleoffset=angleoffset, radiimap=self.r_map)
         return output
 
 
@@ -134,7 +134,7 @@ class FlatDisk:
         disk_derivative = self.MakeDBDTMap(wavelength)
 
         output = QMF.ConstructDiskTransferFunction(disk_derivative, self.temp_map, self.inc_ang, self.mass, self.redshift, coronaheight, maxlengthoverride=maxlengthoverride, units=units,
-                                        axisoffset=axisoffset, angleoffset=angleoffset, albedo=albedo, numGRs=self.numGRs*2, smooth=smooth, fixedwindowlength=fixedwindowlength)
+                                        axisoffset=axisoffset, angleoffset=angleoffset, albedo=albedo, numGRs=self.numGRs*2, smooth=smooth, fixedwindowlength=fixedwindowlength, radiimap=self.r_map)
         return output
 
 
