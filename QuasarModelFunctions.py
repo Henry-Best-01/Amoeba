@@ -532,8 +532,8 @@ def MakeDTDLx(disk_der, temp_map, inc_ang, massquasar, coronaheight, numGRs = 10
         return output
                                 
 
-def ConstructDiskTransferFunction(image_der_f, temp_map, inc_ang, massquasar, redshift, coronaheight, maxlengthoverride=4800, units='hours', axisoffset=0, angleoffset=0, numGRs =100, 
-                                  albedo=0, smooth=True, fixedwindowlength=None, radiimap=None): 
+def ConstructDiskTransferFunction(image_der_f, temp_map, inc_ang, massquasar, redshift, coronaheight, maxlengthoverride=4800, units='hours', axisoffset=0, angleoffset=0, numGRs=100, 
+                                  albedo=0, smooth=False, fixedwindowlength=None, radiimap=None, scaleratio=1): 
         '''
         This takes in disk objects and parameters in order to construct its transfer function
         The disk should be the derivative of the Planck function w.r.t Temperature
@@ -547,6 +547,7 @@ def ConstructDiskTransferFunction(image_der_f, temp_map, inc_ang, massquasar, re
         import QuasarModelFunctions as QMF
         import astropy.units as u
         import astropy.constants as const
+        from skimage.transform import rescale
 
         dummy=np.nan_to_num(image_der_f)
         image_der_f = dummy
@@ -575,9 +576,14 @@ def ConstructDiskTransferFunction(image_der_f, temp_map, inc_ang, massquasar, re
                 return null
         if fixedwindowlength: windowlength = fixedwindowlength
         if windowlength %2 == 0: windowlength += 1                                                              # Savgol filter window must be odd
-        weight = np.nan_to_num(QMF.MakeDTDLx(image_der_f, temp_map, inc_ang, massquasar, coronaheight, numGRs=numGRs, axisoffset=axisoffset, angleoffset=angleoffset, radiimap=radiimap))
+        weight = np.nan_to_num(QMF.MakeDTDLx(image_der_f, temp_map, inc_ang, massquasar, coronaheight, numGRs=numGRs, axisoffset=axisoffset, angleoffset=angleoffset, radiimap=radiimap))*image_der_f
 
-        output = np.histogram(diskdelays, range=(0, np.max(diskdelays)+1), bins=int(np.max(diskdelays)+1), weights=np.nan_to_num(weight*image_der_f), density=True)[0]
+        dummyblock = rescale(weight, scaleratio)
+        weight = dummyblock
+        dummyblock = rescale(diskdelays, scaleratio)
+        diskdelays = dummyblock
+
+        output = np.histogram(diskdelays, range=(0, np.max(diskdelays)+1), bins=int(np.max(diskdelays)+1), weights=np.nan_to_num(weight), density=True)[0]
 
         if smooth==True:
 
@@ -614,9 +620,9 @@ def ConstructDiskTransferFunction(image_der_f, temp_map, inc_ang, massquasar, re
                         output[:,band] /= np.sum(output[:,band])
         return output
 
-
 def MicrolensedResponse(MagMap, AccDisk, wavelength, coronaheight, rotation=0, x_position=None, y_position=None,
-                        axisoffset=0, angleoffset=0, unit='hours', smooth=False, returnmaps=False, radiimap=None):
+                        axisoffset=0, angleoffset=0, unit='hours', smooth=False, returnmaps=False, radiimap=None, 
+                        scaleratio=1, unscale=True):
         '''
         This function aims to microlens the response from a fluctuation in the lamppost geometry at some position
         on the magnification map
@@ -629,6 +635,7 @@ def MicrolensedResponse(MagMap, AccDisk, wavelength, coronaheight, rotation=0, x
         pxratio = AccDisk.pxsize/MagMap.px_size
         adjusteddisk = np.nan_to_num(rescale(reprocessedmap*AccDisk.MakeDTDLxMap(wavelength, axisoffset=axisoffset,
                                                            angleoffset=angleoffset), pxratio))
+        adjustedrmap = np.nan_to_num(rescale(AccDisk.r_map, pxratio))
         if returnmaps == True:
                 adjustedtimedelays = rescale(AccDisk.MakeTimeDelayMap(axisoffset=axisoffset, 
                                                             angleoffset=angleoffset, unit=unit, jitters=False), pxratio)
@@ -640,18 +647,22 @@ def MicrolensedResponse(MagMap, AccDisk, wavelength, coronaheight, rotation=0, x
 
         if type(rotation) != int and type(rotation) != float:
                 rotation = np.random.rand() * 360
-        newimg1 = rotate(adjusteddisk, rotation, axes=(0, 1), reshape=False)
-        adjusteddisk = newimg1
-        newimg2 = rotate(adjustedtimedelays, rotation, axes=(0, 1), reshape=False)
-        adjustedtimedelays = newimg2
+                newimg1 = rotate(adjusteddisk, rotation, axes=(0, 1), reshape=False, order=1)
+                adjusteddisk = newimg1
+                newimg2 = rotate(adjustedtimedelays, rotation, axes=(0, 1), reshape=False)
+                adjustedtimedelays = newimg2
+                adjustedrmap = rotate(adjustedrmap, rotation, axes=(0, 1), reshape=False)
         
         while 3*edgesize > MagMap.resolution:
                 print("Disk too large, or Magnification Map must be larger! Adjusting...")
                 smallerdisk = adjusteddisk[edgesize//2-edgesize//4:edgesize//2+edgesize//4, edgesize//2-edgesize//4:edgesize//2+edgesize//4]
                 smallerTDs = adjustedtimedelays[edgesize//2-edgesize//4:edgesize//2+edgesize//4, edgesize//2-edgesize//4:edgesize//2+edgesize//4]
+                smallerrmap = adjustedrmap[edgesize//2-edgesize//4:edgesize//2+edgesize//4, edgesize//2-edgesize//4:edgesize//2+edgesize//4]
                 edgesize = np.size(smallerdisk, 0)
                 adjusteddisk = smallerdisk
                 adjustedtimedelays = smallerTDs
+                adjustedrmap = smallerrmap
+        r_mask = (adjustedrmap <= AccDisk.numGRs) * (np.nan_to_num(adjustedrmap) > 0)
     
         if x_position: 
                 if x_position - edgesize > 0 and x_position + edgesize//2 < MagMap.resolution:
@@ -672,10 +683,22 @@ def MicrolensedResponse(MagMap, AccDisk, wavelength, coronaheight, rotation=0, x
         xposition -= edgesize//2
         yposition -= edgesize//2
     
-        magnifiedresponse = np.nan_to_num(adjusteddisk * MagMap.mag_map[yposition:yposition+edgesize, xposition:xposition+edgesize])
-    
+        magnifiedresponse = np.nan_to_num(r_mask * adjusteddisk * MagMap.mag_map[yposition:yposition+edgesize, xposition:xposition+edgesize])
+
         if returnmaps==True:
-                return adjustedtimedelays, magnifiedresponse, xposition+edgesize//2, yposition+edgesize//2
+                return adjustedtimedelays*r_mask, magnifiedresponse, xposition+edgesize//2, yposition+edgesize//2    
+        
+        if unscale == True:
+            
+                dummyblock = rescale(magnifiedresponse, 1/pxratio)
+                magnifiedresponse = (dummyblock)
+                dummyblock = rescale(adjustedtimedelays, 1/pxratio)
+                adjustedtimedelays = (dummyblock)
+        
+        dummyblock = rescale(magnifiedresponse, scaleratio)
+        magnifiedresponse = dummyblock
+        dummyblock = rescale(adjustedtimedelays, scaleratio)
+        adjustedtimedelays = dummyblock
 
         output = np.histogram(adjustedtimedelays, range=(0, maxrange), bins=int(maxrange), weights=np.nan_to_num(magnifiedresponse), density=True)[0]
         
@@ -696,6 +719,7 @@ def MicrolensedResponse(MagMap, AccDisk, wavelength, coronaheight, rotation=0, x
                 
                 output = smoothedoutput
         return output
+   
         
                                 
 

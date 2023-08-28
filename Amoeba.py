@@ -52,7 +52,7 @@ class FlatDisk:
         self.spin = spin
         self.temp_map = temp_map
         self.vel_map = vel_map      
-        self.g_map = g_map          
+        self.g_map = g_map          #redshift map
         self.r_map = r_map
         self.omg0 = omg0
         self.omgl = omgl
@@ -63,7 +63,7 @@ class FlatDisk:
         self.c_height = coronaheight
         
 
-    def MakeSurfaceIntensityMap(self, wavelength, returnwavelengths=False):
+    def MakeSurfaceIntensityMap(self, wavelength, approxshift=False, returnwavelengths=False):
         
         if type(wavelength) != u.Quantity:
             wavelength *= u.nm
@@ -75,27 +75,36 @@ class FlatDisk:
         radius = self.r_map 
 
         redshiftfactor = 1/(1+self.redshift)
-        gravshiftfactor = (1 - event_horizon/radius)**0.5
-        reldopplershiftfactor = ((1+self.vel_map)/(1-self.vel_map))**0.5
-        totalshiftfactor = redshiftfactor * reldopplershiftfactor * gravshiftfactor
-
+        totalshiftfactor = redshiftfactor * self.g_map 
+        if approxshift == True:
+            gravshiftfactor = (1 - event_horizon/radius)**0.5
+            reldopplershiftfactor = ((1+self.vel_map)/(1-self.vel_map))**0.5
+            totalshiftfactor = redshiftfactor * gravshiftfactor * reldopplershiftfactor
         emittedwavelength = totalshiftfactor * wavelength.value
         
         output = np.nan_to_num(QMF.PlanckLaw(self.temp_map, emittedwavelength) * pow(self.g_map, 4.))
         if returnwavelengths == True: return output, emittedwavelength
         return output
 
-    def MakeDBDTMap(self, wavelength):
+    def MakeDBDTMap(self, wavelength, approxshift=False):
         
+        if type(wavelength) != u.Quantity:
+            wavelength *= u.nm
+        else:
+            dummy=wavelength.to(u.nm)
+            wavelength=dummy
+            
         event_horizon = (1 + (1 - (self.spin)**2)**0.5)
         radius = self.r_map
             
         redshiftfactor = 1/(1+self.redshift)
-        gravshiftfactor = (1 - event_horizon/radius)**0.5
-        reldopplershiftfactor = ((1+self.vel_map)/(1-self.vel_map))**0.5
-        totalshiftfactor = redshiftfactor * reldopplershiftfactor * gravshiftfactor
-
-        emittedwavelength = totalshiftfactor * wavelength
+        totalshiftfactor = redshiftfactor * self.g_map 
+        if approxshift == True:
+            gravshiftfactor = (1 - event_horizon/radius)**0.5
+            reldopplershiftfactor = ((1+self.vel_map)/(1-self.vel_map))**0.5
+            totalshiftfactor = redshiftfactor * gravshiftfactor * reldopplershiftfactor
+        emittedwavelength = totalshiftfactor * wavelength.value
+        
         output = QMF.PlanckDerivative(self.temp_map, emittedwavelength) * pow(self.g_map, 4.)
                 
         return np.nan_to_num(output)
@@ -113,27 +122,27 @@ class FlatDisk:
         return output
 
 
-    def MakeDTDLxMap(self, wavelength, coronaheight=None, axisoffset=0, angleoffset=0):
+    def MakeDTDLxMap(self, wavelength, coronaheight=None, axisoffset=0, angleoffset=0, approxshift=False):
         if coronaheight: override = coronaheight
         else: override = 0
         coronaheight = self.c_height
         if override > 0: coronaheight = override
         
-        disk_derivative = self.MakeDBDTMap(wavelength)
+        disk_derivative = self.MakeDBDTMap(wavelength, approxshift=approxshift)
         output = QMF.MakeDTDLx(disk_derivative, self.temp_map, self.inc_ang, self.mass, coronaheight, numGRs=self.numGRs*2, axisoffset=axisoffset, angleoffset=angleoffset, radiimap=self.r_map)
         return output
 
 
     def ConstructDiskTransferFunction(self, wavelength, coronaheight=None, axisoffset=0, angleoffset=0, maxlengthoverride=4800, units='hours', albedo=0,
-                                      smooth=True, fixedwindowlength=None):
+                                      smooth=False, scaleratio=1, fixedwindowlength=None, approxshift=False):
         if coronaheight: override = coronaheight
         else: override = 0
         coronaheight = self.c_height
         if override > 0: coronaheight = override
         
-        disk_derivative = self.MakeDBDTMap(wavelength)
+        disk_derivative = self.MakeDBDTMap(wavelength, approxshift=approxshift)
 
-        output = QMF.ConstructDiskTransferFunction(disk_derivative, self.temp_map, self.inc_ang, self.mass, self.redshift, coronaheight, maxlengthoverride=maxlengthoverride, units=units,
+        output = QMF.ConstructDiskTransferFunction(disk_derivative, self.temp_map, self.inc_ang, self.mass, self.redshift, coronaheight, maxlengthoverride=maxlengthoverride, units=units, scaleratio=scaleratio,
                                         axisoffset=axisoffset, angleoffset=angleoffset, albedo=albedo, numGRs=self.numGRs*2, smooth=smooth, fixedwindowlength=fixedwindowlength, radiimap=self.r_map)
         return output
 
@@ -153,18 +162,18 @@ class MagnificationMap:
         self.m_lens = m_lens
         self.ein_radius = QMF.CalcRe(self.zl, self.zq, M_lens=self.m_lens, Om0=Om0, OmL=OmL, little_h=H0/100)*QMF.CalcAngDiamDist(self.zq, Om0=Om0, OmL=OmL, little_h=H0/100).to(u.m).value
 
-        if file_name[-4:] == 'fits':
+        if type(file_name) == np.ndarray:
+            if file_name.ndim == 1:
+                self.ray_map = QMF.ConvertMagMap(file_name)
+            elif file_name.ndim == 2:
+                self.ray_map = file_name
+        elif file_name[-4:] == 'fits':
             with fits.open(file_name) as f:
                 self.ray_map = f[0].data
         elif file_name[-4:] == '.dat':
             with open(file_name, 'rb') as f:
                 MagMap = np.fromfile(f, 'i', count=-1, sep='')
                 self.ray_map = QMF.ConvertMagMap(MagMap)
-        elif type(file_name) == np.ndarray:
-            if file_name.ndim == 1:
-                self.ray_map = QMF.ConvertMagMap(file_name)
-            elif file_name.ndim == 2:
-                self.ray_map = file_name
         else:
             print("Invalid file name. Please pass in a .fits or .dat file")
             
@@ -199,7 +208,7 @@ class MagnificationMap:
 
     
     def GenerateMicrolensedResponse(self, Disk, wavelength, coronaheight=None, rotation=0, x_position=None,
-                            y_position=None, axisoffset=0, angleoffset=0, unit='hours', smooth=False, returnmaps=False):
+                            y_position=None, axisoffset=0, angleoffset=0, unit='hours', scaleratio=1, smooth=False, returnmaps=False):
 
         if coronaheight: override = coronaheight
         else: override = 0
@@ -208,7 +217,7 @@ class MagnificationMap:
         
         return QMF.MicrolensedResponse(self, Disk, wavelength, coronaheight, rotation=rotation, x_position=x_position,
                             y_position=y_position, axisoffset=axisoffset, angleoffset=angleoffset, unit=unit,
-                            smooth=smooth, returnmaps=returnmaps)
+                            smooth=smooth, returnmaps=returnmaps, scaleratio=scaleratio)
 
 
 class ConvolvedMap(MagnificationMap):
