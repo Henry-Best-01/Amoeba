@@ -134,7 +134,7 @@ class FlatDisk:
 
 
     def ConstructDiskTransferFunction(self, wavelength, coronaheight=None, axisoffset=0, angleoffset=0, maxlengthoverride=4800, units='hours', albedo=0,
-                                      smooth=False, scaleratio=1, fixedwindowlength=None, approxshift=False):
+                                      smooth=False, scaleratio=1, fixedwindowlength=None, approxshift=False, jitters=False):
         if coronaheight: override = coronaheight
         else: override = 0
         coronaheight = self.c_height
@@ -143,7 +143,7 @@ class FlatDisk:
         disk_derivative = self.MakeDBDTMap(wavelength, approxshift=approxshift)
 
         output = QMF.ConstructDiskTransferFunction(disk_derivative, self.temp_map, self.inc_ang, self.mass, self.redshift, coronaheight, maxlengthoverride=maxlengthoverride, units=units, scaleratio=scaleratio,
-                                        axisoffset=axisoffset, angleoffset=angleoffset, albedo=albedo, numGRs=self.numGRs*2, smooth=smooth, fixedwindowlength=fixedwindowlength, radiimap=self.r_map)
+                                        axisoffset=axisoffset, angleoffset=angleoffset, albedo=albedo, numGRs=self.numGRs*2, smooth=smooth, fixedwindowlength=fixedwindowlength, radiimap=self.r_map, jitters=jitters)
         return output
 
 

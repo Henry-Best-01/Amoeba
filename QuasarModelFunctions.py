@@ -533,7 +533,7 @@ def MakeDTDLx(disk_der, temp_map, inc_ang, massquasar, coronaheight, numGRs = 10
                                 
 
 def ConstructDiskTransferFunction(image_der_f, temp_map, inc_ang, massquasar, redshift, coronaheight, maxlengthoverride=4800, units='hours', axisoffset=0, angleoffset=0, numGRs=100, 
-                                  albedo=0, smooth=False, fixedwindowlength=None, radiimap=None, scaleratio=1): 
+                                  albedo=0, smooth=False, fixedwindowlength=None, radiimap=None, scaleratio=1, jitters=False): 
         '''
         This takes in disk objects and parameters in order to construct its transfer function
         The disk should be the derivative of the Planck function w.r.t Temperature
@@ -554,7 +554,7 @@ def ConstructDiskTransferFunction(image_der_f, temp_map, inc_ang, massquasar, re
 
         if image_der_f.ndim == 2:
                 diskdelays = QMF.MakeTimeDelayMap(image_der_f, inc_ang, massquasar = massquasar, redshift = redshift, coronaheight = coronaheight, unit = units,
-                                                    axisoffset = axisoffset, angleoffset = angleoffset, numGRs = numGRs, radiimap=radiimap)
+                                                    axisoffset = axisoffset, angleoffset = angleoffset, numGRs = numGRs, radiimap=radiimap, jitters=jitters)
                 minlength = int(np.min(diskdelays * (diskdelays>0)))
                 maxlength = int(np.max(diskdelays)+10)
                 dummy = min(maxlength, maxlengthoverride)
@@ -564,7 +564,7 @@ def ConstructDiskTransferFunction(image_der_f, temp_map, inc_ang, massquasar, re
                 
         elif image_der_f.ndim == 3:
                 diskdelays = QMF.MakeTimeDelayMap(image_der_f[:,:,-1], inc_ang, massquasar = massquasar, redshift = redshift, coronaheight = coronaheight, unit = units,
-                                                    axisoffset = axisoffset, angleoffset = angleoffset, numGRs = numGRs, radiimap=radiimap)
+                                                    axisoffset = axisoffset, angleoffset = angleoffset, numGRs = numGRs, radiimap=radiimap, jitters=jitters)
                 minlength = int(np.min(diskdelays * (diskdelays>0)))
                 maxlength = int(np.max(diskdelays)+10)
                 dummy = min(maxlength, maxlengthoverride)
