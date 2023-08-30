@@ -647,11 +647,11 @@ def MicrolensedResponse(MagMap, AccDisk, wavelength, coronaheight, rotation=0, x
 
         if type(rotation) != int and type(rotation) != float:
                 rotation = np.random.rand() * 360
-                newimg1 = rotate(adjusteddisk, rotation, axes=(0, 1), reshape=False, order=1)
-                adjusteddisk = newimg1
-                newimg2 = rotate(adjustedtimedelays, rotation, axes=(0, 1), reshape=False)
-                adjustedtimedelays = newimg2
-                adjustedrmap = rotate(adjustedrmap, rotation, axes=(0, 1), reshape=False)
+        newimg1 = rotate(adjusteddisk, rotation, axes=(0, 1), reshape=False, order=1)
+        adjusteddisk = newimg1
+        newimg2 = rotate(adjustedtimedelays, rotation, axes=(0, 1), reshape=False)
+        adjustedtimedelays = newimg2
+        adjustedrmap = rotate(adjustedrmap, rotation, axes=(0, 1), reshape=False)
         
         while 3*edgesize > MagMap.resolution:
                 print("Disk too large, or Magnification Map must be larger! Adjusting...")

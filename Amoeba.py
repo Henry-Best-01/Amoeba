@@ -41,7 +41,7 @@ Thompson_Cross_Section = const.sigma_T
 
 class FlatDisk:
 
-    def __init__(self, mass_exp, redshift, numGRs, inc_ang, coronaheight, temp_map, vel_map, g_map, r_map, spin=0, omg0=0.3, omgl=0.7, H0=70, name=''):
+    def __init__(self, mass_exp, redshift, numGRs, inc_ang, coronaheight, temp_map, vel_map, g_map, r_map, spin=0, omg0=0.3, omgl=0.7, H0=70, R_out=None, name=''):
 
         self.name = name            # Label space for particularly modelled systems
         self.mass_exp = mass_exp
@@ -50,10 +50,13 @@ class FlatDisk:
         self.redshift = redshift
         self.inc_ang = inc_ang
         self.spin = spin
-        self.temp_map = temp_map
-        self.vel_map = vel_map      
-        self.g_map = g_map          #redshift map
         self.r_map = r_map
+        if R_out is None:
+            R_out = r_map[np.size(r_map, 0)//2, -1]
+        rmask = r_map <= R_out
+        self.temp_map = temp_map * rmask
+        self.vel_map = vel_map * rmask      
+        self.g_map = g_map * rmask          
         self.omg0 = omg0
         self.omgl = omgl
         self.little_h = H0/100
