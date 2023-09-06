@@ -238,7 +238,123 @@ class ConvolvedMap(MagnificationMap):
         self.disk_obs_wavelength = obs_wavelength
         self.rotation = rotation
 
-    
+
+
+class BroadLineRegion():
+
+    def __init__(self, BHmassexp, max_z, r_res=10, z_res=10, max_r=0):
+        # res holds the number of R_g each pixel is
+
+        self.mass_exp = BHmassexp
+        self.max_z = max_z
+        self.r_res = r_res
+        self.z_res = z_res
+        self.max_r = max_r
+        self.density_grid = np.zeros((max_r//r_res + 1, max_z//z_res + 1))                                  # Holds densities
+        self.z_velocity_grid = np.zeros((max_r//r_res + 1, max_z//z_res + 1))                                 # Holds z velocities
+        self.r_velocity_grid = np.zeros((max_r//r_res + 1, max_z//z_res + 1))                                 # Holds r velocities
+        self.r_vals = np.linspace(0, max_r, max_r//r_res + 1)
+        self.z_vals = np.linspace(0, max_z, max_z//z_res + 1)                                               
+
+        self.mass = 10**(BHmassexp) * const.M_sun.to(u.kg)
+
+    def Add_SL_bounded_region(self, Streamline_inner, Streamline_outer, density_init_weight=1):
+
+        assert Streamline_inner.z_res == Streamline_outer.z_res
+        assert Streamline_inner.max_z == Streamline_outer.max_z
+        assert Streamline_inner.z_res == self.z_res
+        assert Streamline_inner.max_z == self.max_z
+        assert density_init_weight > 0
+        
+        if np.max([np.max(Streamline_inner.radii), np.max(Streamline_outer.radii)]) > self.max_r:
+            prevmaxlen = self.max_r//self.r_res + 1
+            self.max_r = int(np.max([np.max(Streamline_inner.radii), np.max(Streamline_outer.radii)]))
+            dummygrid = np.zeros((self.max_r//self.r_res + 1, self.max_z//self.z_res + 1))
+            dummygrid[:prevmaxlen, :] = self.density_grid
+            self.density_grid = dummygrid
+            dummygrid = np.zeros((self.max_r//self.r_res + 1, self.max_z//self.z_res + 1))
+            dummygrid[:prevmaxlen, :] = self.z_velocity_grid
+            self.z_velocity_grid = dummygrid
+            dummygrid = np.zeros((self.max_r//self.r_res + 1, self.max_z//self.z_res + 1))
+            dummygrid[:prevmaxlen, :] = self.r_velocity_grid
+            self.r_velocity_grid = dummygrid
+            
+            self.r_vals = np.linspace(0, self.max_r, self.max_r//self.r_res + 1)
+
+        for hh in range(np.size(self.z_vals)):
+            low_mask = self.r_vals >= min(Streamline_inner.radii[hh], Streamline_outer.radii[hh])
+            high_mask = self.r_vals <= max(Streamline_inner.radii[hh], Streamline_outer.radii[hh])
+            mask = np.logical_and(low_mask, high_mask) + 0
+            self.density_grid[np.argmax(mask):np.argmax(mask)+sum(mask), hh] *= 0  # overwrites these cells only
+            self.r_velocity_grid[np.argmax(mask):np.argmax(mask)+sum(mask), hh] *= 0
+            self.z_velocity_grid[np.argmax(mask):np.argmax(mask)+sum(mask), hh] *= 0
+            kkspace = np.linspace(0, sum(mask), sum(mask))
+            self.z_velocity_grid[np.argmax(mask):np.argmax(mask)+sum(mask), hh] = Streamline_inner.poloidal_vel[hh] * np.cos(Streamline_inner.launch_theta) + (kkspace / sum(mask)) * (Streamline_outer.poloidal_vel[hh] * np.cos(Streamline_outer.launch_theta) - Streamline_inner.poloidal_vel[hh] * np.cos(Streamline_inner.launch_theta))
+            self.r_velocity_grid[np.argmax(mask):np.argmax(mask)+sum(mask), hh] = Streamline_inner.poloidal_vel[hh] * np.sin(Streamline_inner.launch_theta) + (kkspace / sum(mask)) * (Streamline_outer.poloidal_vel[hh] * np.sin(Streamline_outer.launch_theta) - Streamline_inner.poloidal_vel[hh] * np.sin(Streamline_inner.launch_theta))
+            self.density_grid[np.argmax(mask):np.argmax(mask)+sum(mask), hh] += density_init_weight * (self.r_velocity_grid[np.argmax(mask):np.argmax(mask)+sum(mask), hh]**2 + self.r_velocity_grid[np.argmax(mask):np.argmax(mask)+sum(mask), hh]**2)**(-1/2) * self.r_vals[np.argmax(mask):np.argmax(mask)+sum(mask)]**(-1)
+
+    def Project_BLR_density(self, inc_ang, grid_size=100, R_out=None):
+        # grid_size is the TOTAL number of grid points along an axis.
+        # R_out is an override to truncate the radial boundary of the BLR, and by default is set to self.max_r
+
+        return QMF.Project_BLR_density(self, inc_ang, grid_size=grid_size, R_out=R_out)
+
+
+
+    def Project_BLR_velocity_slice(self, inc_ang, v_0, delta_v, grid_size=100, R_out=None, density_weighting=True):
+        # Similar to above's density calculation, but this time only includes cells with line of sight veloicty
+        # within v_0 +/- delta_v (dimensionless)
+
+        return QMF.Project_BLR_velocity_slice(self, inc_ang, v_0, delta_v, grid_size=grid_size, R_out=R_out, density_weighting=density_weighting)
+
+
+
+    def Scattering_BLR_TF(self, inc_ang, grid_size=100, redshift=0, unit='hours', jitters=True, scaleratio=10):
+
+        return QMF.Scattering_BLR_TF(self, inc_ang, grid_size=grid_size, redshift=redshift, unit=unit, jitters=jitters, scaleratio=scaleratio)
+
+
+class Streamline():
+
+    def __init__(self, launch_r, launch_theta, max_z, char_dist, BHmassexp, asympt_vel, z_res=10,
+                 launch_z=0, launch_vel=0, alpha=1, v_vec=None, r_vec=None):
+
+        self.launch_radius = launch_r
+        self.launch_theta = launch_theta * np.pi / 180
+        self.launch_z = launch_z
+        self.launch_vel = launch_vel
+        self.z_res = z_res
+        self.pol_init_vel = launch_vel
+        self.radial_init_vel = launch_vel * np.sin(self.launch_theta)
+        self.asympt_vel = asympt_vel
+        self.max_z = max_z
+
+        assert launch_vel >= 0 and launch_vel < 1 and asympt_vel < 1
+        assert launch_r > 1
+        assert launch_theta < 90 and launch_theta >= 0
+        assert abs(asympt_vel) < 1
+
+        length = max_z // z_res + 1 
+        self.z_vals = np.linspace(0, max_z, length)
+        if v_vec: self.poloidal_vel = v_vec
+        else:
+            vector = np.zeros(length)
+            for jj in range(length):
+                if jj * self.z_res >= launch_z:
+                    pol_position = ((launch_r + jj * z_res * np.tan(self.launch_theta))**2 + ((launch_z + jj * z_res)**2))**0.5
+                    vector[jj] = self.launch_vel + (self.asympt_vel - self.launch_vel) * ((pol_position / char_dist)**alpha / ((pol_position / char_dist)**alpha + 1))
+            self.poloidal_vel = vector
+        if r_vec:
+            assert len(r_vec) == len(v_vec)
+            assert len(r_vec) == length
+            self.radii = r_vec
+        else:
+            vector = np.linspace(launch_r, max_z * np.tan(self.launch_theta) + launch_r, length)
+            self.radii = vector
+
+        
+        
+
 
 
         

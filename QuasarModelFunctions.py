@@ -87,11 +87,11 @@ def KepVel (r, M):
        
         if type(M) != u.Quantity:
                 M *= const.M_sun.to(u.kg)
-        if type(r) != u.Quantity:
-                r *= u.m
-        if r == 0: return(0)
+#        if type(r) != u.Quantity:
+#                r *= u.m
+#        if r == 0: return(0)
         else:
-                return ((G * M.to(u.kg) / r.to(u.m) )**(0.5))/c
+                return (((G * M.to(u.kg) / r )**(0.5))/c).value
         
 
 def SpinToISCO(spin):
@@ -585,6 +585,11 @@ def ConstructDiskTransferFunction(image_der_f, temp_map, inc_ang, massquasar, re
 
         output = np.histogram(diskdelays, range=(0, np.max(diskdelays)+1), bins=int(np.max(diskdelays)+1), weights=np.nan_to_num(weight), density=True)[0]
 
+        dummyblock = rescale(weight, 1/scaleratio)
+        weight = dummyblock
+        dummyblock = rescale(diskdelays, 1/scaleratio)
+        diskdelays = dummyblock
+
         if smooth==True:
 
                 zeromask = np.ones(np.shape(output))
@@ -840,15 +845,129 @@ def MakeSnapshots(DiskEmission, DiskReprocess, DiskLags, SnapshotTimesteps, Sign
         return output
 
 
-
-
-
+def Project_BLR_density(BLR, inc_ang, grid_size=100, R_out=None):
+        '''
+        This function projects the column density of the BLR down to the plane of the accretion disk.
+        BLR is an Amoeba BLR object
+        inc_ang is the inclination angle viewed at
+        grid_size is the number of pixels along each axis on the projection
+        R_out can be set to set the radial boundary of the BLR
+        Output is an n x n grid, where the dimensionality is determined by the grid_size parameter
+        '''
+        
+        assert inc_ang > 0
+        assert inc_ang < 90
+        inc_ang *= np.pi / 180
+        if R_out is None: R_out = BLR.max_r
+        r_res = int(2*R_out/grid_size)
+        x_grid = np.linspace(-R_out, R_out, grid_size)
+        y_grid = np.linspace(-R_out/np.cos(inc_ang), R_out/np.cos(inc_ang), grid_size)
+        X, Y = np.meshgrid(x_grid, y_grid)
+        output_grid = np.zeros(np.shape(X))
+        z_steps = BLR.max_z//BLR.z_res                        # Number of steps through z_axis
+        vol_BLR_pixel = BLR.r_res**2 * BLR.z_res
+        vol_grid_pixel = r_res**2 * BLR.z_res
+        for hh in range(z_steps):
+            y_offset = hh*BLR.z_res * np.tan(inc_ang)
+            x_grid = np.linspace(-R_out, R_out, grid_size)
+            y_grid = np.linspace(-((R_out)/np.cos(inc_ang))-y_offset, ((R_out)/np.cos(inc_ang))-y_offset, grid_size)
+            X, Y = np.meshgrid(x_grid, y_grid)
+            index_grid = ((X**2 + Y**2)**0.5 // BLR.r_res)
+            index_grid *= (index_grid < (R_out//BLR.r_res))    # Assure we're not referencing indexes outside bounds of BLR
+            slice_density = (BLR.density_grid[index_grid.astype(int)] * vol_BLR_pixel / vol_grid_pixel)[:,:,hh]
+            if len(slice_density) > len(output_grid):           # shuffle order to make the longer one first
+                    dummy = output_grid
+                    output_grid = slice_density
+                    slice_density = output_grid
+            output_grid[:len(slice_density)] += slice_density
+        return output_grid
 
         
+def Project_BLR_velocity_slice(BLR, inc_ang, v_0, delta_v, grid_size=100, R_out=None, density_weighting=True):
+        '''
+        This function projects a slice in line of sight velocity space of the BLR as seen by the observer.
+        BLR is an Amoeba BLR object
+        inc_ang is the inclination angle
+        all line of sight velocities within v_0 +/- delta_v are returned
+        velocities are in dimensionless units (fraction of speed of light)
+        positive velocity is towards the observer, to match accretion disk geometry
+        grid_size is the length and width of the output grid
+        R_out may be set to truncate the BLR radially
+        density_weighting determines if the cloud density is used when determining the weighting of each output pixel
+        '''
 
 
+        assert inc_ang > 0
+        assert inc_ang < 90
+        inc_ang *= np.pi / 180
+        if R_out is None: R_out = BLR.max_r
+        Rg = QMF.CalcRg(BLR.mass)                               # This is the mass of the black hole
+        r_res = int(2*R_out/grid_size)
+        x_grid = np.linspace(-R_out, R_out, grid_size)
+        y_grid = np.linspace(-R_out/np.cos(inc_ang), R_out/np.cos(inc_ang), grid_size)
+        X, Y = np.meshgrid(x_grid, y_grid)
+        output_grid = np.zeros(np.shape(X))
+        z_steps = BLR.max_z//BLR.z_res                        # Number of steps through z_axis
+        vol_BLR_pixel = BLR.r_res**2 * BLR.z_res
+        vol_grid_pixel = r_res**2 * BLR.z_res
+        for hh in range(z_steps):
+            y_offset = hh*BLR.z_res * np.tan(inc_ang)
+            x_grid = np.linspace(-R_out, R_out, grid_size)
+            y_grid = np.linspace(-(R_out/np.cos(inc_ang))-y_offset, (R_out/np.cos(inc_ang))-y_offset, grid_size)
+            X, Y = np.meshgrid(x_grid, y_grid)
+            Phi_grid = np.arctan2(X, Y)
+            index_grid = ((X**2 + Y**2)**0.5 // BLR.r_res)
+            index_grid *= (index_grid < (R_out//BLR.r_res))                  # Assure we're not referencing indexes outside bounds of BLR
+            kep_vels = -(QMF.KepVel(index_grid * BLR.r_res * Rg, BLR.mass))
+            LOS_grid = np.cos(inc_ang) * BLR.z_velocity_grid[index_grid.astype(int)][:,:,hh] + np.sin(inc_ang) * np.cos(Phi_grid) * BLR.r_velocity_grid[index_grid.astype(int)][:,:,hh] + np.sin(inc_ang) * np.sin(Phi_grid) * kep_vels
+            vel_mask = np.logical_and((LOS_grid >= (v_0-delta_v)), (LOS_grid <= (v_0+delta_v)))
+            if density_weighting == True:
+                slice_density = vel_mask * (BLR.density_grid[index_grid.astype(int)] * vol_BLR_pixel / vol_grid_pixel)[:,:,hh]
+            else:
+                slice_density = vel_mask 
+            output_grid += slice_density
+        return output_grid
 
 
+def Scattering_BLR_TF(BLR, inc_ang, grid_size=100, redshift=0, unit='hours', jitters=True, scaleratio=10):
+        '''
+        This function approximates the scattering of the BLR by electron scattering, assuming it is optically thin
+        BLR is an Amoeba BLR object
+        inc_ang is the inclination angle
+        grid_size is the resolution of the BLR projection used internally to calculate time lags and the transfer function
+        redshift is the source redshift, and acts to lengthen time delays
+        unit is the units used in calculating time delays (hours, minutes, seconds, days, GR)
+        jitters is a toggle to randomly vary time delay by up to one pixel in size. This can help smooth TFs.
+        scaleratio is an upscaling factor to smoothen TF construction
+        '''
+        from skimage.transform import rescale
+        assert inc_ang > 0
+        assert inc_ang < 90
+        z_steps = BLR.max_z//BLR.z_res
+        x_grid = np.linspace(-BLR.max_r, BLR.max_r, grid_size)
+        y_grid = x_grid.copy()
+        X, Y = np.meshgrid(x_grid, y_grid)
+        index_grid = ((X**2 + Y**2)**0.5 // BLR.r_res)
+        index_grid *= (index_grid < (BLR.max_r//BLR.r_res))
+        density_map = BLR.density_grid[index_grid.astype(int)][:,:,-1]
+        TDs = rescale(QMF.MakeTimeDelayMap(density_map, inc_ang, massquasar=BLR.mass, redshift=redshift,
+                                   numGRs=BLR.max_r, coronaheight=-BLR.max_z, jitters=jitters), scaleratio) * (1+redshift)
+        weights = rescale(density_map, scaleratio)
+        TF = np.histogram(TDs, range=(0, np.max(TDs)+1), bins=int(np.max(TDs)+1), weights=np.nan_to_num(weights), density=True)[0]
+        
+        for hh in range(z_steps-1):
+            density_map = BLR.density_grid[index_grid.astype(int)][:,:,hh]
+            TDs = rescale(QMF.MakeTimeDelayMap(density_map, inc_ang, massquasar=BLR.mass, redshift=redshift,
+                                   numGRs=BLR.max_r, coronaheight=-BLR.max_z, jitters=jitters), scaleratio) * (1+redshift)
+            weights = rescale(density_map, scaleratio)
+            TF_slice = np.histogram(TDs, range=(0, np.max(TDs)+1), bins=int(np.max(TDs)+1), weights=np.nan_to_num(weights), density=True)[0]
+            if len(TF_slice) > len(TF):
+                dummy = TF                      # shuffle around so longer one is first
+                TF = TF_slice
+                TF_slice = dummy
+            TF[:len(TF_slice)] += TF_slice
+
+        return TF / np.sum(TF)
 
 
         
