@@ -9,7 +9,7 @@ The temperature profiles may take arguments for either the thin disk profile (Sh
 
 If you would like to run the AmoebaExamples.ipynb notebook, you will be required to change file paths and provide the disk file (creatable with QMF.CreateMaps) and magnification map as well.
 
-Broad Line Region (BLR) models have been removed for now while they receive some TLC. 
+Broad Line Region (BLR) models have been given some TLC and are added again! They may be tested using TestingBLR.ipynb. They are created by defining streamlines, similar to the disk-wind model in Yong+ (2017). Simple projections, line-of-sight velocity slices, and scattering transfer functions may be constructed now.
 
 
 Thank you for taking notice of my code! I would be happy to answer any questions. I can be contacted directly at hbest@gradcenter.cuny.edu
