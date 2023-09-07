@@ -918,13 +918,13 @@ def Project_BLR_velocity_slice(BLR, inc_ang, v_0, delta_v, grid_size=100, R_out=
             Phi_grid = np.arctan2(X, Y)
             index_grid = ((X**2 + Y**2)**0.5 // BLR.r_res)
             index_grid *= (index_grid < (R_out//BLR.r_res))                  # Assure we're not referencing indexes outside bounds of BLR
-            kep_vels = -(QMF.KepVel(index_grid * BLR.r_res * Rg, BLR.mass))
-            LOS_grid = np.cos(inc_ang) * BLR.z_velocity_grid[index_grid.astype(int)][:,:,hh] + np.sin(inc_ang) * np.cos(Phi_grid) * BLR.r_velocity_grid[index_grid.astype(int)][:,:,hh] + np.sin(inc_ang) * np.sin(Phi_grid) * kep_vels
+            kep_vels = QMF.KepVel(index_grid * BLR.r_res * Rg, BLR.mass)
+            LOS_grid = np.cos(inc_ang) * BLR.z_velocity_grid[index_grid.astype(int)][:,:,hh] - np.sin(inc_ang) * np.cos(Phi_grid) * BLR.r_velocity_grid[index_grid.astype(int)][:,:,hh] - np.sin(inc_ang) * np.sin(Phi_grid) * kep_vels
             vel_mask = np.logical_and((LOS_grid >= (v_0-delta_v)), (LOS_grid <= (v_0+delta_v)))
             if density_weighting == True:
                 slice_density = vel_mask * (BLR.density_grid[index_grid.astype(int)] * vol_BLR_pixel / vol_grid_pixel)[:,:,hh]
             else:
-                slice_density = vel_mask 
+                slice_density = vel_mask  * vol_BLR_pixel / vol_grid_pixel
             output_grid += slice_density
         return output_grid
 
