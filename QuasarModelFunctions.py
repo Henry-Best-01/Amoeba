@@ -6,6 +6,7 @@ import numpy as np
 from astropy import units as u
 from astropy import constants as const
 from scipy.integrate import quad
+from scipy import fft
 import QuasarModelFunctions as QMF
 from astropy.io import fits
 from numpy.random import rand
@@ -24,7 +25,7 @@ pi = np.pi
 
 
 def CreateMaps(mass_exp, redshift, numGRs, inc_ang, resolution, spin=0, disk_acc = const.M_sun.to(u.kg)/u.yr, temp_beta=0, coronaheight=6,
-                           albedo=1, eta=0.1, genericbeta=False, eddingtons=None):
+                           albedo=1, eta=0.1, genericbeta=False, eddingtons=None, edd_eff=0.1, visc_prof="SS"):
         '''
         This function sets up maps required for the FlatDisk class in Amoeba. The following parameters are required:
          -mass_exp, the exponent to how many solar masses the black hole is modeled to have. M_bh = 10**mass_exp * M_sun
@@ -73,7 +74,8 @@ def CreateMaps(mass_exp, redshift, numGRs, inc_ang, resolution, spin=0, disk_acc
                                 img_g[ix, iy] = sim5.gfactorK(r, abs(spin), gd.l)
                         img_r[ix, iy] = r
         nISCOs = QMF.SpinToISCO(spin)
-        img_temp = QMF.AccDiskTemp(img_r*gravrad, nISCOs*gravrad, bh_mass, disk_acc, beta=temp_beta, coronaheight=coronaheight, albedo=albedo, eta=eta, genericbeta=genericbeta, eddingtons=eddingtons)
+        img_temp = QMF.AccDiskTemp(img_r*gravrad, nISCOs*gravrad, bh_mass, disk_acc, beta=temp_beta, coronaheight=coronaheight, albedo=albedo, eta=eta,
+                                   genericbeta=genericbeta, eddingtons=eddingtons, edd_eff=edd_eff, a=spin, visc_prof=visc_prof)
         return mass_exp, redshift, numGRs, inc_ang, coronaheight, spin, img_temp, img_vel, img_g, img_r
 
 
@@ -106,6 +108,8 @@ def SpinToISCO(spin):
 def EddingtonRatioToMDot(mass, eddingtons, efficiency = 0.1):
         '''
         This function converts an Eddington Ratio (i.e. 0.15) into the corresponding accretion rate in physical units
+        assuming L_b = eddingtons * L_edd
+        L_edd = M_dot * c^2 * efficiency
         '''
         if type(mass) != u.Quantity:
                 mass *= u.kg
@@ -114,7 +118,7 @@ def EddingtonRatioToMDot(mass, eddingtons, efficiency = 0.1):
         return L / (efficiency * c**2)
 
 
-def AccDiskTemp (R, R_min, M, M_acc, beta=0, coronaheight=6, albedo=1, eta=0.1, genericbeta=False, eddingtons=None):
+def AccDiskTemp (R, R_min, M, M_acc, beta=0, coronaheight=6, albedo=1, eta=0.1, genericbeta=False, eddingtons=None, edd_eff=0.1, a=0, visc_prof="SS"):
         '''
         This function aims to take the viscous Thin disk and allows multiple additional modifications.
         Base Thin disk requires:
@@ -130,15 +134,20 @@ def AccDiskTemp (R, R_min, M, M_acc, beta=0, coronaheight=6, albedo=1, eta=0.1, 
                 coronaheight = lamp post height in gravitational radii. Default is 6, the Schwarzschild ISCO case.
                 albedo = reflection coefficent, 0 being perfect absorption and 1 being perfect reflectivity. Default is 1, meaning no heating from lamp post term.
                 eta = strength coefficient of lamp post source, defined as Lx = eta * L_bol, where L_bol = M_acc c^2.
-        Two further arguments are included:
+        Some further arguments are included as convenience:
                 genericbeta = True if you want your profile to take the form r^(-beta). The beta relating to the disk+wind model will be worked out and used.
-                eddingtons = ratio. If included, M_acc will be calculated in order to produce the desired eddington ratio.                
+                eddingtons = ratio. If included, M_acc will be calculated in order to produce the desired eddington ratio.
+                edd_eff = Eddington ratio efficiency, passed into QMF.EddingtonRatioToMDot if used.
+        Two arguments for creating a Novikov-Thorne profile are now included (Thanks: Josh Fagin), however these do not allow for disk-wind or truncated accretion disks yet.
+                a = spin parameter of black hole, sets a new value for R_min when constructing the profile
+                visc_prof = "SS" for Shakura-Sunyaev thin disk, or "NT" for Novikov-Thorne thin disk. 
+        
         '''
         if genericbeta == True:
                 dummy = 3 - 4*beta
                 beta = dummy
         if eddingtons:
-                M_acc = QMF.EddingtonRatioToMDot(M, eddingtons)
+                M_acc = QMF.EddingtonRatioToMDot(M, eddingtons, efficiency=edd_eff)
         if type(R) == u.Quantity:
                 R = R.to(u.m)
         if type(R_min) == u.Quantity:
@@ -162,8 +171,22 @@ def AccDiskTemp (R, R_min, M, M_acc, beta=0, coronaheight=6, albedo=1, eta=0.1, 
         coronaheight *= QMF.CalcRg(M)
 
         zeroes = R>R_min
-        
-        tempmap = ( ( (3.0 * G * M * m0_dot * (1.0 - ((r_in) / r)**(0.5))) / (8.0 * pi * sigma * Rs**3) )**(0.25)).decompose().value * (r**(-(3-beta)/4))
+        if visc_prof == "SS":
+                tempmap = ( ( (3.0 * G * M * m0_dot * (1.0 - ((r_in) / r)**(0.5))) / (8.0 * pi * sigma * Rs**3) )**(0.25)).decompose().value * (r**(-(3-beta)/4))
+        elif visc_prof == "NT":
+                
+                rin = QMF.SpinToISCO(a)         # Novikov-Thorne disk needs rin = ISCO radius
+                r *= 2                          # convert Schwarzschild radii into gravitational radii
+                x = np.sqrt(r)
+                x0 = np.sqrt(rin)
+                x1 = 2*np.cos(1.0/3.0*np.arccos(a)-np.pi/3)
+                x2 = 2*np.cos(1.0/3.0*np.arccos(a)+np.pi/3)
+                x3 = -2*np.cos(1.0/3.0*np.arccos(a))
+                F_NT = 1.0/(x**7-3*x**5+2*a*x**4) * (x-x0-(3.0/2.0)*a*np.log(x/x0) \
+                                                 - 3*(x1-a)**2/(x1*(x1-x2)*(x1-x3)) * np.log((x-x1)/(x0-x1)) \
+                                                 - 3*(x2-a)**2/(x2*(x2-x1)*(x2-x3)) * np.log((x-x2)/(x0-x2)) \
+                                                 - 3*(x3-a)**2/(x3*(x3-x1)*(x3-x2)) * np.log((x-x3)/(x0-x3)))
+                tempmap = ((3*M_acc*c**6 / (8*np.pi*G**2*M**2)) * F_NT / sigma)**(0.25)
         visc_temp = tempmap
 
         geometric_term = ((1-albedo)*coronaheight/(4*pi*sigma*(R**2+coronaheight**2)**(3/2))).decompose().value
@@ -779,6 +802,66 @@ def MakeDRW(t_max, delta_t, SF_inf, tau):
                         (SF_inf / 2**(1/2)) * random.normal() * ( 1 - (np.exp(-2 * abs((delta_t)/tau).decompose().value)))**(1/2))
 
         return variability_lc
+
+def MakeSignalFromPSD(N, dt, mean_mag, standard_deviation, log_nu_b, alpha_L, alpha_H_minus_L, extra_time_factor = 10, seed=None):
+        '''
+        This function generates a signal based on a broken power law PSD.
+        N is the total time of the generated signal
+        dt is the time step between sampled points
+        mean_mag is the mean magnitude of the desired signal
+        standard_deviation is the standard deviation of the variability
+        log_nu_b is log_{10}(nu_b), where nu_b is the breakpoint frequency (typically ranging from -3.5 to 1.0)
+        alpha_L is the low frequency slope of the PSD (0 for DRW. Typically about 1.0, but ranges from 0.0 to 2.0)
+        alpha_H_minus_L is the difference between high frequency slope and low frequency slope.
+                High frequency slope is greater than the low frequency slope, typically 2.0 to 4.0
+                alpha_H_minus_L is typically on range 0.0 to 2.0
+        extra_time_factor extends the signal so we do not have periodicity
+        seed allows for a random seed to be set internal to the function
+        Thanks: Josh Fagin
+        '''
+        if seed is not None:
+                np.random.seed(seed)
+            # get alpha_H from alpha_H_minus_L and alpha_L
+        alpha_H = alpha_H_minus_L + alpha_L
+            # get nu_b from log10(nu_b)
+        nu_b = 10.0**log_nu_b
+            # Apply the extra time to avoid the periodicity of generating a signal
+        duration = extra_time_factor*N*dt 
+           
+            # Frequency range from 1/duration to the Nyquist frequency
+        frequencies = np.linspace(1.0/duration, 1.0/(2.0*dt), int(duration//2/dt)+1)  
+        psd = (frequencies**-alpha_L)*(1.0+(frequencies/nu_b)**(alpha_H-alpha_L))**-1
+            
+                # Now generate the light curve from the PSD
+               
+            # Generate random phase shifts uniformly distributed in range [0, 2pi]
+        random_phases = 2.0 * np.pi * np.random.random(size=frequencies.size)
+
+            # Generate complex-valued function of frequency
+        fourier_transform = np.sqrt(psd) * np.exp(1j*random_phases)
+
+            # Make sure the function of frequency is Hermitian
+        fourier_transform = np.concatenate((fourier_transform, fourier_transform[-2:0:-1].conjugate()))
+
+            # Generate time series using inverse Fourier transform, drop the imaginary part (should be ~0)
+        timeseries = fft.ifft(fourier_transform).real
+
+            # Normalize flux to have mean zero and variance one
+        timeseries = timeseries - timeseries.mean()
+        timeseries = timeseries / timeseries.std()
+
+            # Now set to the desired mean magnitude and stdev
+        timeseries = timeseries*standard_deviation
+        timeseries = timeseries + mean_mag
+
+            # Time array
+        time = np.linspace(0, duration, int(duration/dt))
+            
+            # get rid of the extra time to not include the periodic boundary condition and to use unbiased mean_mag and standard_deviation
+        timeseries = timeseries[:N]
+        time = time[:N]
+
+        return timeseries        
         
 
 def CartToPolar(x, y):
