@@ -67,9 +67,10 @@ def CreateMaps(mass_exp, redshift, numGRs, inc_ang, resolution, spin=0, disk_acc
                         P = sim5.geodesic_find_midplane_crossing(gd, 0)
                         if isnan(P): continue
                         r = sim5.geodesic_position_rad(gd, P)
+                        pol = sim5.geodesic_position_pol(gd, P)
                         if isnan(r): continue
                         if r >= QMF.SpinToISCO(spin):
-                                phi = np.arctan2((ix-resolution/2), (iy-resolution/2))
+                                phi = sim5.geodesic_position_azm(gd, r, pol, P)
                                 img_vel[ix, iy] = -QMF.KepVel(r * gravrad, bh_mass) * np.sin(inc_ang * np.pi/180) * np.sin(phi) 
                                 img_g[ix, iy] = sim5.gfactorK(r, abs(spin), gd.l)
                         img_r[ix, iy] = r
@@ -174,7 +175,6 @@ def AccDiskTemp (R, R_min, M, M_acc, beta=0, coronaheight=6, albedo=1, eta=0.1, 
         if visc_prof == "SS":
                 tempmap = ( ( (3.0 * G * M * m0_dot * (1.0 - ((r_in) / r)**(0.5))) / (8.0 * pi * sigma * Rs**3) )**(0.25)).decompose().value * (r**(-(3-beta)/4))
         elif visc_prof == "NT":
-                
                 rin = QMF.SpinToISCO(a)         # Novikov-Thorne disk needs rin = ISCO radius
                 r *= 2                          # convert Schwarzschild radii into gravitational radii
                 x = np.sqrt(r)
@@ -187,6 +187,9 @@ def AccDiskTemp (R, R_min, M, M_acc, beta=0, coronaheight=6, albedo=1, eta=0.1, 
                                                  - 3*(x2-a)**2/(x2*(x2-x1)*(x2-x3)) * np.log((x-x2)/(x0-x2)) \
                                                  - 3*(x3-a)**2/(x3*(x3-x1)*(x3-x2)) * np.log((x-x3)/(x0-x3)))
                 tempmap = ((3*M_acc*c**6 / (8*np.pi*G**2*M**2)) * F_NT / sigma)**(0.25)
+        else:
+                print("Please use visc_temp = 'SS' or 'NT', other values are not supported at this time. Revering to SS disk.")
+                tempmap = ( ( (3.0 * G * M * m0_dot * (1.0 - ((r_in) / r)**(0.5))) / (8.0 * pi * sigma * Rs**3) )**(0.25)).decompose().value * (r**(-(3-beta)/4))
         visc_temp = tempmap
 
         geometric_term = ((1-albedo)*coronaheight/(4*pi*sigma*(R**2+coronaheight**2)**(3/2))).decompose().value
