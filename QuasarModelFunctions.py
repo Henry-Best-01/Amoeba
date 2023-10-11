@@ -465,7 +465,7 @@ def MakeTimeDelayMap(disk, inc_ang, massquasar = 10**8 * const.M_sun.to(u.kg), r
         time_resolution = rstep/steptimescale
         
         if jitters==True:
-                timeshifts = np.random.uniform(size=np.shape(disk)) * time_resolution/np.cos(inc_ang)  # Helps smooth the transfer function by essentially randomizing position in pixel
+                timeshifts = np.random.uniform(size=np.shape(disk)) * time_resolution  # Helps smooth the transfer function by essentially randomizing position in pixel
         else:
                 timeshifts = np.zeros(np.shape(disk))
 
@@ -653,7 +653,7 @@ def ConstructDiskTransferFunction(image_der_f, temp_map, inc_ang, massquasar, re
 
 def MicrolensedResponse(MagMap, AccDisk, wavelength, coronaheight, rotation=0, x_position=None, y_position=None,
                         axisoffset=0, angleoffset=0, unit='hours', smooth=False, returnmaps=False, radiimap=None, 
-                        scaleratio=1, unscale=True):
+                        scaleratio=1, unscale=True, jitters=True):
         '''
         This function aims to microlens the response from a fluctuation in the lamppost geometry at some position
         on the magnification map
@@ -672,7 +672,7 @@ def MicrolensedResponse(MagMap, AccDisk, wavelength, coronaheight, rotation=0, x
                                                             angleoffset=angleoffset, unit=unit, jitters=False), pxratio)
         else:
                 adjustedtimedelays = rescale(AccDisk.MakeTimeDelayMap(axisoffset=axisoffset, 
-                                                            angleoffset=angleoffset, unit=unit), pxratio)
+                                                            angleoffset=angleoffset, unit=unit, jitters=jitters), pxratio)
         maxrange = np.max(adjustedtimedelays)+1
         edgesize = np.size(adjusteddisk, 0)                                             # This is the edge length we must avoid
 
@@ -717,7 +717,7 @@ def MicrolensedResponse(MagMap, AccDisk, wavelength, coronaheight, rotation=0, x
         magnifiedresponse = np.nan_to_num(r_mask * adjusteddisk * MagMap.mag_map[yposition:yposition+edgesize, xposition:xposition+edgesize])
 
         if returnmaps==True:
-                return adjustedtimedelays*r_mask, magnifiedresponse, xposition+edgesize//2, yposition+edgesize//2    
+                return rescale(adjustedtimedelays*r_mask, 1/pxratio), rescale(magnifiedresponse, 1/pxratio), xposition+edgesize//2, yposition+edgesize//2    
         
         if unscale == True:
             

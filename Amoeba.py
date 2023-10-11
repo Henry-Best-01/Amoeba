@@ -211,7 +211,7 @@ class MagnificationMap:
 
     
     def GenerateMicrolensedResponse(self, Disk, wavelength, coronaheight=None, rotation=0, x_position=None,
-                            y_position=None, axisoffset=0, angleoffset=0, unit='hours', scaleratio=1, smooth=False, returnmaps=False):
+                            y_position=None, axisoffset=0, angleoffset=0, unit='hours', scaleratio=1, smooth=False, returnmaps=False, jitters=False):
 
         if coronaheight: override = coronaheight
         else: override = 0
@@ -220,7 +220,7 @@ class MagnificationMap:
         
         return QMF.MicrolensedResponse(self, Disk, wavelength, coronaheight, rotation=rotation, x_position=x_position,
                             y_position=y_position, axisoffset=axisoffset, angleoffset=angleoffset, unit=unit,
-                            smooth=smooth, returnmaps=returnmaps, scaleratio=scaleratio)
+                            smooth=smooth, returnmaps=returnmaps, scaleratio=scaleratio, jitters=jitters)
 
 
 class ConvolvedMap(MagnificationMap):
