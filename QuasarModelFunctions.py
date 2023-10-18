@@ -995,15 +995,15 @@ def Project_BLR_velocity_slice(BLR, inc_ang, v_0, delta_v, grid_size=100, R_out=
         assert inc_ang < 90
         inc_ang *= np.pi / 180
         if R_out is None: R_out = BLR.max_r
-        Rg = QMF.CalcRg(BLR.mass)                               # This is the mass of the black hole
+        Rg = QMF.CalcRg(BLR.mass)                               
         r_res = int(2*R_out/grid_size)
         x_grid = np.linspace(-R_out, R_out, grid_size)
         y_grid = np.linspace(-R_out/np.cos(inc_ang), R_out/np.cos(inc_ang), grid_size)
         X, Y = np.meshgrid(x_grid, y_grid)
         output_grid = np.zeros(np.shape(X))
-        z_steps = BLR.max_z//BLR.z_res                        # Number of steps through z_axis
-        vol_BLR_pixel = BLR.r_res**2 * BLR.z_res
-        vol_grid_pixel = r_res**2 * BLR.z_res
+        z_steps = BLR.max_z//BLR.z_res                       
+        vol_BLR_pixel = BLR.r_res**2
+        vol_grid_pixel = r_res**2
         for hh in range(z_steps):
             y_offset = hh*BLR.z_res * np.tan(inc_ang)
             x_grid = np.linspace(-R_out, R_out, grid_size)
@@ -1023,7 +1023,7 @@ def Project_BLR_velocity_slice(BLR, inc_ang, v_0, delta_v, grid_size=100, R_out=
         return output_grid
 
 
-def Scattering_BLR_TF(BLR, inc_ang, grid_size=100, redshift=0, unit='hours', jitters=True, scaleratio=10):
+def Scattering_BLR_TF(BLR, inc_ang, grid_size=100, redshift=0, unit='hours', jitters=False, scaleratio=10):
         '''
         This function approximates the scattering of the BLR by electron scattering, assuming it is optically thin
         BLR is an Amoeba BLR object
@@ -1035,7 +1035,7 @@ def Scattering_BLR_TF(BLR, inc_ang, grid_size=100, redshift=0, unit='hours', jit
         scaleratio is an upscaling factor to smoothen TF construction
         '''
         from skimage.transform import rescale
-        assert inc_ang > 0
+        assert inc_ang >= 0
         assert inc_ang < 90
         z_steps = BLR.max_z//BLR.z_res
         x_grid = np.linspace(-BLR.max_r, BLR.max_r, grid_size)
@@ -1047,23 +1047,135 @@ def Scattering_BLR_TF(BLR, inc_ang, grid_size=100, redshift=0, unit='hours', jit
         TDs = rescale(QMF.MakeTimeDelayMap(density_map, inc_ang, massquasar=BLR.mass, redshift=redshift,
                                    numGRs=BLR.max_r, coronaheight=-BLR.max_z, jitters=jitters), scaleratio) * (1+redshift)
         weights = rescale(density_map, scaleratio)
-        TF = np.histogram(TDs, range=(0, np.max(TDs)+1), bins=int(np.max(TDs)+1), weights=np.nan_to_num(weights), density=True)[0]
-        
+        if np.sum(weights) > 0:
+                TF = np.histogram(TDs, range=(0, np.max(TDs)+1), bins=int(np.max(TDs)+1), weights=np.nan_to_num(weights), density=True)[0]
+        else: TF = np.zeros(1)                          # must initialize
         for hh in range(z_steps-1):
             density_map = BLR.density_grid[index_grid.astype(int)][:,:,hh]
             TDs = rescale(QMF.MakeTimeDelayMap(density_map, inc_ang, massquasar=BLR.mass, redshift=redshift,
-                                   numGRs=BLR.max_r, coronaheight=-BLR.max_z, jitters=jitters), scaleratio) * (1+redshift)
+                                   numGRs=BLR.max_r, coronaheight=-hh*BLR.z_res, jitters=jitters), scaleratio) * (1+redshift)
             weights = rescale(density_map, scaleratio)
-            TF_slice = np.histogram(TDs, range=(0, np.max(TDs)+1), bins=int(np.max(TDs)+1), weights=np.nan_to_num(weights), density=True)[0]
-            if len(TF_slice) > len(TF):
-                dummy = TF                      # shuffle around so longer one is first
-                TF = TF_slice
-                TF_slice = dummy
-            TF[:len(TF_slice)] += TF_slice
+            if np.sum(weights) > 0:
+                TF_slice = np.histogram(TDs, range=(0, np.max(TDs)+1), bins=int(np.max(TDs)+1), weights=np.nan_to_num(weights), density=True)[0]      
+                if len(TF_slice) > len(TF):
+                        dummy = TF                      # shuffle around so longer one is first
+                        TF = TF_slice
+                        TF_slice = dummy
+                TF[:len(TF_slice)] += TF_slice
+
+        return TF / np.sum(TF)
+
+def Line_BLR_TF(BLR, inc_ang, v_0, delta_v, grid_size=100, redshift=0, unit='hours', jitters=False,
+                scaleratio=10, R_out=None):
+        '''
+        This function follows the "Scattering_BLR_TF" function, but only admits line-of-sight veloicty values v_0 +/- delta_v.
+        All units are as defined in Scattering_BLR_TF and Project_BLR_velocity_slice.
+        '''
+        from skimage.transform import rescale
+        assert inc_ang >= 0
+        assert inc_ang < 90
+        Rg = QMF.CalcRg(BLR.mass)  
+        z_steps = BLR.max_z//BLR.z_res
+        x_grid = np.linspace(-BLR.max_r, BLR.max_r, grid_size)
+        y_grid = x_grid.copy()
+        X, Y = np.meshgrid(x_grid, y_grid)
+        Phi_grid = np.arctan2(X, Y)
+        index_grid = ((X**2 + Y**2)**0.5 // BLR.r_res)
+        index_grid *= (index_grid < (BLR.max_r//BLR.r_res))
+        kep_vels = QMF.KepVel(index_grid * BLR.r_res * Rg, BLR.mass)
+        LOS_grid = np.cos(inc_ang*np.pi/180) * BLR.z_velocity_grid[index_grid.astype(int)][:,:,0] - np.sin(inc_ang*np.pi/180) * np.cos(Phi_grid) * BLR.r_velocity_grid[index_grid.astype(int)][:,:,0] - np.sin(inc_ang*np.pi/180) * np.sin(Phi_grid) * kep_vels
+        vel_mask = np.logical_and((LOS_grid >= (v_0-delta_v)), (LOS_grid <= (v_0+delta_v)))
+        density_map = BLR.density_grid[index_grid.astype(int)][:,:,0] * vel_mask
+        TDs = rescale(QMF.MakeTimeDelayMap(density_map, inc_ang, massquasar=BLR.mass, redshift=redshift,
+                                   numGRs=BLR.max_r, coronaheight=0, jitters=jitters), scaleratio) * (1+redshift)
+        weights = rescale(density_map, scaleratio)
+        if np.sum(weights) > 0:
+                TF = np.histogram(TDs, range=(0, np.max(TDs)+1), bins=int(np.max(TDs)+1), weights=np.nan_to_num(weights), density=True)[0]
+        else: TF = np.zeros(1)
+        for hh in range(z_steps-1):
+            LOS_grid = np.cos(inc_ang) * BLR.z_velocity_grid[index_grid.astype(int)][:,:,hh+1] - np.sin(inc_ang) * np.cos(Phi_grid) * BLR.r_velocity_grid[index_grid.astype(int)][:,:,hh+1] - np.sin(inc_ang) * np.sin(Phi_grid) * kep_vels
+            vel_mask = np.logical_and((LOS_grid >= (v_0-delta_v)), (LOS_grid <= (v_0+delta_v)))
+
+            density_map = BLR.density_grid[index_grid.astype(int)][:,:,hh+1] * vel_mask
+            TDs = rescale(QMF.MakeTimeDelayMap(density_map, inc_ang, massquasar=BLR.mass, redshift=redshift,
+                                   numGRs=BLR.max_r, coronaheight=-(hh+1)*BLR.z_res, jitters=jitters), scaleratio) * (1+redshift)
+            weights = rescale(density_map, scaleratio)
+            if np.sum(weights) > 0:
+                TF_slice = np.histogram(TDs, range=(0, np.max(TDs)+1), bins=int(np.max(TDs)+1), weights=np.nan_to_num(weights), density=True)[0]
+                if len(TF_slice) > len(TF):
+                        dummy = TF                      
+                        TF = TF_slice
+                        TF_slice = dummy
+                TF[:len(TF_slice)] += TF_slice
 
         return TF / np.sum(TF)
 
 
+def Check_EL_Contamination(BLR, inc_ang, emit_wavelength, passband_min, passband_max, grid_size=100, redshift=0):
+        '''
+        This function checks if an emission line defined by the Amoeba.BLR object emitting at wavelength
+        emit_wavelength falls within the desired passband, represented by passband_min and passband_max.
+        It returns False if it does not contaminate the passband, and the line-of-sight velocity slice
+        as tuple (v_0, delta_v) if it deos (v_0 +/- delta_v).
+        emit_wavelength, passband_min, and passband_max are all the same wavelength units.
+        This tuple may be input into either the Project_BLR_velocity_slice or Scatter_vline_BLR_TF methods
+        of the BLR object to get the representative impact density contours or transfer function.
+        '''
+        emit_wavelength *= (1+redshift)                         # include cosmological redshift
+        req_vel_min = (1-(passband_max/emit_wavelength)**2) / ((passband_max/emit_wavelength)**2+1)
+        req_vel_max = (1-(passband_min/emit_wavelength)**2) / ((passband_min/emit_wavelength)**2+1)  # since velocity is positive when approaching observer, these are switched around
+
+                
+        Rg = QMF.CalcRg(BLR.mass)  
+        z_steps = BLR.max_z//BLR.z_res
+        x_grid = np.linspace(-BLR.max_r, BLR.max_r, grid_size)
+        y_grid = x_grid.copy()
+        X, Y = np.meshgrid(x_grid, y_grid)
+        Phi_grid = np.arctan2(X, Y)
+        index_grid = ((X**2 + Y**2)**0.5 // BLR.r_res)
+        index_grid *= (index_grid < (BLR.max_r//BLR.r_res))
+        density_mask = (BLR.density_grid[index_grid.astype(int)][:,:,0] > 0)
+        kep_vels = QMF.KepVel(index_grid * BLR.r_res * Rg, BLR.mass)
+        LOS_grid = np.cos(inc_ang*np.pi/180) * BLR.z_velocity_grid[index_grid.astype(int)][:,:,0] - np.sin(inc_ang*np.pi/180) * np.cos(Phi_grid) * BLR.r_velocity_grid[index_grid.astype(int)][:,:,0] - np.sin(inc_ang*np.pi/180) * np.sin(Phi_grid) * kep_vels 
+        LOS_grid *= density_mask
+        
+        v_min = np.nanmin(LOS_grid)
+        v_max = np.nanmax(LOS_grid)
+
+        for hh in range(z_steps-1):
+                density_mask = (BLR.density_grid[index_grid.astype(int)][:,:,hh+1] > 0)
+                LOS_grid = np.cos(inc_ang) * BLR.z_velocity_grid[index_grid.astype(int)][:,:,hh+1] - np.sin(inc_ang) * np.cos(Phi_grid) * BLR.r_velocity_grid[index_grid.astype(int)][:,:,hh+1] - np.sin(inc_ang) * np.sin(Phi_grid) * kep_vels
+                LOS_grid *= density_mask
+                slice_min = np.nanmin(LOS_grid)
+                slice_max = np.nanmax(LOS_grid)
+
+                if slice_min < v_min: v_min = slice_min
+                if slice_max > v_max: v_max = slice_max
+
+        if v_min <= req_vel_max and v_max >= req_vel_min:
+                avg = (req_vel_max + req_vel_min)/2
+                return avg, avg - req_vel_min
+        return False
+
+        
+        
+        
+
+
+
+
+
+
+        
+
+
+
+
+
+
+
+
+        
         
                 
 

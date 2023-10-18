@@ -17,6 +17,25 @@ There are 3 objects included:
        MagnificationMap.PullLightCurve() pulls a light curve off the convolution, assuming some relative transferse velocity vtrans (km/s) and a time period time (years).
        MagnificationMap.GenerateMicrolensedResponse() magnifies a FlatDisk response function.
 
+    -ConvolvedMap object is a child of Magnification map allowing the user to store the convolution between a Disk and Map object (thus locking in
+       both inclination and orientation angles). Relative pixel shift is stored and applied to every light curve returned by PullLightCurve()
+
+    -BroadLineRegion object is an object designed to store a BLR. The max height and resolutions must be defined at initialization to avoid issues.
+       Add_SL_Bounded_Region() takes in two streamline objects to use as boundaries to populate the BLR. Conservation of matter is considered. V_r
+       and V_z are interpolated between streamlines, while V_phi is calculated assuming Keplerian velocity.
+       Project_BLR_Density() produces a column density along line of sight through the BLR down to the plane of the accretion disk. 
+       Project_BLR_Velocity_Slice() produces a similar projection while making out regions not falling within a predefined velocity slice (velocities
+       normalized by speed of light, positive velocities are towards the observer).
+       Scattering_BLR_TF() calculates a "transfer function" by assuming photons from the accretion disk may be scattered from the BLR particles. This
+       scattering is proportional to the density of the BLR and is calculated from the position of the black hole (e.g. the "average" emission from the disk).
+       We note this is a similar approximation to the lamppost approximation although the accretion disk is significantly larger than the size of the corona.
+       The BLR is assumed to be optically thin except for the first scattering event. 
+       Scattering_Vel_Line_BLR_TF() is similar to Scattering_BLR_TF(), but now masks out velocities not included by the predefined velocity slice. 
+       Check_Line_Contamination() takes in some inclination angle, emission line, and bounds of a passband in order to let the user know if the
+       emission line would contribute to the simulated observation. If it does, this method returns the v_0 and delta_v required to project the
+       column density (for BALs) or calculate the reverberated emission line (for BELs).
+       
+
 '''
 
 from astropy import units as u
@@ -300,18 +319,29 @@ class BroadLineRegion():
         return QMF.Project_BLR_density(self, inc_ang, grid_size=grid_size, R_out=R_out)
 
 
-
     def Project_BLR_velocity_slice(self, inc_ang, v_0, delta_v, grid_size=100, R_out=None, density_weighting=True):
         # Similar to above's density calculation, but this time only includes cells with line of sight veloicty
         # within v_0 +/- delta_v (dimensionless)
 
-        return QMF.Project_BLR_velocity_slice(self, inc_ang, v_0, delta_v, grid_size=grid_size, R_out=R_out, density_weighting=density_weighting)
-
+        return QMF.Project_BLR_velocity_slice(self, inc_ang, v_0, delta_v, grid_size=grid_size, R_out=R_out,
+                                density_weighting=density_weighting)
 
 
     def Scattering_BLR_TF(self, inc_ang, grid_size=100, redshift=0, unit='hours', jitters=True, scaleratio=10):
 
-        return QMF.Scattering_BLR_TF(self, inc_ang, grid_size=grid_size, redshift=redshift, unit=unit, jitters=jitters, scaleratio=scaleratio)
+        return QMF.Scattering_BLR_TF(self, inc_ang, grid_size=grid_size, redshift=redshift, unit=unit,
+                                jitters=jitters, scaleratio=scaleratio)
+
+
+    def Scattering_Vel_Line_BLR_TF(self, inc_ang, v_0, delta_v, grid_size=100, redshift=0, unit='hours', jitters=True, scaleratio=10):
+
+        return QMF.Line_BLR_TF(self, inc_ang, v_0, delta_v, grid_size=grid_size, redshift=redshift, unit=unit,
+                                jitters=jitters, scaleratio=scaleratio)
+
+
+    def Check_Line_Contamination(self, inc_ang, emit_wavelength, passband_min, passband_max, redshift=0):
+
+        return QMF.Check_EL_Contamination(self, inc_ang, emit_wavelength, passband_min, passband_max, redshift=redshift)
 
 
 class Streamline():
