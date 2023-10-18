@@ -664,17 +664,23 @@ def MicrolensedResponse(MagMap, AccDisk, wavelength, coronaheight, rotation=0, x
         from scipy.signal import savgol_filter
         reprocessedmap = AccDisk.MakeDBDTMap(wavelength)
         pxratio = AccDisk.pxsize/MagMap.px_size
-        adjusteddisk = np.nan_to_num(rescale(reprocessedmap*AccDisk.MakeDTDLxMap(wavelength, axisoffset=axisoffset,
-                                                           angleoffset=angleoffset), pxratio))
-        adjustedrmap = np.nan_to_num(rescale(AccDisk.r_map, pxratio))
+        adjusteddisk = reprocessedmap*AccDisk.MakeDTDLxMap(wavelength, axisoffset=axisoffset,angleoffset=angleoffset)
+                        #                                   np.nan_to_num(rescale(reprocessedmap*AccDisk.MakeDTDLxMap(wavelength, axisoffset=axisoffset,
+                        #                                   angleoffset=angleoffset), pxratio))
+        adjustedrmap = AccDisk.r_map #np.nan_to_num(rescale(AccDisk.r_map, pxratio))
         if returnmaps == True:
-                adjustedtimedelays = rescale(AccDisk.MakeTimeDelayMap(axisoffset=axisoffset, 
-                                                            angleoffset=angleoffset, unit=unit, jitters=False), pxratio)
+                adjustedtimedelays = AccDisk.MakeTimeDelayMap(axisoffset=axisoffset, 
+                                                            angleoffset=angleoffset, unit=unit, jitters=False) 
+                #rescale(AccDisk.MakeTimeDelayMap(axisoffset=axisoffset, 
+                #                                            angleoffset=angleoffset, unit=unit, jitters=False), pxratio)
         else:
-                adjustedtimedelays = rescale(AccDisk.MakeTimeDelayMap(axisoffset=axisoffset, 
-                                                            angleoffset=angleoffset, unit=unit, jitters=jitters), pxratio)
+                adjustedtimedelays = AccDisk.MakeTimeDelayMap(axisoffset=axisoffset, 
+                                                            angleoffset=angleoffset, unit=unit, jitters=jitters)
+
+                #rescale(AccDisk.MakeTimeDelayMap(axisoffset=axisoffset, 
+                #                                            angleoffset=angleoffset, unit=unit, jitters=jitters), pxratio)
         maxrange = np.max(adjustedtimedelays)+1
-        edgesize = np.size(adjusteddisk, 0)                                             # This is the edge length we must avoid
+        edgesize = np.size(np.nan_to_num(rescale(reprocessedmap, pxratio)), 0)      
 
         if type(rotation) != int and type(rotation) != float:
                 rotation = np.random.rand() * 360
@@ -714,17 +720,19 @@ def MicrolensedResponse(MagMap, AccDisk, wavelength, coronaheight, rotation=0, x
         xposition -= edgesize//2
         yposition -= edgesize//2
     
-        magnifiedresponse = np.nan_to_num(r_mask * adjusteddisk * MagMap.mag_map[yposition:yposition+edgesize, xposition:xposition+edgesize])
+        magnifiedresponse = np.nan_to_num(r_mask * adjusteddisk *rescale(MagMap.mag_map[yposition:yposition+edgesize, xposition:xposition+edgesize], 1/pxratio))
+                                          #MagMap.mag_map[yposition:yposition+edgesize, xposition:xposition+edgesize])
 
         if returnmaps==True:
-                return rescale(adjustedtimedelays*r_mask, 1/pxratio), rescale(magnifiedresponse, 1/pxratio), xposition+edgesize//2, yposition+edgesize//2    
+                return adjustedtimedelays*r_mask, magnifiedresponse, xposition+edgesize//2, yposition+edgesize//2  
+        #rescale(adjustedtimedelays*r_mask, 1/pxratio), rescale(magnifiedresponse, 1/pxratio), xposition+edgesize//2, yposition+edgesize//2    
         
-        if unscale == True:
-            
-                dummyblock = rescale(magnifiedresponse, 1/pxratio)
-                magnifiedresponse = (dummyblock)
-                dummyblock = rescale(adjustedtimedelays, 1/pxratio)
-                adjustedtimedelays = (dummyblock)
+        #if unscale == True:
+        #    
+        #        dummyblock = rescale(magnifiedresponse, 1/pxratio)
+        #        magnifiedresponse = (dummyblock)
+        #        dummyblock = rescale(adjustedtimedelays, 1/pxratio)
+        #        adjustedtimedelays = (dummyblock)
         
         dummyblock = rescale(magnifiedresponse, scaleratio)
         magnifiedresponse = dummyblock
@@ -924,8 +932,8 @@ def MakeSnapshots(DiskEmission, DiskReprocess, DiskLags, SnapshotTimesteps, Sign
         output = []
 
         for jj in SnapshotTimesteps:
-                timestamps = DiskLags.astype(int) + jj
-                output.append(np.nan_to_num(DiskEmission + SignalWeighting * DiskReprocess * Signal[timestamps]) * diskmask)
+                timestamps = DiskLags.astype(int) + int(jj)
+                output.append(np.nan_to_num(DiskEmission + SignalWeighting * DiskReprocess * np.take(Signal, timestamps)) * diskmask)
         if returnsignal == True:
                 return output, Signal
         return output
