@@ -371,7 +371,7 @@ class Streamline():
             vector = np.zeros(length)
             for jj in range(length):
                 if jj * self.z_res >= launch_z:
-                    pol_position = ((launch_r + jj * z_res * np.tan(self.launch_theta))**2 + ((launch_z + jj * z_res)**2))**0.5
+                    pol_position = (((jj+0.5) * z_res * np.tan(self.launch_theta))**2 + (((jj+0.5) * z_res)**2))**0.5
                     vector[jj] = self.launch_vel + (self.asympt_vel - self.launch_vel) * ((pol_position / char_dist)**alpha / ((pol_position / char_dist)**alpha + 1))
             self.poloidal_vel = vector
         if r_vec:
