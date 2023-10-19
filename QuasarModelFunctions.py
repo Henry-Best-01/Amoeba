@@ -1045,7 +1045,7 @@ def Scattering_BLR_TF(BLR, inc_ang, grid_size=100, redshift=0, unit='hours', jit
         index_grid *= (index_grid < (BLR.max_r//BLR.r_res))
         density_map = BLR.density_grid[index_grid.astype(int)][:,:,-1]
         TDs = rescale(QMF.MakeTimeDelayMap(density_map, inc_ang, massquasar=BLR.mass, redshift=redshift,
-                                   numGRs=BLR.max_r, coronaheight=-BLR.max_z, jitters=jitters), scaleratio) * (1+redshift)
+                                   numGRs=2*BLR.max_r, coronaheight=-BLR.max_z, jitters=jitters), scaleratio) * (1+redshift)
         weights = rescale(density_map, scaleratio)
         if np.sum(weights) > 0:
                 TF = np.histogram(TDs, range=(0, np.max(TDs)+1), bins=int(np.max(TDs)+1), weights=np.nan_to_num(weights), density=True)[0]
@@ -1053,7 +1053,7 @@ def Scattering_BLR_TF(BLR, inc_ang, grid_size=100, redshift=0, unit='hours', jit
         for hh in range(z_steps-1):
             density_map = BLR.density_grid[index_grid.astype(int)][:,:,hh]
             TDs = rescale(QMF.MakeTimeDelayMap(density_map, inc_ang, massquasar=BLR.mass, redshift=redshift,
-                                   numGRs=BLR.max_r, coronaheight=-hh*BLR.z_res, jitters=jitters), scaleratio) * (1+redshift)
+                                   numGRs=2*BLR.max_r, coronaheight=-hh*BLR.z_res, jitters=jitters), scaleratio) * (1+redshift)
             weights = rescale(density_map, scaleratio)
             if np.sum(weights) > 0:
                 TF_slice = np.histogram(TDs, range=(0, np.max(TDs)+1), bins=int(np.max(TDs)+1), weights=np.nan_to_num(weights), density=True)[0]      
@@ -1087,7 +1087,7 @@ def Line_BLR_TF(BLR, inc_ang, v_0, delta_v, grid_size=100, redshift=0, unit='hou
         vel_mask = np.logical_and((LOS_grid >= (v_0-delta_v)), (LOS_grid <= (v_0+delta_v)))
         density_map = BLR.density_grid[index_grid.astype(int)][:,:,0] * vel_mask
         TDs = rescale(QMF.MakeTimeDelayMap(density_map, inc_ang, massquasar=BLR.mass, redshift=redshift,
-                                   numGRs=BLR.max_r, coronaheight=0, jitters=jitters), scaleratio) * (1+redshift)
+                                   numGRs=2*BLR.max_r, coronaheight=0, jitters=jitters), scaleratio) * (1+redshift)
         weights = rescale(density_map, scaleratio)
         if np.sum(weights) > 0:
                 TF = np.histogram(TDs, range=(0, np.max(TDs)+1), bins=int(np.max(TDs)+1), weights=np.nan_to_num(weights), density=True)[0]
@@ -1098,7 +1098,7 @@ def Line_BLR_TF(BLR, inc_ang, v_0, delta_v, grid_size=100, redshift=0, unit='hou
 
             density_map = BLR.density_grid[index_grid.astype(int)][:,:,hh+1] * vel_mask
             TDs = rescale(QMF.MakeTimeDelayMap(density_map, inc_ang, massquasar=BLR.mass, redshift=redshift,
-                                   numGRs=BLR.max_r, coronaheight=-(hh+1)*BLR.z_res, jitters=jitters), scaleratio) * (1+redshift)
+                                   numGRs=2*BLR.max_r, coronaheight=-(hh+1)*BLR.z_res, jitters=jitters), scaleratio) * (1+redshift)
             weights = rescale(density_map, scaleratio)
             if np.sum(weights) > 0:
                 TF_slice = np.histogram(TDs, range=(0, np.max(TDs)+1), bins=int(np.max(TDs)+1), weights=np.nan_to_num(weights), density=True)[0]
