@@ -11,6 +11,8 @@ import astropy.units as u
 import astropy.constants as const
 from astropy.io import fits
 from skimage.transform import rescale
+import time
+ts = time.time()
 
 
 # input directory containing ray-traces
@@ -115,6 +117,7 @@ for jj in range(np.size(passband[1]) - 1):
     static_brightness += Acc_disk.MakeSurfaceIntensityMap(passband[0][jj+1]) * passband[1][jj+1]
     var_brightness += np.nan_to_num(Acc_disk.MakeDBDTMap(passband[0][jj+1]) * passband[1][jj+1] * Acc_disk.MakeDTDLxMap(passband[0][jj+1]))
 time_lags = Acc_disk.MakeTimeDelayMap(jitters=False)
+max_lag = np.max(time_lags)
 
 # Normalize contributing maps
 static_brightness /= np.sum(static_brightness)          # Total of each brightness is now "1"
@@ -141,13 +144,15 @@ HDU1.header['slope'] = asymp_slope
 HDU1.header['eta_x'] = lamp_strength
 HDU1.header['edds'] = edd_ratio
 HDU1.header['tot_len'] = movie_total_length
+HDU1.header['max_lag'] = max_lag
 HDU2 = fits.ImageHDU(signal)
 HDU3 = fits.ImageHDU(intrinsic_disk_LC)
-HDUL = fits.HDUList([HDU1, HDU2, HDU3])                           
+HDU4 = fits.ImageHDU(snapshots)
+HDUL = fits.HDUList([HDU1, HDU2, HDU3, HDU4])                           
 
 HDUL.writeto(output_fname, overwrite=True)
 
-
+print(time.time() - ts)
 
 
 

@@ -22,13 +22,13 @@ log_nu_b = -2
 alpha_L = 1
 alpha_H_minus_L = 1
 var_weighting = 1.0 # compared to static brightness
-snapshots = 200
+snapshots = 2000
 output_res = 400 # pixels per side
 signal = None  #  Input predefined signal if desired
-seed = 5
+seed = 1
 
 
-passband = [[500, 510, 520, 530, 540, 550], [0.4, 0.5, 0.8, 0.9, 0.5, 0.4]]
+passband = [[800, 850, 900, 950, 1000, 1080], [0.9, 0.9, 0.8, 0.9, 0.9, 0.9]]
 
 output_vals = {'mass' : mass_exp,
                'zq' : redshift_q,
