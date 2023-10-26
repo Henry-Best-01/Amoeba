@@ -20,7 +20,7 @@ plot = True
 
 with fits.open(input1) as f:
     movie = f[0].data               # movie should have time on axis 0, while axis 1 and 2 are spacial
-    signal_points = f[3].data       # 1d array or list
+    signal_points = f[-1].data       # 1d array or list
 
 
 with open(input2) as f:             # assumes json_input_file has ['New_times'] as the list of new (hourly) timestamps
