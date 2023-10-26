@@ -1,5 +1,5 @@
 
-def InterpolateMovie(Movie_file, New_timestamps_file, verbose=True, plot=True):
+def InterpolateMovie(Movie_file, New_timestamps_file, verbose=False, plot=False):
 
     '''
     This function aims to take a series of snapshots and resample them at different time intervals.
@@ -38,7 +38,7 @@ def InterpolateMovie(Movie_file, New_timestamps_file, verbose=True, plot=True):
             json_input_file = json.load(f)
         new_timestamps = json_input_file['New_times']
     # otherwise, we assume a list or array of new timestamps are provided
-    else: new_timestamps = New_Timestamps_file
+    else: new_timestamps = New_timestamps_file
     if verbose: print("Data will be interpolated to",len(new_timestamps), "frames")
 
     space_positions = np.linspace(1, npix, npix)                        # Define a 2d pixel-time space
@@ -93,8 +93,12 @@ def InterpolateMovie(Movie_file, New_timestamps_file, verbose=True, plot=True):
         plt.show()
     return resampled_movie        
 
-InterpolateMovie("MyMovie.fits", "New_timestamps.json")
+InterpolateMovie("MyMovie.fits", "New_timestamps.json", verbose=True, plot=True)
 
+InterpolateMovie("MyMovie.fits", [10,20,30,40,50,5000,5010,5020,5300,10000,20000], verbose=True, plot=True)
+
+import numpy as np
+InterpolateMovie("MyMovie.fits", np.linspace(0, 24*3000, 400), verbose=True, plot=True)
 
 
 
