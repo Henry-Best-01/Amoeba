@@ -85,7 +85,7 @@ def KepVel (r, M):
         '''
         This calculates the magnitude of Keplerian Velocity at a distance r, on the Acc. Disk
         r should be in meters
-        M should be in solar masses
+        M should be in solar masses or input as a quantity object
         '''
        
         if type(M) != u.Quantity:
@@ -910,7 +910,7 @@ def MakeSnapshots(DiskEmission, DiskReprocess, DiskLags, SnapshotTimesteps, Sign
         be created.
         '''
         
-        maxtime = np.max(DiskLags) + SnapshotTimesteps[-1] + 100  # The longest signal we need for desired timesteps
+        maxtime = np.max(DiskLags) + SnapshotTimesteps[-1] + 100  # The longest signal we need for desired timesteps, plus small buffer
         diskmask = np.nan_to_num(DiskReprocess) > 1e-25
         print(np.sum(diskmask))
 
@@ -927,12 +927,14 @@ def MakeSnapshots(DiskEmission, DiskReprocess, DiskLags, SnapshotTimesteps, Sign
                 Signal -= np.mean(Signal)
                 Signal /= np.std(Signal)
                 Signal -= np.min(Signal)
-                                 
+
+        initial_lag = np.max(DiskLags)
+        
                 
         output = []
 
         for jj in SnapshotTimesteps:
-                timestamps = DiskLags.astype(int) + int(jj)
+                timestamps = initial_lag + int(jj) - DiskLags.astype(int)
                 output.append(np.nan_to_num(DiskEmission + SignalWeighting * DiskReprocess * np.take(Signal, timestamps)) * diskmask)
         if returnsignal == True:
                 return output, Signal
@@ -1093,7 +1095,7 @@ def Line_BLR_TF(BLR, inc_ang, v_0, delta_v, grid_size=100, redshift=0, unit='hou
                 TF = np.histogram(TDs, range=(0, np.max(TDs)+1), bins=int(np.max(TDs)+1), weights=np.nan_to_num(weights), density=True)[0]
         else: TF = np.zeros(1)
         for hh in range(z_steps-1):
-            LOS_grid = np.cos(inc_ang) * BLR.z_velocity_grid[index_grid.astype(int)][:,:,hh+1] - np.sin(inc_ang) * np.cos(Phi_grid) * BLR.r_velocity_grid[index_grid.astype(int)][:,:,hh+1] - np.sin(inc_ang) * np.sin(Phi_grid) * kep_vels
+            LOS_grid = np.cos(inc_ang*np.pi/180) * BLR.z_velocity_grid[index_grid.astype(int)][:,:,hh+1] - np.sin(inc_ang*np.pi/180) * np.cos(Phi_grid) * BLR.r_velocity_grid[index_grid.astype(int)][:,:,hh+1] - np.sin(inc_ang*np.pi/180) * np.sin(Phi_grid) * kep_vels
             vel_mask = np.logical_and((LOS_grid >= (v_0-delta_v)), (LOS_grid <= (v_0+delta_v)))
 
             density_map = BLR.density_grid[index_grid.astype(int)][:,:,hh+1] * vel_mask
@@ -1141,6 +1143,8 @@ def Check_EL_Contamination(BLR, inc_ang, emit_wavelength, passband_min, passband
         
         v_min = np.nanmin(LOS_grid)
         v_max = np.nanmax(LOS_grid)
+
+        inc_ang *= np.pi / 180
 
         for hh in range(z_steps-1):
                 density_mask = (BLR.density_grid[index_grid.astype(int)][:,:,hh+1] > 0)
