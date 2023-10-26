@@ -1,20 +1,12 @@
+import numpy as np
+from astropy.io import fits
+import json
+import matplotlib.pyplot as plt
+import os
+
 
 Movie_file = "MyMovie.fits"
 New_timestamps_file = "New_timestamps.json"
-
-
-from astropy.io import fits
-with fits.open(Movie_file) as f:
-    Movie = f[0].data               # movie should have time on axis 0, while axis 1 and 2 are spatial
-    Orig_timestamps = f[-1].data       # 1d array or list
-
-
-import json
-with open(New_timestamps_file) as f:
-    json_input_file = json.load(f)
-New_timestamps = json_input_file['New_times']
-
-
 
 
 
@@ -88,26 +80,67 @@ def interpolate_movie(Movie, Orig_timestamps, New_timestamps, verbose=False, plo
 
 
         for axis in ax2:
-            axis.set_xlim(4*initial_shape[1]/9, 5*initial_shape[1]/9)
-            axis.set_ylim(4*initial_shape[2]/9, 5*initial_shape[2]/9)
+            axis.set_xlim(0, initial_shape[1])
+            axis.set_ylim(0, initial_shape[2])
             axis.set_aspect(1)
         plt.subplots_adjust(left=0.1, right=0.9, top=0.9, bottom=0.1, wspace=0.3)
         
         plt.show()
     return resampled_movie        
 
-interpolate_movie(Movie, Orig_timestamps, New_timestamps, verbose=True, plot=True)
 
-interpolate_movie(Movie, Orig_timestamps, [10,20,30,40,50,5000,5010,5020,5300,10000,20000], verbose=True, plot=True)
-
-import numpy as np
-interpolate_movie(Movie, Orig_timestamps, np.linspace(0, 24*3000, 400), verbose=True, plot=True)
-
+if os.path.isfile(Movie_file) and os.path.isfile(New_timestamps_file):
+    with fits.open(Movie_file) as f:
+        Movie = f[0].data               # movie should have time on axis 0, while axis 1 and 2 are spatial
+        Orig_timestamps = f[-1].data       # 1d array or list
 
 
 
+    with open(New_timestamps_file) as f:
+        json_input_file = json.load(f)
+    New_timestamps = json_input_file['New_times']
+
+    interpolate_movie(Movie, Orig_timestamps, New_timestamps, verbose=True, plot=True)
+    interpolate_movie(Movie, Orig_timestamps, [10,20,30,40,50,5000,5010,5020,5300,10000,20000], verbose=True, plot=True)
+    interpolate_movie(Movie, Orig_timestamps, np.linspace(0, 24*3000, 400), verbose=True, plot=True)
+
+pixels = np.zeros((20, 2, 3))
+for tt in range(np.size(pixels, 0)):
+
+    pixels[tt, 0, 0] = np.sin(tt)
+    pixels[tt, 0, 1] = -np.sin(tt)
+    pixels[tt, 0, 2] = 0
+    pixels[tt, 1, 0] = tt - 10
+    pixels[tt, 1, 1] = 10 - tt
+    pixels[tt, 1, 2] = np.exp(-tt)
+
+new_movie = interpolate_movie(pixels, np.linspace(0, 20, 20), [0, 2, 5, 5.5, 7, 18.2], verbose=True, plot=False)
 
 
+fig, ax = plt.subplots()
+ax.plot(np.linspace(0, 20, 20), pixels[:, 0, 0], label="px orig [0,0]")
+ax.plot(np.linspace(0, 20, 20), pixels[:, 0, 1], label="px orig [0,1]")
+ax.plot(np.linspace(0, 20, 20), pixels[:, 0, 2], label="px orig [0,2]")
+ax.plot(np.linspace(0, 20, 20), pixels[:, 1, 0], label="px orig [1,0]")
+ax.plot(np.linspace(0, 20, 20), pixels[:, 1, 1], label="px orig [1,1]")
+ax.plot(np.linspace(0, 20, 20), pixels[:, 1, 2], label="px orig [1,2]")
+plt.gca().set_prop_cycle(None)
+ax.plot([0, 2, 5, 5.5, 7, 18.2], new_movie[:, 0, 0], '-o', alpha=0.5, label='interp [0,0]')
+ax.plot([0, 2, 5, 5.5, 7, 18.2], new_movie[:, 0, 1], '-o', alpha=0.5, label='interp [0,1]')
+ax.plot([0, 2, 5, 5.5, 7, 18.2], new_movie[:, 0, 2], '-o', alpha=0.5, label='interp [0,2]')
+ax.plot([0, 2, 5, 5.5, 7, 18.2], new_movie[:, 1, 0], '-o', alpha=0.5, label='interp [1,0]')
+ax.plot([0, 2, 5, 5.5, 7, 18.2], new_movie[:, 1, 1], '-o', alpha=0.5, label='interp [1,1]')
+ax.plot([0, 2, 5, 5.5, 7, 18.2], new_movie[:, 1, 2], '-o', alpha=0.5, label='interp [1,2]')
+ax.legend(ncol=2)
+
+ax.set_xlabel("Timestamp [arb.]")
+ax.set_ylabel("Pixel value [arb.]")
+plt.show()
+
+
+
+
+ 
 
 
 
