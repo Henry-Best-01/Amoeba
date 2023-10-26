@@ -66,11 +66,25 @@ if plot:
     
     fig2, ax2 = plt.subplots(1,2)
 
-    ax2[0].contourf(movie[0])
-    ax2[1].contourf(resampled_movie[0])
+    conts1 = ax2[0].contourf(movie[1])
+    conts2 = ax2[1].contourf(resampled_movie[1])
+
+    ax2[0].set_xlabel("x [px]")
+    ax2[1].set_xlabel("x [px]")
+    ax2[0].set_ylabel("y [px]")
+    ax2[1].set_ylabel("y [px]")
+    ax2[0].set_title("Orig. movie, frame 2")
+    ax2[1].set_title("Interp. movie, frame 2")
+
+    plt.colorbar(conts1, ax=ax2[0], label="Flux [arb.]")
+    plt.colorbar(conts2, ax=ax2[1], label="Flux [arb.]")
+
 
     for axis in ax2:
+        axis.set_xlim(4*initial_shape[1]/9, 5*initial_shape[1]/9)
+        axis.set_ylim(4*initial_shape[2]/9, 5*initial_shape[2]/9)
         axis.set_aspect(1)
+    plt.subplots_adjust(left=0.1, right=0.9, top=0.9, bottom=0.1, wspace=0.3)
     
     plt.show()
     
