@@ -758,8 +758,28 @@ def MicrolensedResponse(MagMap, AccDisk, wavelength, coronaheight, rotation=0, x
                 
                 output = smoothedoutput
         return output
-   
-        
+
+def Conv_Sig_TF(signal, TF, unit_signal=u.d, unit_TF=u.hr, t_steps=None, t_obs=None):
+        '''
+        This function performs the convolution of a driving signal and a transfer function
+        Time periods not covered by initial signal are extrapolated via constant value.
+        unit_signal and unit_TF are used to define the mismatch between time axis units
+        (typically signals are in days, while most TFs are resolved to hours)
+        t_steps and t_obs are optional timestamp arrays for the initial and observed
+        times, respectively. If left None, they will be created in linear space.
+        '''
+        from scipy.interpolate import interp1d
+        conversion_ratio = unit_signal.to(unit_TF)
+        if t_steps is None: t_steps = np.linspace(0, len(signal), len(signal))
+        interpolation = interp1d(t_steps, signal, bounds_error=False, fill_value=(signal[0], signal[-1]))
+        convolution = []
+        if t_obs is None: t_obs = np.linspace(t_steps[0], t_steps[-1]-t_steps[0], int(t_steps[-1]*conversion_ratio))
+        max_tau = len(TF)
+        for jj in range(len(t_obs)):
+                time_step = t_obs[jj]
+                applicable_signal = interpolation(np.linspace(time_step - max_tau/conversion_ratio, time_step, len(TF)))
+                convolution.append(np.sum(applicable_signal*np.flip(TF)))
+        return t_obs, convolution
                                 
 
 def Correlate(LightCurve, LightCurve2 = False):
@@ -814,7 +834,8 @@ def MakeDRW(t_max, delta_t, SF_inf, tau):
 
         return variability_lc
 
-def MakeSignalFromPSD(N, dt, mean_mag, standard_deviation, log_nu_b, alpha_L, alpha_H_minus_L, extra_time_factor = 10, seed=None):
+def MakeSignalFromPSD(N, dt, mean_mag, standard_deviation, log_nu_b, alpha_L, alpha_H_minus_L,
+                      PSD = None, extra_time_factor = 10, seed=None):
         '''
         This function generates a signal based on a broken power law PSD.
         N is the total time of the generated signal
@@ -840,8 +861,9 @@ def MakeSignalFromPSD(N, dt, mean_mag, standard_deviation, log_nu_b, alpha_L, al
         duration = extra_time_factor*N*dt 
            
             # Frequency range from 1/duration to the Nyquist frequency
-        frequencies = np.linspace(1.0/duration, 1.0/(2.0*dt), int(duration//2/dt)+1)  
+        frequencies = np.linspace(1.0/duration, 1.0/(2.0*dt), int(duration//2/dt)+1)
         psd = (frequencies**-alpha_L)*(1.0+(frequencies/nu_b)**(alpha_H-alpha_L))**-1
+        if PSD is not None: psd = PSD
             
                 # Now generate the light curve from the PSD
                
@@ -1047,7 +1069,7 @@ def Scattering_BLR_TF(BLR, inc_ang, grid_size=100, redshift=0, unit='hours', jit
         index_grid *= (index_grid < (BLR.max_r//BLR.r_res))
         density_map = BLR.density_grid[index_grid.astype(int)][:,:,-1]
         TDs = rescale(QMF.MakeTimeDelayMap(density_map, inc_ang, massquasar=BLR.mass, redshift=redshift,
-                                   numGRs=2*BLR.max_r, coronaheight=-BLR.max_z, jitters=jitters), scaleratio)
+                                   numGRs=2*BLR.max_r, coronaheight=-BLR.max_z, jitters=jitters), scaleratio) * (1+redshift)
         weights = rescale(density_map, scaleratio)
         if np.sum(weights) > 0:
                 TF = np.histogram(TDs, range=(0, np.max(TDs)+1), bins=int(np.max(TDs)+1), weights=np.nan_to_num(weights), density=True)[0]
@@ -1055,7 +1077,7 @@ def Scattering_BLR_TF(BLR, inc_ang, grid_size=100, redshift=0, unit='hours', jit
         for hh in range(z_steps-1):
             density_map = BLR.density_grid[index_grid.astype(int)][:,:,hh]
             TDs = rescale(QMF.MakeTimeDelayMap(density_map, inc_ang, massquasar=BLR.mass, redshift=redshift,
-                                   numGRs=2*BLR.max_r, coronaheight=-hh*BLR.z_res, jitters=jitters), scaleratio)
+                                   numGRs=2*BLR.max_r, coronaheight=-hh*BLR.z_res, jitters=jitters), scaleratio) * (1+redshift)
             weights = rescale(density_map, scaleratio)
             if np.sum(weights) > 0:
                 TF_slice = np.histogram(TDs, range=(0, np.max(TDs)+1), bins=int(np.max(TDs)+1), weights=np.nan_to_num(weights), density=True)[0]      
@@ -1089,18 +1111,18 @@ def Line_BLR_TF(BLR, inc_ang, v_0, delta_v, grid_size=100, redshift=0, unit='hou
         vel_mask = np.logical_and((LOS_grid >= (v_0-delta_v)), (LOS_grid <= (v_0+delta_v)))
         density_map = BLR.density_grid[index_grid.astype(int)][:,:,0] * vel_mask
         TDs = rescale(QMF.MakeTimeDelayMap(density_map, inc_ang, massquasar=BLR.mass, redshift=redshift,
-                                   numGRs=2*BLR.max_r, coronaheight=0, jitters=jitters), scaleratio)
+                                   numGRs=2*BLR.max_r, coronaheight=0, jitters=jitters), scaleratio) * (1+redshift)
         weights = rescale(density_map, scaleratio)
         if np.sum(weights) > 0:
                 TF = np.histogram(TDs, range=(0, np.max(TDs)+1), bins=int(np.max(TDs)+1), weights=np.nan_to_num(weights), density=True)[0]
         else: TF = np.zeros(1)
         for hh in range(z_steps-1):
-            LOS_grid = np.cos(inc_ang*np.pi/180) * BLR.z_velocity_grid[index_grid.astype(int)][:,:,hh+1] - np.sin(inc_ang*np.pi/180) * np.cos(Phi_grid) * BLR.r_velocity_grid[index_grid.astype(int)][:,:,hh+1] - np.sin(inc_ang*np.pi/180) * np.sin(Phi_grid) * kep_vels
+            LOS_grid = np.cos(inc_ang) * BLR.z_velocity_grid[index_grid.astype(int)][:,:,hh+1] - np.sin(inc_ang) * np.cos(Phi_grid) * BLR.r_velocity_grid[index_grid.astype(int)][:,:,hh+1] - np.sin(inc_ang) * np.sin(Phi_grid) * kep_vels
             vel_mask = np.logical_and((LOS_grid >= (v_0-delta_v)), (LOS_grid <= (v_0+delta_v)))
 
             density_map = BLR.density_grid[index_grid.astype(int)][:,:,hh+1] * vel_mask
             TDs = rescale(QMF.MakeTimeDelayMap(density_map, inc_ang, massquasar=BLR.mass, redshift=redshift,
-                                   numGRs=2*BLR.max_r, coronaheight=-(hh+1)*BLR.z_res, jitters=jitters), scaleratio)
+                                   numGRs=2*BLR.max_r, coronaheight=-(hh+1)*BLR.z_res, jitters=jitters), scaleratio) * (1+redshift)
             weights = rescale(density_map, scaleratio)
             if np.sum(weights) > 0:
                 TF_slice = np.histogram(TDs, range=(0, np.max(TDs)+1), bins=int(np.max(TDs)+1), weights=np.nan_to_num(weights), density=True)[0]
@@ -1143,8 +1165,6 @@ def Check_EL_Contamination(BLR, inc_ang, emit_wavelength, passband_min, passband
         
         v_min = np.nanmin(LOS_grid)
         v_max = np.nanmax(LOS_grid)
-
-        inc_ang *= np.pi / 180
 
         for hh in range(z_steps-1):
                 density_mask = (BLR.density_grid[index_grid.astype(int)][:,:,hh+1] > 0)
