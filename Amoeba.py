@@ -304,13 +304,17 @@ class BroadLineRegion():
             low_mask = self.r_vals >= min(Streamline_inner.radii[hh], Streamline_outer.radii[hh])
             high_mask = self.r_vals <= max(Streamline_inner.radii[hh], Streamline_outer.radii[hh])
             mask = np.logical_and(low_mask, high_mask) + 0
+            if hh == 0: norm = sum(mask)
             self.density_grid[np.argmax(mask):np.argmax(mask)+sum(mask), hh] *= 0  # overwrites these cells only
             self.r_velocity_grid[np.argmax(mask):np.argmax(mask)+sum(mask), hh] *= 0
             self.z_velocity_grid[np.argmax(mask):np.argmax(mask)+sum(mask), hh] *= 0
             kkspace = np.linspace(0, sum(mask), sum(mask))
             self.z_velocity_grid[np.argmax(mask):np.argmax(mask)+sum(mask), hh] = Streamline_inner.poloidal_vel[hh] * np.cos(Streamline_inner.launch_theta) + (kkspace / sum(mask)) * (Streamline_outer.poloidal_vel[hh] * np.cos(Streamline_outer.launch_theta) - Streamline_inner.poloidal_vel[hh] * np.cos(Streamline_inner.launch_theta))
             self.r_velocity_grid[np.argmax(mask):np.argmax(mask)+sum(mask), hh] = Streamline_inner.poloidal_vel[hh] * np.sin(Streamline_inner.launch_theta) + (kkspace / sum(mask)) * (Streamline_outer.poloidal_vel[hh] * np.sin(Streamline_outer.launch_theta) - Streamline_inner.poloidal_vel[hh] * np.sin(Streamline_inner.launch_theta))
-            self.density_grid[np.argmax(mask):np.argmax(mask)+sum(mask), hh] += density_init_weight * (self.r_velocity_grid[np.argmax(mask):np.argmax(mask)+sum(mask), hh]**2 + self.r_velocity_grid[np.argmax(mask):np.argmax(mask)+sum(mask), hh]**2)**(-1/2) * self.r_vals[np.argmax(mask):np.argmax(mask)+sum(mask)]**(-1)
+            
+            del_pol_vels_on_vels = Streamline_inner.dpol_vel_dz_on_vel[hh] + (kkspace / sum(mask)) * (Streamline_outer.dpol_vel_dz_on_vel[hh] - Streamline_inner.dpol_vel_dz_on_vel[hh])
+            self.density_grid[np.argmax(mask):np.argmax(mask)+sum(mask), hh] += density_init_weight * del_pol_vels_on_vels * self.r_vals[np.argmax(mask):np.argmax(mask)+sum(mask)]**(-1)
+#            self.density_grid[np.argmax(mask):np.argmax(mask)+sum(mask), hh] += density_init_weight / sum(mask)
 
     def Project_BLR_density(self, inc_ang, grid_size=100, R_out=None):
         # grid_size is the TOTAL number of grid points along an axis.
@@ -366,7 +370,15 @@ class Streamline():
 
         length = max_z // z_res + 1 
         self.z_vals = np.linspace(0, max_z, length)
-        if v_vec: self.poloidal_vel = v_vec
+        if v_vec is not None:
+            self.poloidal_vel = v_vec
+            vector = np.zeros(length)
+            for jj in range(length):
+                if jj > 0:
+                    vector[jj] = v_vec[jj] - v_vec[jj-1] / v_vec[jj]
+                else:
+                    vector[jj] = (v_vec[jj+1] - v_vec[jj]) / v_vec[jj+1]
+            self.dpol_vel_dz_on_vel = vector
         else:
             vector = np.zeros(length)
             for jj in range(length):
@@ -374,7 +386,13 @@ class Streamline():
                     pol_position = (((jj+0.5) * z_res * np.tan(self.launch_theta))**2 + (((jj+0.5) * z_res)**2))**0.5
                     vector[jj] = self.launch_vel + (self.asympt_vel - self.launch_vel) * ((pol_position / char_dist)**alpha / ((pol_position / char_dist)**alpha + 1))
             self.poloidal_vel = vector
-        if r_vec:
+            vector = np.zeros(length)
+            for jj in range(length):
+                if jj * self.z_res >= launch_z:
+                    pol_position = (((jj+0.5) * z_res * np.tan(self.launch_theta))**2 + (((jj+0.5) * z_res)**2))**0.5
+                    vector[jj] = ((self.asympt_vel - self.launch_vel) * ((pol_position / char_dist)**(alpha-1) * alpha / (((pol_position / char_dist)**alpha + 1)**2 * np.cos(self.launch_theta)))) / self.poloidal_vel[jj]
+            self.dpol_vel_dz_on_vel = vector
+        if r_vec is not None:
             assert len(r_vec) == len(v_vec)
             assert len(r_vec) == length
             self.radii = r_vec
