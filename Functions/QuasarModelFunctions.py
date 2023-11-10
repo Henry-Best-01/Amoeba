@@ -7,6 +7,7 @@ from astropy import units as u
 from astropy import constants as const
 from scipy.integrate import quad
 from scipy import fft
+import scipy
 import QuasarModelFunctions as QMF
 from astropy.io import fits
 from numpy.random import rand
@@ -418,8 +419,9 @@ def PullLC(convolution, pixelsize, vtrans, time, px_shift=0, x_start=None, y_sta
                 return light_curve
         
 
-def MakeTimeDelayMap(disk, inc_ang, massquasar = 10**8 * const.M_sun.to(u.kg), redshift = 0.0, diskres = 300,
-                       numGRs = 100, coronaheight = 5, axisoffset=0, angleoffset=0, unit='hours', jitters=True, radiimap=None): 
+def MakeTimeDelayMap(disk, inc_ang, massquasar = 10**8 * const.M_sun.to(u.kg), redshift = 0.0, diskres = 1000,
+                       numGRs = 500, coronaheight = 5, axisoffset=0, angleoffset=0, unit='hours', jitters=True,
+                       radiimap=None, source_plane=True): 
         '''
         This aims to create a time delay mapping for the accretion disk for reverberation of the disk itself.
         The input disk should be some accretion disk map which is just used to determine where the accretion disk appears
@@ -491,7 +493,8 @@ def MakeTimeDelayMap(disk, inc_ang, massquasar = 10**8 * const.M_sun.to(u.kg), r
         mask2 = output >= 0
         mask = np.logical_and(mask1, mask2)
         output *= mask
-        output *= (1+redshift)
+        if source_plane == False:
+                output *= (1+redshift)
         return output
 
 
@@ -559,7 +562,7 @@ def MakeDTDLx(disk_der, temp_map, inc_ang, massquasar, coronaheight, numGRs = 10
                                 
 
 def ConstructDiskTransferFunction(image_der_f, temp_map, inc_ang, massquasar, redshift, coronaheight, maxlengthoverride=4800, units='hours', axisoffset=0, angleoffset=0, numGRs=100, 
-                                  albedo=0, smooth=False, fixedwindowlength=None, radiimap=None, scaleratio=1, jitters=False): 
+                                  albedo=0, smooth=False, fixedwindowlength=None, radiimap=None, scaleratio=1, jitters=False, source_plane=True): 
         '''
         This takes in disk objects and parameters in order to construct its transfer function
         The disk should be the derivative of the Planck function w.r.t Temperature
@@ -580,7 +583,7 @@ def ConstructDiskTransferFunction(image_der_f, temp_map, inc_ang, massquasar, re
 
         if image_der_f.ndim == 2:
                 diskdelays = QMF.MakeTimeDelayMap(image_der_f, inc_ang, massquasar = massquasar, redshift = redshift, coronaheight = coronaheight, unit = units,
-                                                    axisoffset = axisoffset, angleoffset = angleoffset, numGRs = numGRs, radiimap=radiimap, jitters=jitters)
+                                                    axisoffset = axisoffset, angleoffset = angleoffset, numGRs = numGRs, radiimap=radiimap, jitters=jitters, source_plane=source_plane)
                 minlength = int(np.min(diskdelays * (diskdelays>0)))
                 maxlength = int(np.max(diskdelays)+10)
                 dummy = min(maxlength, maxlengthoverride)
@@ -590,7 +593,7 @@ def ConstructDiskTransferFunction(image_der_f, temp_map, inc_ang, massquasar, re
                 
         elif image_der_f.ndim == 3:
                 diskdelays = QMF.MakeTimeDelayMap(image_der_f[:,:,-1], inc_ang, massquasar = massquasar, redshift = redshift, coronaheight = coronaheight, unit = units,
-                                                    axisoffset = axisoffset, angleoffset = angleoffset, numGRs = numGRs, radiimap=radiimap, jitters=jitters)
+                                                    axisoffset = axisoffset, angleoffset = angleoffset, numGRs = numGRs, radiimap=radiimap, jitters=jitters, source_plane=source_plane)
                 minlength = int(np.min(diskdelays * (diskdelays>0)))
                 maxlength = int(np.max(diskdelays)+10)
                 dummy = min(maxlength, maxlengthoverride)
@@ -653,7 +656,7 @@ def ConstructDiskTransferFunction(image_der_f, temp_map, inc_ang, massquasar, re
 
 def MicrolensedResponse(MagMap, AccDisk, wavelength, coronaheight, rotation=0, x_position=None, y_position=None,
                         axisoffset=0, angleoffset=0, unit='hours', smooth=False, returnmaps=False, radiimap=None, 
-                        scaleratio=1, unscale=True, jitters=True):
+                        scaleratio=1, unscale=True, jitters=True, source_plane=True):
         '''
         This function aims to microlens the response from a fluctuation in the lamppost geometry at some position
         on the magnification map
@@ -668,10 +671,10 @@ def MicrolensedResponse(MagMap, AccDisk, wavelength, coronaheight, rotation=0, x
         adjustedrmap = AccDisk.r_map 
         if returnmaps == True:
                 adjustedtimedelays = AccDisk.MakeTimeDelayMap(axisoffset=axisoffset, 
-                                                            angleoffset=angleoffset, unit=unit, jitters=False) 
+                                                            angleoffset=angleoffset, unit=unit, jitters=False, source_plane=source_plane) 
         else:
                 adjustedtimedelays = AccDisk.MakeTimeDelayMap(axisoffset=axisoffset, 
-                                                            angleoffset=angleoffset, unit=unit, jitters=jitters)
+                                                            angleoffset=angleoffset, unit=unit, jitters=jitters, source_plane=source_plane)
         maxrange = np.max(adjustedtimedelays)+1
         edgesize = np.size(np.nan_to_num(rescale(reprocessedmap, pxratio)), 0)      
 
@@ -1016,7 +1019,7 @@ def Project_BLR_velocity_slice(BLR, inc_ang, v_0, delta_v, grid_size=100, R_out=
         return output_grid
 
 
-def Scattering_BLR_TF(BLR, inc_ang, grid_size=100, redshift=0, unit='hours', jitters=False, scaleratio=10):
+def Scattering_BLR_TF(BLR, inc_ang, grid_size=100, redshift=0, unit='hours', jitters=False, scaleratio=10, source_plane=True):
         '''
         This function approximates the scattering of the BLR by electron scattering, assuming it is optically thin
         BLR is an Amoeba BLR object
@@ -1038,7 +1041,7 @@ def Scattering_BLR_TF(BLR, inc_ang, grid_size=100, redshift=0, unit='hours', jit
         index_grid *= (index_grid < (BLR.max_r//BLR.r_res))
         density_map = BLR.density_grid[index_grid.astype(int)][:,:,-1]
         TDs = rescale(QMF.MakeTimeDelayMap(density_map, inc_ang, massquasar=BLR.mass, redshift=redshift,
-                                   numGRs=2*BLR.max_r, coronaheight=-BLR.max_z, jitters=jitters), scaleratio)
+                                   numGRs=2*BLR.max_r, coronaheight=-BLR.max_z, jitters=jitters, source_plane=source_plane), scaleratio)
         weights = rescale(density_map, scaleratio)
         if np.sum(weights) > 0:
                 TF = np.histogram(TDs, range=(0, np.max(TDs)+1), bins=int(np.max(TDs)+1), weights=np.nan_to_num(weights), density=True)[0]
@@ -1059,7 +1062,7 @@ def Scattering_BLR_TF(BLR, inc_ang, grid_size=100, redshift=0, unit='hours', jit
         return TF / np.sum(TF)
 
 def Line_BLR_TF(BLR, inc_ang, v_0, delta_v, grid_size=100, redshift=0, unit='hours', jitters=False,
-                scaleratio=10, R_out=None):
+                scaleratio=10, R_out=None, source_plane=True):
         '''
         This function follows the "Scattering_BLR_TF" function, but only admits line-of-sight veloicty values v_0 +/- delta_v.
         All units are as defined in Scattering_BLR_TF and Project_BLR_velocity_slice.
@@ -1080,7 +1083,7 @@ def Line_BLR_TF(BLR, inc_ang, v_0, delta_v, grid_size=100, redshift=0, unit='hou
         vel_mask = np.logical_and((LOS_grid >= (v_0-delta_v)), (LOS_grid <= (v_0+delta_v)))
         density_map = BLR.density_grid[index_grid.astype(int)][:,:,0] * vel_mask
         TDs = rescale(QMF.MakeTimeDelayMap(density_map, inc_ang, massquasar=BLR.mass, redshift=redshift,
-                                   numGRs=2*BLR.max_r, coronaheight=0, jitters=jitters), scaleratio)
+                                   numGRs=2*BLR.max_r, coronaheight=0, jitters=jitters, source_plane=source_plane), scaleratio)
         weights = rescale(density_map, scaleratio)
         if np.sum(weights) > 0:
                 TF = np.histogram(TDs, range=(0, np.max(TDs)+1), bins=int(np.max(TDs)+1), weights=np.nan_to_num(weights), density=True)[0]
@@ -1161,15 +1164,35 @@ def Convolve_TF_With_Signal(input_signal, TF, timestamps, signal_ratio = 1/24):
         timestamps are the timestamps to use
         signal_ratio is the ratio between the intrinsic signal units and the TF units (1/24 is standard days / hours)
         '''
-        interpolation = scipy.interpolate.interp1d(np.linspace(0-len(TF), len(input_signal)//signal_ratio-len(TF), len(input_signal)//signal_ratio), input_signal)
+        interpolation = scipy.interpolate.interp1d(np.linspace(0-len(TF), len(input_signal)//signal_ratio-len(TF),
+                                                               len(input_signal)), input_signal, bounds_error=False,
+                                                             fill_value='extrapolate')
         signal = []
         for jj in range(len(timestamps)):
-                time_step = int(timesteps[jj]//signal_ratio) 
-                driving_signal = interp(np.linspace(time_step - len(TF), time_step, len(TF)))
+                time_step = int(timestamps[jj]//signal_ratio) 
+                driving_signal = interpolation(np.linspace(time_step - len(TF), time_step, len(TF)))
                 flipped_TF = np.flip(TF)
                 signal.append(np.sum(flipped_TF*driving_signal))
         return signal
         
+def Bring_signal_to_Obs_frame(input_signal, redshift, timestamps = None):
+        '''
+        This function brings a signal generated in the source plane into the plane of the observer
+        by stretching the time axis based on the cosmologic redshift.
+        input_signal is the signal to be stretched as an array or list
+        redshift is the cosmological redshift
+        timestamps is an optional time axis
+        '''
+        if timestamps is None:
+                timestamps = np.linspace(0, len(input_signal), len(input_signal))
+        interpolation = scipy.interpolate.interp1d(timestamps * (1 + redshift), input_signal,
+                                                   bounds_error=False, fill_value='extrapolate')
+        obs_signal = interpolation(timestamps)
+        return obs_signal
+
+
+
+
         
 
 

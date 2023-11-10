@@ -134,7 +134,7 @@ class FlatDisk:
         return np.nan_to_num(output)
         
 
-    def MakeTimeDelayMap(self, coronaheight=None, axisoffset=0, angleoffset=0, unit='hours', jitters=True):
+    def MakeTimeDelayMap(self, coronaheight=None, axisoffset=0, angleoffset=0, unit='hours', jitters=True, source_plane=True):
         
         if coronaheight: override = coronaheight
         else: override = 0
@@ -142,7 +142,7 @@ class FlatDisk:
         if override > 0: coronaheight = override
         
         output = QMF.MakeTimeDelayMap(self.temp_map, self.inc_ang, massquasar=self.mass, redshift = self.redshift, numGRs=self.numGRs*2, coronaheight=coronaheight,
-                                        axisoffset=axisoffset, angleoffset=angleoffset, unit=unit, jitters=jitters, radiimap=self.r_map)
+                                        axisoffset=axisoffset, angleoffset=angleoffset, unit=unit, jitters=jitters, radiimap=self.r_map, source_plane=source_plane)
         return output
 
 
@@ -158,7 +158,7 @@ class FlatDisk:
 
 
     def ConstructDiskTransferFunction(self, wavelength, coronaheight=None, axisoffset=0, angleoffset=0, maxlengthoverride=4800, units='hours', albedo=0,
-                                      smooth=False, scaleratio=1, fixedwindowlength=None, approxshift=False, jitters=False):
+                                      smooth=False, scaleratio=1, fixedwindowlength=None, approxshift=False, jitters=False, source_plane=True):
         if coronaheight: override = coronaheight
         else: override = 0
         coronaheight = self.c_height
@@ -166,8 +166,9 @@ class FlatDisk:
         
         disk_derivative = self.MakeDBDTMap(wavelength, approxshift=approxshift)
 
-        output = QMF.ConstructDiskTransferFunction(disk_derivative, self.temp_map, self.inc_ang, self.mass, self.redshift, coronaheight, maxlengthoverride=maxlengthoverride, units=units, scaleratio=scaleratio,
-                                        axisoffset=axisoffset, angleoffset=angleoffset, albedo=albedo, numGRs=self.numGRs*2, smooth=smooth, fixedwindowlength=fixedwindowlength, radiimap=self.r_map, jitters=jitters)
+        output = QMF.ConstructDiskTransferFunction(disk_derivative, self.temp_map, self.inc_ang, self.mass, self.redshift, coronaheight, maxlengthoverride=maxlengthoverride, units=units,
+                                                   scaleratio=scaleratio, axisoffset=axisoffset, angleoffset=angleoffset, albedo=albedo, numGRs=self.numGRs*2, smooth=smooth,
+                                                   fixedwindowlength=fixedwindowlength, radiimap=self.r_map, jitters=jitters, source_plane=source_plane)
         return output
 
 
@@ -232,7 +233,8 @@ class MagnificationMap:
 
     
     def GenerateMicrolensedResponse(self, Disk, wavelength, coronaheight=None, rotation=0, x_position=None,
-                            y_position=None, axisoffset=0, angleoffset=0, unit='hours', scaleratio=1, smooth=False, returnmaps=False, jitters=False):
+                            y_position=None, axisoffset=0, angleoffset=0, unit='hours', scaleratio=1, smooth=False,
+                                    returnmaps=False, jitters=False, source_plane=True):
 
         if coronaheight: override = coronaheight
         else: override = 0
@@ -241,7 +243,7 @@ class MagnificationMap:
         
         return QMF.MicrolensedResponse(self, Disk, wavelength, coronaheight, rotation=rotation, x_position=x_position,
                             y_position=y_position, axisoffset=axisoffset, angleoffset=angleoffset, unit=unit,
-                            smooth=smooth, returnmaps=returnmaps, scaleratio=scaleratio, jitters=jitters)
+                            smooth=smooth, returnmaps=returnmaps, scaleratio=scaleratio, jitters=jitters, source_plane=source_plane)
 
 
 class ConvolvedMap(MagnificationMap):
@@ -332,16 +334,16 @@ class BroadLineRegion():
                                 density_weighting=density_weighting)
 
 
-    def Scattering_BLR_TF(self, inc_ang, grid_size=100, redshift=0, unit='hours', jitters=True, scaleratio=10):
+    def Scattering_BLR_TF(self, inc_ang, grid_size=100, redshift=0, unit='hours', jitters=True, scaleratio=10, source_plane=True):
 
         return QMF.Scattering_BLR_TF(self, inc_ang, grid_size=grid_size, redshift=redshift, unit=unit,
-                                jitters=jitters, scaleratio=scaleratio)
+                                jitters=jitters, scaleratio=scaleratio, source_plane=source_plane)
 
 
-    def Scattering_Vel_Line_BLR_TF(self, inc_ang, v_0, delta_v, grid_size=100, redshift=0, unit='hours', jitters=True, scaleratio=10):
+    def Scattering_Vel_Line_BLR_TF(self, inc_ang, v_0, delta_v, grid_size=100, redshift=0, unit='hours', jitters=True, scaleratio=10, source_plane=True):
 
         return QMF.Line_BLR_TF(self, inc_ang, v_0, delta_v, grid_size=grid_size, redshift=redshift, unit=unit,
-                                jitters=jitters, scaleratio=scaleratio)
+                                jitters=jitters, scaleratio=scaleratio, source_plane=source_plane)
 
 
     def Check_Line_Contamination(self, inc_ang, emit_wavelength, passband_min, passband_max, redshift=0):
