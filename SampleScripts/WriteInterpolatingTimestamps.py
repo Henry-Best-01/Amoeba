@@ -7,7 +7,7 @@ import numpy as np
 import json
 from astropy import units as u
 
-fname = "New_timestamps.json"
+fname = "../SampleJsons/New_timestamps.json"
 
 # Create set of timestamps
 new_timestamps = np.linspace(0, 365*10, 400)

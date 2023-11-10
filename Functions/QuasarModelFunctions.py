@@ -665,20 +665,13 @@ def MicrolensedResponse(MagMap, AccDisk, wavelength, coronaheight, rotation=0, x
         reprocessedmap = AccDisk.MakeDBDTMap(wavelength)
         pxratio = AccDisk.pxsize/MagMap.px_size
         adjusteddisk = reprocessedmap*AccDisk.MakeDTDLxMap(wavelength, axisoffset=axisoffset,angleoffset=angleoffset)
-                        #                                   np.nan_to_num(rescale(reprocessedmap*AccDisk.MakeDTDLxMap(wavelength, axisoffset=axisoffset,
-                        #                                   angleoffset=angleoffset), pxratio))
-        adjustedrmap = AccDisk.r_map #np.nan_to_num(rescale(AccDisk.r_map, pxratio))
+        adjustedrmap = AccDisk.r_map 
         if returnmaps == True:
                 adjustedtimedelays = AccDisk.MakeTimeDelayMap(axisoffset=axisoffset, 
                                                             angleoffset=angleoffset, unit=unit, jitters=False) 
-                #rescale(AccDisk.MakeTimeDelayMap(axisoffset=axisoffset, 
-                #                                            angleoffset=angleoffset, unit=unit, jitters=False), pxratio)
         else:
                 adjustedtimedelays = AccDisk.MakeTimeDelayMap(axisoffset=axisoffset, 
                                                             angleoffset=angleoffset, unit=unit, jitters=jitters)
-
-                #rescale(AccDisk.MakeTimeDelayMap(axisoffset=axisoffset, 
-                #                                            angleoffset=angleoffset, unit=unit, jitters=jitters), pxratio)
         maxrange = np.max(adjustedtimedelays)+1
         edgesize = np.size(np.nan_to_num(rescale(reprocessedmap, pxratio)), 0)      
 
@@ -729,21 +722,15 @@ def MicrolensedResponse(MagMap, AccDisk, wavelength, coronaheight, rotation=0, x
 
         if returnmaps==True:
                 return adjustedtimedelays*r_mask, magnifiedresponse, xposition+edgesize//2, yposition+edgesize//2  
-        #rescale(adjustedtimedelays*r_mask, 1/pxratio), rescale(magnifiedresponse, 1/pxratio), xposition+edgesize//2, yposition+edgesize//2    
-        
-        #if unscale == True:
-        #    
-        #        dummyblock = rescale(magnifiedresponse, 1/pxratio)
-        #        magnifiedresponse = (dummyblock)
-        #        dummyblock = rescale(adjustedtimedelays, 1/pxratio)
-        #        adjustedtimedelays = (dummyblock)
         
         dummyblock = rescale(magnifiedresponse, scaleratio)
         magnifiedresponse = dummyblock
         dummyblock = rescale(adjustedtimedelays, scaleratio)
         adjustedtimedelays = dummyblock
 
-        output = np.histogram(adjustedtimedelays, range=(0, maxrange), bins=int(maxrange), weights=np.nan_to_num(magnifiedresponse), density=True)[0]
+        output = np.histogram(adjustedtimedelays[:np.size(magnifiedresponse, 0), :np.size(magnifiedresponse, 1)],
+                              range=(0, maxrange), bins=int(maxrange),
+                              weights=np.nan_to_num(magnifiedresponse[:np.size(adjustedtimedelays, 0),:np.size(adjustedtimedelays, 1)]), density=True)[0]
         
         if smooth==True:
                 if unit=='hours': windowlength = np.size(output)//50 + 5
@@ -1165,7 +1152,23 @@ def Check_EL_Contamination(BLR, inc_ang, emit_wavelength, passband_min, passband
                 return avg, avg - req_vel_min
         return False
 
-        
+def Convolve_TF_With_Signal(input_signal, TF, timestamps, signal_ratio = 1/24):
+        '''
+        This takes a signal and transfer function and creates a light curve
+        by convolving at each timestamp.
+        signal is a list or array representing the driving signal
+        TF is the transfer function
+        timestamps are the timestamps to use
+        signal_ratio is the ratio between the intrinsic signal units and the TF units (1/24 is standard days / hours)
+        '''
+        interpolation = scipy.interpolate.interp1d(np.linspace(0-len(TF), len(input_signal)//signal_ratio-len(TF), len(input_signal)//signal_ratio), input_signal)
+        signal = []
+        for jj in range(len(timestamps)):
+                time_step = int(timesteps[jj]//signal_ratio) 
+                driving_signal = interp(np.linspace(time_step - len(TF), time_step, len(TF)))
+                flipped_TF = np.flip(TF)
+                signal.append(np.sum(flipped_TF*driving_signal))
+        return signal
         
         
 

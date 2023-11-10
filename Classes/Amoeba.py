@@ -42,6 +42,8 @@ from astropy import units as u
 from astropy import constants as const
 from scipy.integrate import quad
 import numpy as np
+import sys
+sys.path.append("../Functions/")
 import QuasarModelFunctions as QMF
 from scipy.fft import fft2, ifft2
 from scipy.ndimage import rotate
@@ -314,7 +316,6 @@ class BroadLineRegion():
             
             del_pol_vels_on_vels = Streamline_inner.dpol_vel_dz_on_vel[hh] + (kkspace / sum(mask)) * (Streamline_outer.dpol_vel_dz_on_vel[hh] - Streamline_inner.dpol_vel_dz_on_vel[hh])
             self.density_grid[np.argmax(mask):np.argmax(mask)+sum(mask), hh] += density_init_weight * del_pol_vels_on_vels * self.r_vals[np.argmax(mask):np.argmax(mask)+sum(mask)]**(-1)
-#            self.density_grid[np.argmax(mask):np.argmax(mask)+sum(mask), hh] += density_init_weight / sum(mask)
 
     def Project_BLR_density(self, inc_ang, grid_size=100, R_out=None):
         # grid_size is the TOTAL number of grid points along an axis.
@@ -351,7 +352,7 @@ class BroadLineRegion():
 class Streamline():
 
     def __init__(self, launch_r, launch_theta, max_z, char_dist, BHmassexp, asympt_vel, z_res=10,
-                 launch_z=0, launch_vel=0, alpha=1, v_vec=None, r_vec=None):
+                 launch_z=1, launch_vel=1e-3, alpha=1, v_vec=None, r_vec=None):
 
         self.launch_radius = launch_r
         self.launch_theta = launch_theta * np.pi / 180

@@ -3,9 +3,11 @@ This writes a .json file to use with "CreateMovie.py"
 '''
 import numpy as np
 import json
+import sys
+sys.path.append("../Functions")
 import QuasarModelFunctions as QMF
 
-fname = "json_inputs.json"
+fname = "../SampleJsons/json_inputs.json"
 
 mass_exp = 8.0
 redshift_q = 2.0

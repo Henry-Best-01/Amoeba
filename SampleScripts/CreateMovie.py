@@ -3,6 +3,9 @@ This code takes in a dictionary of parameters from a .json file and outputs an
 accretion disk movie.
 Relies on some precompiled ray traces which are read depending on input .json
 '''
+import sys
+sys.path.append("../Functions/")
+sys.path.append("../Classes/")
 import QuasarModelFunctions as QMF
 import Amoeba
 import numpy as np
@@ -17,8 +20,8 @@ ts = time.time()
 
 # input directory containing ray-traces
 ray_trace_dir = "../../DiskRayTraces/"
-fname = "json_inputs.json"
-output_fname = "MyMovie.fits"
+fname = "../SampleJsons/json_inputs.json"
+output_fname = "../Images/MyMovie.fits"
 
 # Load inputs from json file
 with open(fname) as file:
@@ -49,6 +52,7 @@ seed = inputs['seed']                               # int, random seed
 
 
 # Determine which ray-trace file to read by rounding to known values
+# Must download zipped fits filts from https://drive.google.com/drive/folders/1vx8HUBXw6SaDq5uS4jQCyWdg13XfCRCv?usp=share_link
 if spin < 0:
     spin_label = 'm'
     spin = abs(float(spin))
