@@ -187,7 +187,7 @@ def AccDiskTemp (R, R_min, M, M_acc, beta=0, coronaheight=6, albedo=1, eta=0.1, 
                                                  - 3*(x1-a)**2/(x1*(x1-x2)*(x1-x3)) * np.log((x-x1)/(x0-x1)) \
                                                  - 3*(x2-a)**2/(x2*(x2-x1)*(x2-x3)) * np.log((x-x2)/(x0-x2)) \
                                                  - 3*(x3-a)**2/(x3*(x3-x1)*(x3-x2)) * np.log((x-x3)/(x0-x3)))
-                tempmap = ((3*M_acc*c**6 / (8*np.pi*G**2*M**2)) * F_NT / sigma)**(0.25)
+                tempmap = (((3*M_acc*c**6 / (8*np.pi*G**2*M**2)) * F_NT / sigma)**(0.25)).value
         else:
                 print("Please use visc_temp = 'SS' or 'NT', other values are not supported at this time. Revering to SS disk.")
                 tempmap = ( ( (3.0 * G * M * m0_dot * (1.0 - ((r_in) / r)**(0.5))) / (8.0 * pi * sigma * Rs**3) )**(0.25)).decompose().value * (r**(-(3-beta)/4))

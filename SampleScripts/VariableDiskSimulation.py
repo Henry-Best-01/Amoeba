@@ -20,7 +20,6 @@ Step_2: Choose your disk reprocessing model, or feed one directly in!
     *Note* Reprocessing depends on temperature profile, so we define T(r) here
     -'SS' is the basic Shakura-Sunyaev accretion disk in
     the lamppost geometry. This requires:
-        mass_exponent the value log_10(M_bh / M_sun) (typically 7-10)
         num_GRs the number of gravitational radii to use
         inc_ang the inclination in degrees
         resolution the resolution of the disk's image
@@ -53,6 +52,7 @@ Step_4: Choose your output, will be output as array (wavelengths, timestamps, xv
         spatially resolved light curve
 
 Other global params:
+    -'mass_exponent' the value log_10(M_bh / M_sun) (typically 7-10)
     -'redshift' the redshift of the system
     -'time' the total time (in years) of the resulting light curve (curve will be units days)
     -'time_steps' if int: number of evenly spaced time stamps to create
@@ -66,11 +66,11 @@ Other global params:
     -'save_file' is a string to save the output to (as a fits file)
 """
 import json
+import numpy as np
+import scipy
 import sys
 sys.path.append("../Functions/")
 sys.path.append("../Classes/")
-import numpy as np
-import scipy
 import Amoeba
 import QuasarModelFunctions as QMF
 from os import path
@@ -78,17 +78,18 @@ import skimage
 from astropy.io import fits
 from astropy import constants as const
 from astropy import units as u
+import matplotlib.pyplot as plt
 
 
-input_file = "../SampleJsons/Run_Variability_Json.json"
+input_file = "../SampleJsons/Variability_model_4.json"
 
 # Step 0 open json with params, make sure all exist
 
-if path.is_file(input_file) != True:
+if path.isfile(input_file) != True:
     print("No valid json at target location:", inputs)
 
 with open(input_file) as f:
-    inputs = json.load(input_file)
+    inputs = json.load(f)
 type_signal = inputs['Step_1']
 type_reverb = inputs['Step_2']
 type_wavelengths = inputs['Step_3']
@@ -96,6 +97,9 @@ type_output = inputs['Step_4']
 
 if inputs.get('seed') == True:
     np.random.seed(inputs['seed'])
+if inputs.get('spin') == True:
+    spin = inputs['spin']
+else: spin = 0
 
 if type_signal == 'DRW':
     drw_tau = inputs['tau']
@@ -121,7 +125,7 @@ omg0 = inputs['omg0']
 omgL = inputs['omgL']
 H0 = inputs['H0']
 
-if type(time) == list:
+if type(full_time) == list:
     timestamps = time_steps
     if timestamps[-1] > 2 * full_time:
         full_time = 2 * timestamps[-1]
@@ -132,8 +136,6 @@ else:
 
 if type_reverb != 'user':
     eddington_ratio = inputs['eddington_ratio']
-if type_reverb == 'NT':
-    spin = inputs['spin']
 if type_reverb == 'SS-plus':
     eta_x = inputs['eta_x']
     beta = inputs['beta']
@@ -149,7 +151,7 @@ if type_wavelengths == 'wavelength':
     obs_wavelengths = [inputs['lam']]
 if type_wavelengths == 'wavelengths':
     obs_wavelengths = inputs['lams']
-if type_wavelength == 'user-band':
+if type_wavelengths == 'user-band':
     obs_wavelengths = inputs['lams']
     throughputs = inputs['throughput']
 
@@ -165,7 +167,7 @@ output_length = inputs['time'] * 365
 if type_signal == 'DRW':
     SIGNAL = QMF.MakeDRW(total_time/365, 1, drw_sf_inf, drw_tau)
 if type_signal == 'BPL':
-    SIGNAL = QMF.MakeSignalFromPSD(total_time, 100, mean_magnitude, standard_dev, log_nu_b, alpha_L, alpha_H_minus_L)
+    SIGNAL = QMF.MakeSignalFromPSD(int(total_time), 100, mean_magnitude, standard_dev, log_nu_b, alpha_L, alpha_H_minus_L)
 if type_signal == 'user':
     SIGNAL = signal
     n_loops = 0
@@ -175,6 +177,16 @@ if type_signal == 'user':
     if n_loops > 0:
         print("Input signal wasn't long enough, wrapped", n_loops, "time(s)")
         print("Signal should be at least 2 times the total length of light curve desired")
+
+# Check step 1
+
+print(len(SIGNAL))
+print(np.max(SIGNAL))
+print(np.std(SIGNAL))
+fig, ax = plt.subplots()
+ax.plot(SIGNAL)
+plt.show()
+
     
 
 # Step 2 prepare reprocessing map
@@ -187,7 +199,7 @@ if inputs.get('ray_trace_fits') is not None:
     if np.size(r_map, 0) != resolution:
         print("Warning, resolution should be:", np.size(r_map, 0))
         print("Rescaling ray-traced maps to match...")
-        ratio = np.size(r_map, 0)) / resolution
+        ratio = np.size(r_map, 0) / resolution
         dummy_map = skimage.transform.rescale(t_map, 1/ratio)
         t_map = dummy_map
         dummy_map = skimage.transform.rescale(v_map, 1/ratio)
@@ -198,9 +210,9 @@ if inputs.get('ray_trace_fits') is not None:
         r_map = dummy_map
 else:
     x_values = np.linspace(-num_grs, num_grs, resolution)
-    y_values = x_values.copy() / np.cos(inc_ang * np.pi / 180)
+    y_values = x_values.copy() 
     X, Y = np.meshgrid(x_values, y_values, indexing='ij')
-    r_map = (X**2 + Y**2)**0.5
+    r_map = (X**2 + (Y/ np.cos(inc_ang * np.pi / 180))**2)**0.5
     v_map = np.zeros(np.shape(r_map))
     g_map = np.ones(np.shape(r_map))
     
@@ -208,46 +220,70 @@ mass = 10**m_exp * const.M_sun.to(u.kg)
 gravitational_radius = QMF.CalcRg(mass)
     
 if type_reverb == 'user':
-    r_values = np.linspace(1, len(inputs['profile']), len(inputs['profile']))
+    r_values = np.linspace(0, len(inputs['profile']), len(inputs['profile']))
     temp_values = inputs['profile']
+    spin = 0
 if type_reverb == 'SS':
-    r_values = np.linspace(1, num_grs, 10*num_grs)
+    r_values = np.linspace(0, num_grs, 10*num_grs)
     temp_values = QMF.AccDiskTemp(r_values * gravitational_radius, 6 * gravitational_radius,
                                   mass, 0, eddingtons = eddington_ratio, visc_prof='SS')
+    spin = 0
 if type_reverb == 'NT':
-    r_values = np.linspace(1, num_grs, 10*num_grs)
+    r_values = np.linspace(0, num_grs, 10*num_grs)
     R_in = QMF.SpinToISCO(spin)
     temp_values = QMF.AccDiskTemp(r_values * gravitational_radius, R_in * gravitational_radius,
                                   mass, 0, eddingtons = eddington_ratio, a=spin, visc_prof='NT')
 if type_reverb == 'SS-plus':
-    r_values = np.linspace(1, num_grs, 10*num_grs)
+    r_values = np.linspace(0, num_grs, 10*num_grs)
     R_in = QMF.SpinToISCO(spin)
     temp_values = QMF.AccDiskTemp(r_values * gravitational_radius, R_in * gravitational_radius,
                                   mass, 0, coronaheight=c_height, eta=eta_x, beta=beta,
                                   eddingtons = eddington_ratio, a=spin, visc_prof='SS')    
 prof_interpolation = scipy.interpolate.interp1d(r_values, temp_values,
                                 bounds_error=False, fill_value='extrapolate')
+
+
 t_map = prof_interpolation(r_map)
 
 Acc_Disk = Amoeba.FlatDisk(m_exp, redshift, num_grs, inc_ang, c_height, t_map, v_map, g_map,
                            r_map, spin=spin, omg0=omg0, omgl=omgL, H0=H0)
 
+# Check step 2
+
+print(np.max(temp_values))
+fig, ax = plt.subplots()
+ax.loglog(r_values,temp_values)
+plt.show()
+
+fig, ax = plt.subplots()
+ax.set_aspect(1)
+contours = ax.contourf(X, Y, t_map, 20)
+fig.colorbar(contours, ax=ax)
+plt.show()
+
+
 # Step 2.5 initialize output, in case the file will be too large we should know before we make it
 # ESPECIALLY WITH SNAPSHOT-MULTI MODE OUTPUT which is a 4dim array, of shape (nwavelengths, ntimestamps, imgx, imgy)
 
 if type_output == 'LC-multi':
-    output = np.zeros((len(wavelengths), len(timestamps)))
-    static_out = np.zeros(len(wavelengths))
+    output = np.zeros((len(obs_wavelengths), len(timestamps)))
+    static_out = np.zeros(len(obs_wavelengths))
 if type_output == 'LC-sum':
     output = np.zeros(len(timestamps))
     static_out = 0
 if type_output == 'snapshot-multi':
-    output = np.zeros((len(wavelengths), len(timestamps), np.size(r_map, 0), np.size(r_map, 1)))
-    static_out = np.zeros((len(wavelengths), np.size(r_map, 0), np.size(r_map, 1)))
+    output = np.zeros((len(obs_wavelengths), len(timestamps), np.size(r_map, 0), np.size(r_map, 1)))
+    static_out = np.zeros((len(obs_wavelengths), np.size(r_map, 0), np.size(r_map, 1)))
 if type_output == 'snapshot-sum':
     output = np.zeros((len(timestamps), np.size(r_map, 0), np.size(r_map, 1)))
     static_out = np.zeros((np.size(r_map, 0), np.size(r_map, 1)))
     
+
+# Check step 2.5
+
+print(np.shape(output))
+print(np.shape(static_out))
+
 
 # Step 3 start calculating responses 
 
@@ -259,27 +295,31 @@ if type_output == 'snapshots-multi':
     td_map = AccDisk.MakeTimeDelayMap()
 elif type_output == 'snapshots-sum':
     td_map = AccDisk.MakeTimeDelayMap()
+
+    
 for ii in range(len(obs_wavelengths)):
     
-
-
     if type_output == 'LC-multi' or 'LC-sum':
         TF_current = Acc_Disk.ConstructDiskTransferFunction(obs_wavelengths[ii], scaleratio=10)
-        signal_contribution = QMF.Convolve_TF_With_Signal(SIGNAL, TF_current, timestamps)
+        signal_contribution = np.asarray(QMF.Convolve_TF_With_Signal(SIGNAL, TF_current, timestamps))
         static_emission = np.sum(Acc_Disk.MakeSurfaceIntensityMap(obs_wavelengths[ii]))
     elif type_output == 'snapshots-multi' or 'snapshots-sum':
         dBdT = Acc_Disk.MakeDBDTMap(obs_wavelengths[ii])
         dTdLx = Acc_Disk.MakeDTDLxMap(obs_wavelengths[ii])
-        static_emission = Acc_Disk.MakeSurfaceIntensityMap(obs_wavelengths[ii]) 
-        signal_contribution = QMF.MakeSnapshots(np.zeros(np.shape(static_emission)), dBdT * dTdLx, td_map,
-                                     Signal=SIGNAL)
+        static_emission = Acc_Disk.MakeSurfaceIntensityMap(obs_wavelengths[ii])
+        signal_contribution = np.asarray(QMF.MakeSnapshots(np.zeros(np.shape(static_emission)), dBdT * dTdLx, td_map,
+                                     Signal=SIGNAL))
     if type_wavelengths == 'user-band':
         signal_contribution *= throughputs[ii]
         static_emission *= throughputs[ii]
         
     if type_output == 'LC-multi':
-        output[ii, :] += signal_contribution
-        static_out[ii, :] += static_emission
+        if output.ndim == 2:
+            output[ii, :] += signal_contribution
+            static_out[ii] += static_emission
+        else:
+            output += signal_contribution
+            static_out += static_emission
     elif type_output == 'LC-sum':
         output += signal_contribution
         static_out += static_emission
@@ -289,6 +329,18 @@ for ii in range(len(obs_wavelengths)):
     elif type_output == 'snapshots_sum':
         output += signal_contribution
         static_out += static_emission
+        
+# Check step 3
+
+print(np.max(output))
+print(np.max(static_out))
+fig, ax = plt.subplots()
+if type_output[:2] == 'LC':
+    ax.plot(TF_current)
+else:
+    contours = ax.contourf(signal_contribution, 20)
+    plt.colorbar(contours, ax=ax)
+plt.show()
 
 # Step 4: return output!
 
