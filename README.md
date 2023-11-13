@@ -16,9 +16,9 @@ To make this code even more accessible, sample scripts are included to show exac
 Thank you for taking notice of my code! I would be happy to answer any questions. I can be contacted directly at hbest@gradcenter.cuny.edu
 
 
-[^1] : https://ui.adsabs.harvard.edu/abs/2014ApJS..211...16V/abstract
-[^2] : https://ui.adsabs.harvard.edu/abs/2018ascl.soft11011B/abstract
-[^3] : https://ui.adsabs.harvard.edu/abs/1973A%26A....24..337S/abstract
-[^4] : https://ui.adsabs.harvard.edu/abs/2007MNRAS.380..669C
-[^5] : https://ui.adsabs.harvard.edu/abs/2019MNRAS.482.2788S
-[^6] : https://ui.adsabs.harvard.edu/abs/2017PASA...34...42Y
+[^1]: https://ui.adsabs.harvard.edu/abs/2014ApJS..211...16V/abstract
+[^2]: https://ui.adsabs.harvard.edu/abs/2018ascl.soft11011B/abstract
+[^3]: https://ui.adsabs.harvard.edu/abs/1973A%26A....24..337S/abstract
+[^4]: https://ui.adsabs.harvard.edu/abs/2007MNRAS.380..669C
+[^5]: https://ui.adsabs.harvard.edu/abs/2019MNRAS.482.2788S
+[^6]: https://ui.adsabs.harvard.edu/abs/2017PASA...34...42Y
