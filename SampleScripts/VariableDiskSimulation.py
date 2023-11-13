@@ -30,6 +30,9 @@ Step_2: Choose your disk reprocessing model, or feed one directly in!
         eta_x the irradiating strength of the corona such that L_x = eta_x M_acc c^2
         beta the wind parameter making the profile scale like T \propto r^(-(3-beta)/4)
     *Note* SS-plus converges to SS for eta_x = beta = 0
+    -'gaussian' is a gaussian profile:
+        'max_temp' is the maximum temperature (e.g. at r=0)
+        'FWHM' is the full width at half maximum in gravitational radii
     -'user' is a user defined profile:
         profile, a 1 dimensional temperature profile given as a
         list at every gravitational radius. Values not provided will default to T=0.
@@ -46,9 +49,9 @@ Step_3: Choose what you want calculated
 Step_4: Choose your output, will be output as array (wavelengths, timestamps, xvals, yvals)
     -'LC-multi' will return a 1 dimensional light curve for each wavelength provided
     -'LC-sum' will return a 1 dimensional light curve for the sum of wavelengths provided
-    -'snapshot-multi' will return a 3 dimensional set of images where each pixel
+    -'snapshots-multi' will return a 3 dimensional set of images where each pixel
         is a spatially resolved light curve
-    -'snapshot-sum' will return a 3 dimensional image where each pixel is a
+    -'snapshots-sum' will return a 3 dimensional image where each pixel is a
         spatially resolved light curve
 
 Other global params:
@@ -81,7 +84,7 @@ from astropy import units as u
 import matplotlib.pyplot as plt
 
 
-input_file = "../SampleJsons/Variability_model_4.json"
+input_file = "../SampleJsons/Variability_model_1.json"
 
 # Step 0 open json with params, make sure all exist
 
@@ -131,11 +134,14 @@ if type(full_time) == list:
         full_time = 2 * timestamps[-1]
 else:
     total_time = full_time
-    timestamps = np.linspace(0, total_time, time_steps)
-    full_time *= 2
+    timestamps = np.linspace(0, total_time - 10, time_steps)
+    total_time *= 2
 
-if type_reverb != 'user':
+if type_reverb != 'user' and type_reverb != 'gaussian':
     eddington_ratio = inputs['eddington_ratio']
+if type_reverb == 'gaussian':
+    temp_max = inputs['max_temp']
+    FWHM = inputs['FWHM']
 if type_reverb == 'SS-plus':
     eta_x = inputs['eta_x']
     beta = inputs['beta']
@@ -180,12 +186,12 @@ if type_signal == 'user':
 
 # Check step 1
 
-print(len(SIGNAL))
-print(np.max(SIGNAL))
-print(np.std(SIGNAL))
-fig, ax = plt.subplots()
-ax.plot(SIGNAL)
-plt.show()
+#print(len(SIGNAL))
+#print(np.max(SIGNAL))
+#print(np.std(SIGNAL))
+#fig, ax = plt.subplots()
+#ax.plot(SIGNAL)
+#plt.show()
 
     
 
@@ -220,9 +226,26 @@ mass = 10**m_exp * const.M_sun.to(u.kg)
 gravitational_radius = QMF.CalcRg(mass)
     
 if type_reverb == 'user':
-    r_values = np.linspace(0, len(inputs['profile']), len(inputs['profile']))
-    temp_values = inputs['profile']
+    temp_values = np.trim_zeros(inputs['profile'], 'b')
+    r_values = np.linspace(0, len(temp_values), len(temp_values))
+    x_values = np.linspace(-len(temp_values), len(temp_values), resolution)
+    y_values = x_values.copy() 
+    X, Y = np.meshgrid(x_values, y_values, indexing='ij')
+    r_map = (X**2 + (Y / np.cos(inc_ang * np.pi / 180))**2)**0.5
+    v_map = np.zeros(np.shape(r_map))
+    g_map = np.ones(np.shape(r_map))
     spin = 0
+if type_reverb == 'gaussian':
+    x_values = np.linspace(-num_grs, num_grs, resolution)
+    y_values = x_values.copy() 
+    X, Y = np.meshgrid(x_values, y_values, indexing='ij')
+    r_map = (X**2 + (Y / np.cos(inc_ang * np.pi / 180))**2)**0.5
+    v_map = np.zeros(np.shape(r_map))
+    g_map = np.ones(np.shape(r_map))
+    spin = 0
+    r_values = np.linspace(0, num_grs, 10*num_grs)
+    temp_values = temp_max * np.e**(-(r_values)**2 / (FWHM / 2.35)**2)
+    temp_values *= (temp_values > 100)
 if type_reverb == 'SS':
     r_values = np.linspace(0, num_grs, 10*num_grs)
     temp_values = QMF.AccDiskTemp(r_values * gravitational_radius, 6 * gravitational_radius,
@@ -250,16 +273,18 @@ Acc_Disk = Amoeba.FlatDisk(m_exp, redshift, num_grs, inc_ang, c_height, t_map, v
 
 # Check step 2
 
-print(np.max(temp_values))
-fig, ax = plt.subplots()
-ax.loglog(r_values,temp_values)
-plt.show()
+#print(np.max(temp_values))
+#print(np.min(temp_values))
+#fig, ax = plt.subplots()
+#ax.loglog(r_values,temp_values)
+#plt.show()
 
-fig, ax = plt.subplots()
-ax.set_aspect(1)
-contours = ax.contourf(X, Y, t_map, 20)
-fig.colorbar(contours, ax=ax)
-plt.show()
+
+#fig, ax = plt.subplots()
+#ax.set_aspect(1)
+#contours = ax.contourf(X, Y, t_map, 20)
+#fig.colorbar(contours, ax=ax)
+#plt.show()
 
 
 # Step 2.5 initialize output, in case the file will be too large we should know before we make it
@@ -271,18 +296,21 @@ if type_output == 'LC-multi':
 if type_output == 'LC-sum':
     output = np.zeros(len(timestamps))
     static_out = 0
-if type_output == 'snapshot-multi':
+if type_output == 'snapshots-multi':
     output = np.zeros((len(obs_wavelengths), len(timestamps), np.size(r_map, 0), np.size(r_map, 1)))
-    static_out = np.zeros((len(obs_wavelengths), np.size(r_map, 0), np.size(r_map, 1)))
-if type_output == 'snapshot-sum':
+    static_out = np.zeros((len(obs_wavelengths), np.size(r_map, 0), np.size(r_map, 1)), dtype=float)
+if type_output == 'snapshots-sum':
     output = np.zeros((len(timestamps), np.size(r_map, 0), np.size(r_map, 1)))
     static_out = np.zeros((np.size(r_map, 0), np.size(r_map, 1)))
     
 
 # Check step 2.5
 
-print(np.shape(output))
-print(np.shape(static_out))
+#print(np.shape(output))
+#print(np.shape(static_out))
+#print(np.max(Acc_Disk.MakeSurfaceIntensityMap(obs_wavelengths[0])))
+#print(np.min(Acc_Disk.MakeSurfaceIntensityMap(obs_wavelengths[0])))
+
 
 
 # Step 3 start calculating responses 
@@ -292,23 +320,24 @@ if len(obs_wavelengths) > 20:
 
 
 if type_output == 'snapshots-multi':
-    td_map = AccDisk.MakeTimeDelayMap()
+    td_map = Acc_Disk.MakeTimeDelayMap()
 elif type_output == 'snapshots-sum':
-    td_map = AccDisk.MakeTimeDelayMap()
+    td_map = Acc_Disk.MakeTimeDelayMap()
 
-    
+
 for ii in range(len(obs_wavelengths)):
     
-    if type_output == 'LC-multi' or 'LC-sum':
+    if type_output == 'LC-multi' or type_output == 'LC-sum':
         TF_current = Acc_Disk.ConstructDiskTransferFunction(obs_wavelengths[ii], scaleratio=10)
         signal_contribution = np.asarray(QMF.Convolve_TF_With_Signal(SIGNAL, TF_current, timestamps))
         static_emission = np.sum(Acc_Disk.MakeSurfaceIntensityMap(obs_wavelengths[ii]))
-    elif type_output == 'snapshots-multi' or 'snapshots-sum':
+    elif type_output == 'snapshots-multi' or type_output == 'snapshots-sum':
         dBdT = Acc_Disk.MakeDBDTMap(obs_wavelengths[ii])
         dTdLx = Acc_Disk.MakeDTDLxMap(obs_wavelengths[ii])
         static_emission = Acc_Disk.MakeSurfaceIntensityMap(obs_wavelengths[ii])
         signal_contribution = np.asarray(QMF.MakeSnapshots(np.zeros(np.shape(static_emission)), dBdT * dTdLx, td_map,
-                                     Signal=SIGNAL))
+                                     timestamps, Signal=SIGNAL))
+        print(np.shape(dBdT), np.shape(dTdLx))
     if type_wavelengths == 'user-band':
         signal_contribution *= throughputs[ii]
         static_emission *= throughputs[ii]
@@ -332,23 +361,28 @@ for ii in range(len(obs_wavelengths)):
         
 # Check step 3
 
-print(np.max(output))
-print(np.max(static_out))
-fig, ax = plt.subplots()
-if type_output[:2] == 'LC':
-    ax.plot(TF_current)
-else:
-    contours = ax.contourf(signal_contribution, 20)
-    plt.colorbar(contours, ax=ax)
-plt.show()
+#print(np.max(output))
+#print(np.max(static_out))
+#fig, ax = plt.subplots()
+#if type_output[:2] == 'LC':
+#    ax.plot(TF_current)
+#else:
+#    contours = ax.contourf(signal_contribution, 20)
+#    plt.colorbar(contours, ax=ax)
+#plt.show()
 
 # Step 4: return output!
 
 
 HDU = fits.PrimaryHDU(output)
+HDU.header['output_type'] = type_output
 staticHDU = fits.ImageHDU(static_out)
-HDUL = fits.HDUList([HDU, staticHDU])
-HDUL.writeto(inputs['save_file'])
+timestampsHDU = fits.ImageHDU(timestamps)
+HDUL = fits.HDUList([HDU, staticHDU, timestampsHDU])
+print("Please enter file name to save as (leave blank to cancel):")
+save_file_name = input()
+if save_file_name != '':
+    HDUL.writeto(save_file_name+'.fits', overwrite=True)
 
 
 

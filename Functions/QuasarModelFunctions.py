@@ -210,7 +210,7 @@ def PlanckLaw (T, lam):
         elif type(lam) != u.Quantity:
                 dummyval = lam * u.nm.to(u.m)
                 lam = dummyval
-        
+
         return np.nan_to_num(2.0 * h.value * c.value**2 * (lam)**(-5.0) * ((e**(h.value * c.value / (lam * k.value * T)) - 1.0)**(-1.0)))  # This will return the Planck Law wavelength function at the temperature input
 
 
@@ -481,7 +481,7 @@ def MakeTimeDelayMap(disk, inc_ang, massquasar = 10**8 * const.M_sun.to(u.kg), r
 
         xx = np.linspace(-diskres/2 * rstep, diskres/2 * rstep, diskres) 
         yy = np.linspace(-diskres/2 * rstep, diskres/2 * rstep, diskres) / np.cos(inc_ang)
-        xxx, yyy = np.meshgrid(xx, yy)
+        xxx, yyy = np.meshgrid(xx, yy, indexing='ij')
         rrr, phiphiphi = QMF.CartToPolar(xxx-xoffset, yyy-yoffset)
         phiphiphi += np.pi/2                                                    # 0 degrees should be to observer, aimed at negative y direction
         if radiimap is not None:
@@ -906,7 +906,6 @@ def MakeSnapshots(DiskEmission, DiskReprocess, DiskLags, SnapshotTimesteps, Sign
         
         maxtime = np.max(DiskLags) + SnapshotTimesteps[-1] + 100  # The longest signal we need for desired timesteps, plus small buffer
         diskmask = np.nan_to_num(DiskReprocess) > 1e-25
-        print(np.sum(diskmask))
 
         if Signal is not None:
                 if len(Signal) < maxtime:
@@ -923,13 +922,13 @@ def MakeSnapshots(DiskEmission, DiskReprocess, DiskLags, SnapshotTimesteps, Sign
                 Signal -= np.min(Signal)
 
         initial_lag = np.max(DiskLags)
-        
                 
         output = []
 
         for jj in SnapshotTimesteps:
                 timestamps = initial_lag + int(jj) - DiskLags.astype(int)
-                output.append(np.nan_to_num(DiskEmission + SignalWeighting * DiskReprocess * np.take(Signal, timestamps)) * diskmask)
+                output.append(np.nan_to_num(DiskEmission + SignalWeighting * DiskReprocess *
+                                            np.take(Signal, timestamps.astype(int))) * diskmask)
         if returnsignal == True:
                 return output, Signal
         return output
@@ -1191,8 +1190,55 @@ def Bring_signal_to_Obs_frame(input_signal, redshift, timestamps = None):
         return obs_signal
 
 
+def animate_snapshots(snapshots, limit=100, interval=50):
+        '''
+        This function animates a series of snapshots assuming the snapshot index is on the
+        first axis
+        '''
+        import matplotlib.animation as animate
+        import matplotlib.pyplot as plt
+
+        limit = limit
+        x_vals = np.linspace(0, np.size(snapshots, -1), np.size(snapshots, -1))
+        y_vals = x_vals.copy()
+        X, Y = np.meshgrid(x_vals, y_vals, indexing='ij')
+
+        contour_levels = np.linspace(np.min(snapshots), np.max(snapshots), 20)
+        
+        global cont
+
+        def animate_plot(time):
+                global cont
+                for c in cont.collections:
+                        c.remove()
+                mask = np.ones(np.shape(snapshots))
+                if mask.ndim == 3:
+                        mask[:time-1, :, :] = 0
+                        mask[time+1:, :, :] = 0
+                        cont = plt.contourf(X, Y, mask[time] * snapshots[time], contour_levels)
+                        
+                elif mask.ndim == 4:
+                        mask[:, :time-1, :, :] = 0
+                        mask[:, time+1:, :, :] = 0
+                        cont = plt.contourf(X, Y, mask[0, time] * snapshots[0, time], contour_levels)
+                        
+                return(cont)
+
+        fig, ax = plt.subplots()
+        ax.set_aspect(1)
+        if snapshots.ndim == 3:
+                cont = plt.contourf(X, Y, snapshots[0], contour_levels)
+                cbar = plt.colorbar(cont, ax=ax)
+        elif snapshots.ndim == 4:
+                cont = plt.contourf(X, Y, snapshots[0, 0], contour_levels)
+                cbar = plt.colorbar(cont, ax=ax)
+        animation = animate.FuncAnimation(fig, animate_plot, frames=limit, repeat=True, interval=interval)
+        plt.show()
+        return(animation)
 
 
+
+        
         
 
 

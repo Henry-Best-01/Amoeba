@@ -1,9 +1,9 @@
 """
 This writes a few sample .json inputs for 'VariableDiskSimulation.py'.
 
-File 1: DRW driving signal with standard SS disk outputting 1 wavelength
+File 1: DRW driving signal with standard SS disk outputting 1 wavelength snapshots
 File 2: DRW driving signal with NT disk outputting 3 wavelengths
-File 3: BPL driving signal with user defined temp profile outputting 1 wavelength
+File 3: BPL driving signal with gaussian temp profile outputting 1 wavelength
 File 4: user defined signal with SS-plus disk outputting in a defined filter
 
 Global (common) parameters to all models are defined above Generate File 1
@@ -26,7 +26,7 @@ redshift = 3.0
 time = 4.0
 time_steps = 300
 corona_height = 10
-omg0 = 0.0
+omg0 = 0.3
 omgL = 0.7
 H0 = 70
 
@@ -46,7 +46,7 @@ eddington_ratio = 0.15
 Step_3 = 'wavelength'
 lam = 700
 
-Step_4 = 'LC-multi'
+Step_4 = 'snapshots-multi'
 
 json_dict = {'Step_1' : Step_1,
              'Step_2' : Step_2,
@@ -126,18 +126,15 @@ log_nu_b = 0
 alpha_L = -1
 alpha_H = -3
 
-Step_2 = 'user'
+Step_2 = 'gaussian'
 num_GRs = 1000
-inc_ang = 0
-resolution = 500
-radial_vals = np.linspace(1, 1000, 1000)
-FWHM = 70  # units : R_g!
-profile = (5e4 * np.exp(-radial_vals**2 / (FWHM / 2.35)**2)) #Gaussian
-profile *= (profile > 1e-5)
-profile = profile.tolist()
+inc_ang = 10
+resolution = 1000
+max_temp = 1e5
+FWHM = 500  # units : R_g!
 
 Step_3 = 'wavelength'
-lam = 1300
+lam = 700
 
 Step_4 = 'LC-multi'
 
@@ -161,8 +158,8 @@ json_dict = {'Step_1' : Step_1,
              'num_GRs' : num_GRs,
              'inc_ang' : inc_ang,
              'resolution' : resolution,
-             'eddington_ratio' : eddington_ratio,
-             'profile' : profile,
+             'max_temp' : max_temp,
+             'FWHM' : FWHM,
              'lam' : lam
              }
 with open(fname3, 'w') as file:
