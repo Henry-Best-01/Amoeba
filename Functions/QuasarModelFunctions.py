@@ -686,12 +686,14 @@ def MicrolensedResponse(MagMap, AccDisk, wavelength, coronaheight, rotation=0, x
         adjustedtimedelays = newimg2
         adjustedrmap = rotate(adjustedrmap, rotation, axes=(0, 1), reshape=False)
         
-        while 3*edgesize > MagMap.resolution:
+        while 2*edgesize > MagMap.resolution:
                 print("Disk too large, or Magnification Map must be larger! Adjusting...")
-                smallerdisk = adjusteddisk[edgesize//2-edgesize//4:edgesize//2+edgesize//4, edgesize//2-edgesize//4:edgesize//2+edgesize//4]
-                smallerTDs = adjustedtimedelays[edgesize//2-edgesize//4:edgesize//2+edgesize//4, edgesize//2-edgesize//4:edgesize//2+edgesize//4]
-                smallerrmap = adjustedrmap[edgesize//2-edgesize//4:edgesize//2+edgesize//4, edgesize//2-edgesize//4:edgesize//2+edgesize//4]
-                edgesize = np.size(smallerdisk, 0)
+                center = np.size(adjusteddisk, 0) // 2
+                quarter = center // 2
+                smallerdisk = adjusteddisk[center-quarter:center+quarter, center-quarter:center+quarter]
+                smallerTDs = adjustedtimedelays[center-quarter:center+quarter, center-quarter:center+quarter]
+                smallerrmap = adjustedrmap[center-quarter:center+quarter, center-quarter:center+quarter]
+                edgesize /= 2
                 adjusteddisk = smallerdisk
                 adjustedtimedelays = smallerTDs
                 adjustedrmap = smallerrmap
@@ -716,12 +718,12 @@ def MicrolensedResponse(MagMap, AccDisk, wavelength, coronaheight, rotation=0, x
         xposition -= edgesize//2
         yposition -= edgesize//2
 
-        amplifying_map = rescale(MagMap.mag_map[yposition:yposition+edgesize, xposition:xposition+edgesize], 1/pxratio)
+        amplifying_map = rescale(MagMap.mag_map[int(yposition):int(yposition+edgesize), int(xposition):int(xposition+edgesize)], 1/pxratio)
     
         magnifiedresponse = np.nan_to_num(r_mask[:np.size(amplifying_map, 0), :np.size(amplifying_map, 1)] *
                                           adjusteddisk[:np.size(amplifying_map, 0), :np.size(amplifying_map, 1)] *
                                           amplifying_map[:np.size(r_mask, 0), :np.size(r_mask, 1)])
-                                          #MagMap.mag_map[yposition:yposition+edgesize, xposition:xposition+edgesize])
+
 
         if returnmaps==True:
                 return adjustedtimedelays*r_mask, magnifiedresponse, xposition+edgesize//2, yposition+edgesize//2  
