@@ -16,6 +16,36 @@ To make this code even more accessible, sample scripts are included to show exac
 Thank you for taking notice of my code! I would be happy to answer any questions. I can be contacted directly at hbest@gradcenter.cuny.edu
 
 
+**** Installation instructions ****
+First clone Amoeba onto your local machine using:
+
+git clone https://github.com/Henry-Best-01/Amoeba.git
+
+Make sure all dependencies are up to date, for pip users:  
+pip install -U numpy  
+pip install -U matplotlib  
+pip install -U scipy  
+pip install -U astropy  
+pip install -U scikit-image  
+
+Or for Conda users:  
+conda install numpy  
+conda install matplotlib  
+conda install scipy  
+conda install astropy  
+conda install scikit-image  
+conda update --all  
+
+To use Sim5 for ray tracing and the "CreateMaps" functionality, please follow Sim5 installation instructions [here](https://github.com/mbursa/sim5), including the python interface.
+
+Microlensing simulations will require an external magnification map. In the example notebook please provide the directory to these maps.
+
+Some precomputed ray tracings may be found [here](https://drive.google.com/drive/folders/1vx8HUBXw6SaDq5uS4jQCyWdg13XfCRCv?usp=share_link) which contains a zipped folder of .fits files for varioius inclination angles and black hole spins. Providing the path to one of these ray traces in the notebook will show you how to use these files with Amoeba. Beyond this zip file, a single file is included with Amoeba.
+
+
+
+
+
 [^1]: https://ui.adsabs.harvard.edu/abs/2014ApJS..211...16V/abstract
 [^2]: https://ui.adsabs.harvard.edu/abs/2018ascl.soft11011B/abstract
 [^3]: https://ui.adsabs.harvard.edu/abs/1973A%26A....24..337S/abstract
