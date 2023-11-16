@@ -36,11 +36,11 @@ conda install astropy
 conda install scikit-image  
 conda update --all  
 
-To use Sim5 for ray tracing and the "CreateMaps" functionality, please follow Sim5 installation instructions [here](https://github.com/mbursa/sim5), including the python interface.
+To use Sim5 for ray tracing and the "CreateMaps" functionality, please follow Sim5 installation instructions [here](https://github.com/mbursa/sim5), including the instructions to install the python interface.
 
 Microlensing simulations will require an external magnification map. In the example notebook please provide the directory to these maps.
 
-Some precomputed ray tracings may be found [here](https://drive.google.com/drive/folders/1vx8HUBXw6SaDq5uS4jQCyWdg13XfCRCv?usp=share_link) which contains a zipped folder of .fits files for varioius inclination angles and black hole spins. Providing the path to one of these ray traces in the notebook will show you how to use these files with Amoeba. Beyond this zip file, a single file is included with Amoeba.
+Some precomputed ray tracings may be found [here](https://drive.google.com/drive/folders/1vx8HUBXw6SaDq5uS4jQCyWdg13XfCRCv?usp=share_link) which contains a zipped folder of .fits files for various inclination angles and black hole spins. Providing the path to one of these ray traces in the notebook will show you how to use these files with Amoeba. Beyond this zip file, a single file is included with Amoeba.
 
 
 
