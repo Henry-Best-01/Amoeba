@@ -19,22 +19,22 @@ Thank you for taking notice of my code! I would be happy to answer any questions
 **** Installation instructions ****
 First clone Amoeba onto your local machine using:
 
-git clone https://github.com/Henry-Best-01/Amoeba.git
+```git clone https://github.com/Henry-Best-01/Amoeba.git```
 
 Make sure all dependencies are up to date, for pip users:  
-pip install -U numpy  
-pip install -U matplotlib  
-pip install -U scipy  
-pip install -U astropy  
-pip install -U scikit-image  
+```pip install -U numpy```  
+```pip install -U matplotlib```  
+```pip install -U scipy```  
+```pip install -U astropy```  
+```pip install -U scikit-image``` 
 
 Or for Conda users:  
-conda install numpy  
-conda install matplotlib  
-conda install scipy  
-conda install astropy  
-conda install scikit-image  
-conda update --all  
+```conda install numpy```  
+```conda install matplotlib```  
+```conda install scipy```  
+```conda install astropy```  
+```conda install scikit-image```  
+```conda update --all```  
 
 To use Sim5 for ray tracing and the "CreateMaps" functionality, please follow Sim5 installation instructions [here](https://github.com/mbursa/sim5), including the instructions to install the python interface.
 
