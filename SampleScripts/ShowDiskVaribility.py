@@ -12,7 +12,10 @@ import sys
 sys.path.append("../Functions")
 import QuasarModelFunctions as QMF
 
-file_name = "VariableDisk.fits"
+if len(sys.argv) > 1:
+    file_name = sys.argv[1]
+else:
+    file_name = "VariableDisk2.fits"
 
 with fits.open(file_name) as f:
     static_out = f[1].data

@@ -83,8 +83,11 @@ from astropy import constants as const
 from astropy import units as u
 import matplotlib.pyplot as plt
 
-
-input_file = "../SampleJsons/Variability_model_1.json"
+if len(sys.argv) > 1:
+    input_file = sys.argv[1]
+    
+else:
+    input_file = "../SampleJsons/Variability_model_2.json"
 
 # Step 0 open json with params, make sure all exist
 
@@ -358,6 +361,11 @@ for ii in range(len(obs_wavelengths)):
     elif type_output == 'snapshots_sum':
         output += signal_contribution
         static_out += static_emission
+
+if type_output[:2] == 'LC':
+    if output.ndim == 1:
+        output = QMF.Bring_signal_to_Obs_frame(output, redshift, timestamps)
+    
         
 # Check step 3
 

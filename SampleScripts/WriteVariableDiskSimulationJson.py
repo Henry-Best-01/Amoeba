@@ -22,9 +22,9 @@ fname4 = "../SampleJsons/Variability_model_4.json"
 
 
 mass_exponent = 8.0
-redshift = 3.0
-time = 4.0
-time_steps = 300
+redshift = 1.0
+time = 2.0
+time_steps = 2000
 corona_height = 10
 omg0 = 0.3
 omgL = 0.7
@@ -38,7 +38,7 @@ tau = 30
 SF_inf = 100
 
 Step_2 = 'SS'
-num_GRs = 1000
+num_GRs = 500
 inc_ang = 30
 resolution = 500
 eddington_ratio = 0.15
@@ -79,14 +79,16 @@ tau = 50
 SF_inf = 10
 
 Step_2 = 'NT'
-num_GRs = 1000
-inc_ang = 60
-resolution = 500
+num_GRs = 500
+inc_ang = 30
+resolution = 1000
 eddington_ratio = 0.15
 spin = 0.5
 
+time_steps = 10000
+
 Step_3 = 'wavelengths'
-lams = [600, 700, 800]
+lams = [400, 600, 800]
 
 Step_4 = 'LC-multi'
 
@@ -132,6 +134,8 @@ inc_ang = 10
 resolution = 1000
 max_temp = 1e5
 FWHM = 500  # units : R_g!
+
+time_steps = 300
 
 Step_3 = 'wavelength'
 lam = 700

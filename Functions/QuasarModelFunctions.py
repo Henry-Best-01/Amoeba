@@ -13,6 +13,9 @@ from astropy.io import fits
 from numpy.random import rand
 import astropy
 
+import warnings
+warnings.filterwarnings("ignore")
+np.seterr(divide='ignore', invalid='ignore')
 
 
 c = const.c                     		
