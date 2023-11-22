@@ -12,11 +12,12 @@ Step_1: Choose your signal, or feed one directly in!
         log_nu_b the breakpoint frequency
         alpha_L the low frequency power slope of the PSD
         alpha_H the high frequency power slope of the PSD
-    -'user' is a user defined signal. This requires:
-        signal, a list of amplitudes sampled at daily cadence
-        and will be interpolated between
+    -'user' is a user defined signal. This requires an additional input:
+        signal_path, the file containing the signal, containing:
+            signal, a list of amplitudes sampled
+            at daily cadence which will be interpolated between
 
-Step_2: Choose your disk reprocessing model, or feed one directly in!
+Step_2: Choose your disk model, or feed one directly in!
     *Note* Reprocessing depends on temperature profile, so we define T(r) here
     -'SS' is the basic Shakura-Sunyaev accretion disk in
     the lamppost geometry. This requires:
@@ -30,9 +31,9 @@ Step_2: Choose your disk reprocessing model, or feed one directly in!
         eta_x the irradiating strength of the corona such that L_x = eta_x M_acc c^2
         beta the wind parameter making the profile scale like T \propto r^(-(3-beta)/4)
     *Note* SS-plus converges to SS for eta_x = beta = 0
-    -'gaussian' is a gaussian profile:
-        'max_temp' is the maximum temperature (e.g. at r=0)
-        'FWHM' is the full width at half maximum in gravitational radii
+    -'power-law' is a power law profile:
+        'power' is the scaling of the temperature profile: T \propto r^(-power)
+    *Note* power-law converges to SS for power = 3/4
     -'user' is a user defined profile:
         profile, a 1 dimensional temperature profile given as a
         list at every gravitational radius. Values not provided will default to T=0.
@@ -42,9 +43,10 @@ Step_3: Choose what you want calculated
         lam the wavelength, in nanometers
     -'wavelengths' is multiple wavelengths
         lams a list of wavelengths in nanometers
-    -'user-band' is a wave filter requiring:
-        lams a list of wavelengths in nanometers
-        throughput a list of weighting factors for each wavelength
+    -'throughput' is for a wave filter, and requires:
+        band_path is the input json file name containing:
+            lams, a list of wavelengths in nanometers
+            throughput, a list of weighting factors for each wavelength
 
 Step_4: Choose your output, will be output as array (wavelengths, timestamps, xvals, yvals)
     -'LC-multi' will return a 1 dimensional light curve for each wavelength provided
@@ -87,7 +89,7 @@ if len(sys.argv) > 1:
     input_file = sys.argv[1]
     
 else:
-    input_file = "../SampleJsons/Variability_model_2.json"
+    print("Please use syntax: python VariableDiskSimulation.py [input json] [input signal (opt)] [input throughput (opt)]")
 
 # Step 0 open json with params, make sure all exist
 
@@ -101,11 +103,12 @@ type_reverb = inputs['Step_2']
 type_wavelengths = inputs['Step_3']
 type_output = inputs['Step_4']
 
-if inputs.get('seed') == True:
+if inputs.get('seed') is not None:
     np.random.seed(inputs['seed'])
-if inputs.get('spin') == True:
+if inputs.get('spin') is not None:
     spin = inputs['spin']
-else: spin = 0
+else:
+    spin = 0
 
 if type_signal == 'DRW':
     drw_tau = inputs['tau']
@@ -118,7 +121,15 @@ elif type_signal == 'BPL':
     alpha_H = inputs['alpha_H']
     alpha_H_minus_L = alpha_H - alpha_L
 elif type_signal == 'user':
-    signal = inputs['signal']
+    if len(sys.argv) > 2:
+        signal_path = sys.argv[2]
+    else:
+        print("Please use syntax: python VariableDiskSimulation.py [input json] [input signal (opt)] [input throughput (opt)]")
+    
+    if path.isfile(signal_path) != True:
+        print("No valid signal json at target location:", signal_path)
+    with open(signal_path) as f:
+        signal = json.load(f)['signal']
 
 m_exp = inputs['mass_exponent']
 num_grs = inputs['num_GRs']
@@ -140,11 +151,10 @@ else:
     timestamps = np.linspace(0, total_time - 10, time_steps)
     total_time *= 2
 
-if type_reverb != 'user' and type_reverb != 'gaussian':
+if type_reverb != 'user':
     eddington_ratio = inputs['eddington_ratio']
-if type_reverb == 'gaussian':
-    temp_max = inputs['max_temp']
-    FWHM = inputs['FWHM']
+if type_reverb == 'power-law':
+    power = inputs['power']
 if type_reverb == 'SS-plus':
     eta_x = inputs['eta_x']
     beta = inputs['beta']
@@ -160,9 +170,15 @@ if type_wavelengths == 'wavelength':
     obs_wavelengths = [inputs['lam']]
 if type_wavelengths == 'wavelengths':
     obs_wavelengths = inputs['lams']
-if type_wavelengths == 'user-band':
-    obs_wavelengths = inputs['lams']
-    throughputs = inputs['throughput']
+if type_wavelengths == 'throughput':
+    throughput_path = sys.argv[-1]
+              
+    if path.isfile(throughput_path) != True:
+        print("No valid throughput json at target location:", throughput_path)
+    with open(throughput_path) as f:
+        throughput_dict = json.load(f)
+        obs_wavelengths = throughput_dict['lams']
+        throughput = throughput_dict['throughput']
 
 redshift = inputs['redshift']
 
@@ -205,6 +221,7 @@ if inputs.get('ray_trace_fits') is not None:
         v_map = f[1].data.T
         g_map = f[2].data.T
         r_map = f[3].data.T
+        header = f[0].header
     if np.size(r_map, 0) != resolution:
         print("Warning, resolution should be:", np.size(r_map, 0))
         print("Rescaling ray-traced maps to match...")
@@ -217,6 +234,14 @@ if inputs.get('ray_trace_fits') is not None:
         g_map = dummy_map
         dummy_map = skimage.transform.rescale(r_map, 1/ratio)
         r_map = dummy_map
+    if header['inc_ang'] != inc_ang:
+        print("Warning, ray traced file does not match inclination angle expected! \n" + str(header['inc_ang']) + " is not " + str(inc_ang))
+    if header['numgrs'] != num_grs:
+        print("Warning, ray traced file does not match number of gravitational radii expected! \n" + str(header['numgrs']) + " is not " + str(num_grs))
+    if header['spin'] != spin:
+        print("Warning, ray traced file does not math spin expected! \n" + str(header['spin']) + " is not " + str(spin))
+
+
 else:
     x_values = np.linspace(-num_grs, num_grs, resolution)
     y_values = x_values.copy() 
@@ -237,23 +262,16 @@ if type_reverb == 'user':
     r_map = (X**2 + (Y / np.cos(inc_ang * np.pi / 180))**2)**0.5
     v_map = np.zeros(np.shape(r_map))
     g_map = np.ones(np.shape(r_map))
-    spin = 0
-if type_reverb == 'gaussian':
-    x_values = np.linspace(-num_grs, num_grs, resolution)
-    y_values = x_values.copy() 
-    X, Y = np.meshgrid(x_values, y_values, indexing='ij')
-    r_map = (X**2 + (Y / np.cos(inc_ang * np.pi / 180))**2)**0.5
-    v_map = np.zeros(np.shape(r_map))
-    g_map = np.ones(np.shape(r_map))
-    spin = 0
+if type_reverb == 'power-law':
     r_values = np.linspace(0, num_grs, 10*num_grs)
-    temp_values = temp_max * np.e**(-(r_values)**2 / (FWHM / 2.35)**2)
+    temp_values = QMF.AccDiskTemp(r_values * gravitational_radius, 6 * gravitational_radius,
+                                  mass, 0, eddingtons = eddington_ratio, beta=power, visc_prof='SS',
+                                  genericbeta=True)
     temp_values *= (temp_values > 100)
 if type_reverb == 'SS':
     r_values = np.linspace(0, num_grs, 10*num_grs)
     temp_values = QMF.AccDiskTemp(r_values * gravitational_radius, 6 * gravitational_radius,
                                   mass, 0, eddingtons = eddington_ratio, visc_prof='SS')
-    spin = 0
 if type_reverb == 'NT':
     r_values = np.linspace(0, num_grs, 10*num_grs)
     R_in = QMF.SpinToISCO(spin)
@@ -295,10 +313,10 @@ Acc_Disk = Amoeba.FlatDisk(m_exp, redshift, num_grs, inc_ang, c_height, t_map, v
 
 if type_output == 'LC-multi':
     output = np.zeros((len(obs_wavelengths), len(timestamps)))
-    static_out = np.zeros(len(obs_wavelengths))
+    static_out = output.copy()
 if type_output == 'LC-sum':
     output = np.zeros(len(timestamps))
-    static_out = 0
+    static_out = output.copy()
 if type_output == 'snapshots-multi':
     output = np.zeros((len(obs_wavelengths), len(timestamps), np.size(r_map, 0), np.size(r_map, 1)))
     static_out = np.zeros((len(obs_wavelengths), np.size(r_map, 0), np.size(r_map, 1)), dtype=float)
@@ -313,8 +331,6 @@ if type_output == 'snapshots-sum':
 #print(np.shape(static_out))
 #print(np.max(Acc_Disk.MakeSurfaceIntensityMap(obs_wavelengths[0])))
 #print(np.min(Acc_Disk.MakeSurfaceIntensityMap(obs_wavelengths[0])))
-
-
 
 # Step 3 start calculating responses 
 
@@ -340,15 +356,14 @@ for ii in range(len(obs_wavelengths)):
         static_emission = Acc_Disk.MakeSurfaceIntensityMap(obs_wavelengths[ii])
         signal_contribution = np.asarray(QMF.MakeSnapshots(np.zeros(np.shape(static_emission)), dBdT * dTdLx, td_map,
                                      timestamps, Signal=SIGNAL))
-        print(np.shape(dBdT), np.shape(dTdLx))
-    if type_wavelengths == 'user-band':
-        signal_contribution *= throughputs[ii]
-        static_emission *= throughputs[ii]
+    if type_wavelengths == 'throughput':
+        signal_contribution *= throughput[ii]
+        static_emission *= throughput[ii]
         
     if type_output == 'LC-multi':
         if output.ndim == 2:
             output[ii, :] += signal_contribution
-            static_out[ii] += static_emission
+            static_out[ii, :] += static_emission
         else:
             output += signal_contribution
             static_out += static_emission
@@ -384,9 +399,10 @@ if type_output[:2] == 'LC':
 
 HDU = fits.PrimaryHDU(output)
 HDU.header['output_type'] = type_output
+wavelengthsHDU = fits.ImageHDU(obs_wavelengths)
 staticHDU = fits.ImageHDU(static_out)
 timestampsHDU = fits.ImageHDU(timestamps)
-HDUL = fits.HDUList([HDU, staticHDU, timestampsHDU])
+HDUL = fits.HDUList([HDU, staticHDU, timestampsHDU, wavelengthsHDU])
 print("Please enter file name to save as (leave blank to cancel):")
 save_file_name = input()
 if save_file_name != '':

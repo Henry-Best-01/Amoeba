@@ -1208,7 +1208,8 @@ def animate_snapshots(snapshots, limit=100, interval=50):
         y_vals = x_vals.copy()
         X, Y = np.meshgrid(x_vals, y_vals, indexing='ij')
 
-        contour_levels = np.linspace(np.min(snapshots), np.max(snapshots), 20)
+        minimum_value = np.min(snapshots)
+        contour_levels = np.linspace(minimum_value, np.max(snapshots), 20)
         
         global cont
 
