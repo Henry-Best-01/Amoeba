@@ -777,11 +777,10 @@ def Correlate(LightCurve, LightCurve2 = False):
         lags = signal.correlation_lags(len(LightCurve), len(LightCurve2))
         correlation = signal.correlate(LightCurve - np.average(LightCurve), LightCurve2 - np.average(LightCurve2))
         spline = UnivariateSpline(lags, correlation - np.max(correlation)/2, s=0)
-        r1, r2 = spline.roots()
-        FWHM = r2-r1
+        roots = spline.roots()
         peak = np.argmax(correlation)
         
-        return lags, correlation, FWHM, peak 
+        return lags, correlation, roots, peak 
         
 
 def MakeDRW(t_max, delta_t, SF_inf, tau):
@@ -1168,15 +1167,20 @@ def Convolve_TF_With_Signal(input_signal, TF, timestamps, signal_ratio = 1/24):
         timestamps are the timestamps to use
         signal_ratio is the ratio between the intrinsic signal units and the TF units (1/24 is standard days / hours)
         '''
-        interpolation = scipy.interpolate.interp1d(np.linspace(0-len(TF), len(input_signal)//signal_ratio-len(TF),
-                                                               len(input_signal)), input_signal, bounds_error=False,
-                                                             fill_value='extrapolate')
+        #interpolation = scipy.interpolate.interp1d(np.linspace(0-len(TF), len(input_signal)//signal_ratio-len(TF),
+        #                                                       len(input_signal)), input_signal, bounds_error=False,
+        #                                                     fill_value='extrapolate')
+        interpolation = scipy.interpolate.interp1d(np.linspace(0, len(input_signal)//signal_ratio, len(input_signal)),
+                                                   input_signal, bounds_error=False, fill_value='extrapolate')
         signal = []
         for jj in range(len(timestamps)):
-                time_step = int(timestamps[jj]//signal_ratio) 
-                driving_signal = interpolation(np.linspace(time_step - len(TF), time_step, len(TF)))
-                flipped_TF = np.flip(TF)
-                signal.append(np.sum(flipped_TF*driving_signal))
+                time_step = int(timestamps[jj]//signal_ratio)
+                if time_step < len(TF):
+                        signal.append(0)
+                else:
+                        driving_signal = interpolation(np.linspace(time_step - len(TF), time_step, len(TF)))
+                        flipped_TF = np.flip(TF)
+                        signal.append(np.sum(flipped_TF*driving_signal))
         return signal
         
 def Bring_signal_to_Obs_frame(input_signal, redshift, timestamps = None):

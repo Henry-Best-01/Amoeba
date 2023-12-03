@@ -3,15 +3,20 @@ from astropy.io import fits
 import json
 import matplotlib.pyplot as plt
 import os
+import sys
+
+if len(sys.argv) > 1:
+    Movie_file = sys.argv[1]
+else:
+    print("Please provide a movie to work with")
+if len(sys.argv) > 2:
+    New_timestamps_file = sys.argv[2]
+else:
+    print("Please provide new time stamps to interpolate to")
 
 
-Movie_file = "MyMovie.fits"
-New_timestamps_file = "New_timestamps.json"
 
-
-
-
-def interpolate_movie(Movie, Orig_timestamps, New_timestamps, verbose=False, plot=False):
+def interpolate_movie(Movie, Orig_timestamps, New_timestamps, index=0, verbose=False, plot=False):
 
     '''
     This function aims to take a series of snapshots and resample them at different time intervals.
@@ -29,13 +34,18 @@ def interpolate_movie(Movie, Orig_timestamps, New_timestamps, verbose=False, plo
     '''
     import numpy as np
     import scipy
-    
+
+    if Movie.ndim == 4:
+        Movie = Movie[index, :, :, :]
 
     initial_shape = np.shape(Movie)
     if verbose: print("The initial movie shape was",initial_shape)
-    npix = initial_shape[1] * initial_shape[2]
+    npix = initial_shape[-1] * initial_shape[-2]
     if verbose: print("This had",npix,"pixels")
     if verbose: print("Data will be interpolated to",len(New_timestamps), "frames")
+
+    
+    
 
     space_positions = np.linspace(1, npix, npix)                        # Define linear positions of pixels
 
@@ -90,52 +100,36 @@ def interpolate_movie(Movie, Orig_timestamps, New_timestamps, verbose=False, plo
 
 
 if os.path.isfile(Movie_file) and os.path.isfile(New_timestamps_file):
-    with fits.open(Movie_file) as f:
-        Movie = f[0].data               # movie should have time on axis 0, while axis 1 and 2 are spatial
-        Orig_timestamps = f[-1].data       # 1d array or list
-
+    with fits.open(Movie_file) as fmov:
+        Movie = fmov[0].data               # movie should have time on axis 0, while axis 1 and 2 are spatial
+        Orig_timestamps = fmov[2].data       # 1d array or list
+        staticHDU = fits.ImageHDU(fmov[1].data)
+        wavelengthsHDU = fits.ImageHDU(fmov[-1].data)
+        header = fmov[0].header
 
 
     with open(New_timestamps_file) as f:
         json_input_file = json.load(f)
     New_timestamps = json_input_file['New_times']
 
-    interpolate_movie(Movie, Orig_timestamps, New_timestamps, verbose=True, plot=True)
-    interpolate_movie(Movie, Orig_timestamps, [10,20,30,40,50,5000,5010,5020,5300,10000,20000], verbose=True, plot=True)
-    interpolate_movie(Movie, Orig_timestamps, np.linspace(0, 24*3000, 400), verbose=True, plot=True)
+    if Movie.ndim == 4:
+        output = np.zeros((np.size(Movie, 0), np.size(New_timestamps), np.size(Movie, 2), np.size(Movie, 3)))
+        for index in range(np.size(Movie, 0)):
+            output[index, :, :, :] = interpolate_movie(Movie, Orig_timestamps, New_timestamps, index=index)
+    else:
+        output = interpolate_movie(Movie, Orig_timestamps, New_timestamps)
 
-pixels = np.zeros((20, 2, 3))
-for tt in range(np.size(pixels, 0)):
+    HDU = fits.PrimaryHDU(output)
+    HDU.header['output_type'] = header['output_type']
+    
+    
+    timestampsHDU = fits.ImageHDU(New_timestamps)
+    HDUL = fits.HDUList([HDU, staticHDU, timestampsHDU, wavelengthsHDU])
+    print("Please enter file name to save as (leave blank to cancel):")
+    save_file_name = input()
+    if save_file_name != '':
+        HDUL.writeto(save_file_name+'.fits', overwrite=True)
 
-    pixels[tt, 0, 0] = np.sin(tt)
-    pixels[tt, 0, 1] = -np.sin(tt)
-    pixels[tt, 0, 2] = 0
-    pixels[tt, 1, 0] = tt - 10
-    pixels[tt, 1, 1] = 10 - tt
-    pixels[tt, 1, 2] = np.exp(-tt)
-
-new_movie = interpolate_movie(pixels, np.linspace(0, 20, 20), [0, 2, 5, 5.5, 7, 18.2], verbose=True, plot=False)
-
-
-fig, ax = plt.subplots()
-ax.plot(np.linspace(0, 20, 20), pixels[:, 0, 0], label="px orig [0,0]")
-ax.plot(np.linspace(0, 20, 20), pixels[:, 0, 1], label="px orig [0,1]")
-ax.plot(np.linspace(0, 20, 20), pixels[:, 0, 2], label="px orig [0,2]")
-ax.plot(np.linspace(0, 20, 20), pixels[:, 1, 0], label="px orig [1,0]")
-ax.plot(np.linspace(0, 20, 20), pixels[:, 1, 1], label="px orig [1,1]")
-ax.plot(np.linspace(0, 20, 20), pixels[:, 1, 2], label="px orig [1,2]")
-plt.gca().set_prop_cycle(None)
-ax.plot([0, 2, 5, 5.5, 7, 18.2], new_movie[:, 0, 0], '-o', alpha=0.5, label='interp [0,0]')
-ax.plot([0, 2, 5, 5.5, 7, 18.2], new_movie[:, 0, 1], '-o', alpha=0.5, label='interp [0,1]')
-ax.plot([0, 2, 5, 5.5, 7, 18.2], new_movie[:, 0, 2], '-o', alpha=0.5, label='interp [0,2]')
-ax.plot([0, 2, 5, 5.5, 7, 18.2], new_movie[:, 1, 0], '-o', alpha=0.5, label='interp [1,0]')
-ax.plot([0, 2, 5, 5.5, 7, 18.2], new_movie[:, 1, 1], '-o', alpha=0.5, label='interp [1,1]')
-ax.plot([0, 2, 5, 5.5, 7, 18.2], new_movie[:, 1, 2], '-o', alpha=0.5, label='interp [1,2]')
-ax.legend(ncol=2)
-
-ax.set_xlabel("Timestamp [arb.]")
-ax.set_ylabel("Pixel value [arb.]")
-plt.show()
 
 
 

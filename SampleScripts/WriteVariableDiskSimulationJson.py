@@ -95,7 +95,7 @@ spin = 0.7
 time_steps = 10000
 
 Step_3 = 'wavelengths'
-lams = [40, 600, 5000]
+lams = [400, 600, 1000]
 
 Step_4 = 'LC-multi'
 

@@ -6,22 +6,23 @@ The output will be a fits file which may be used with the AmoebaExamples noteboo
 import numpy as np
 import sys
 sys.path.append(path_to_sim5)   
-sys.path.append(path_to_Amoeba/QuasarModelFunctions)
+sys.path.append(../Functions/)
 import QuasarModelFunctions as QMF                  
 import sim5                                         # Ray tracing code
 from astropy.io import fits                         # Used for storing files
 
 # Define inputs for ray tracing
 
-resolution = 500   # number of pixels for the output
-numGRs = 250        # number of Gravitational Radii we zoom in on, resolved to ~(resolution/2)/numGRs 
+resolution = 500    # number of pixels per side for the output
+numGRs = 250        # number of gravitational radii defining R_out,
+                        # resolved to ~(resolution/2)/numGRs 
 inc_ang = 45        # inclination angle, in degrees
-spin = 0.7            # dimensionless spin paramter, ranging from -0.99 to 0.99. 0 is the Scwarzschild case.
-m_exp = 8.0
-redshift = 2.0
-coronaheight = 10
-eddingtons = 0.15
-savefile = "RayTrace.fits"
+spin = 0.7          # dimensionless spin paramter, ranging from -0.99 to 0.99. 0 is the Scwarzschild case.
+m_exp = 8.0         # solution to log_10(M_bh / M_sun)
+redshift = 2.0      # redshift of source
+coronaheight = 10   # in gravitational radii
+eddingtons = 0.15   # Eddington ratio
+
 
 # Prepare file
 _, _, _, _, _, _, out_temp, out_vel, out_g, out_r = QMF.CreateMaps(m_exp, redshift, numGRs, inc_ang, resolution, spin=spin, eddingtons=eddingtons)
@@ -65,7 +66,11 @@ HDU.header["c_height"] = coronaheight
 HDU.header["beta"] = 0
 
 HDUL = fits.HDUList([HDU, HDU1, HDU2, HDU3])
-HDUL.writeto(savefile, overwrite=True)
+print("Please insert the filename to save this file to")
+print("(leave blank to cancel save)")
+savefile = input
+if savefile != '':
+    HDUL.writeto(savefile+".fits", overwrite=True)
 
 
 '''
