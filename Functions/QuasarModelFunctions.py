@@ -1022,7 +1022,7 @@ def Project_BLR_velocity_slice(BLR, inc_ang, v_0, delta_v, grid_size=100, R_out=
         return output_grid
 
 
-def Scattering_BLR_TF(BLR, inc_ang, grid_size=100, redshift=0, unit='hours', jitters=False, scaleratio=10, source_plane=True):
+def Scattering_BLR_TF(BLR, inc_ang, grid_size=100, redshift=0, unit='hours', jitters=False, scaleratio=10, axisoffset = 0, angleoffset = 0, source_plane=True):
         '''
         This function approximates the scattering of the BLR by electron scattering, assuming it is optically thin
         BLR is an Amoeba BLR object
@@ -1044,7 +1044,8 @@ def Scattering_BLR_TF(BLR, inc_ang, grid_size=100, redshift=0, unit='hours', jit
         index_grid *= (index_grid < (BLR.max_r//BLR.r_res))
         density_map = BLR.density_grid[index_grid.astype(int)][:,:,-1]
         TDs = rescale(QMF.MakeTimeDelayMap(density_map, inc_ang, massquasar=BLR.mass, redshift=redshift,
-                                   numGRs=2*BLR.max_r, coronaheight=-BLR.max_z, jitters=jitters, source_plane=source_plane), scaleratio)
+                                        numGRs=2*BLR.max_r, coronaheight=-BLR.max_z, jitters=jitters,
+                                        source_plane=source_plane, axisoffset = axisoffset, angleoffset = angleoffset), scaleratio)
         weights = rescale(density_map, scaleratio)
         if np.sum(weights) > 0:
                 TF = np.histogram(TDs, range=(0, np.max(TDs)+1), bins=int(np.max(TDs)+1), weights=np.nan_to_num(weights), density=True)[0]
@@ -1065,7 +1066,7 @@ def Scattering_BLR_TF(BLR, inc_ang, grid_size=100, redshift=0, unit='hours', jit
         return TF / np.sum(TF)
 
 def Line_BLR_TF(BLR, inc_ang, v_0, delta_v, grid_size=100, redshift=0, unit='hours', jitters=False,
-                scaleratio=10, R_out=None, source_plane=True):
+                scaleratio=10, R_out=None, axisoffset = 0, angleoffset = 0, source_plane=True):
         '''
         This function follows the "Scattering_BLR_TF" function, but only admits line-of-sight veloicty values v_0 +/- delta_v.
         All units are as defined in Scattering_BLR_TF and Project_BLR_velocity_slice.
@@ -1086,7 +1087,8 @@ def Line_BLR_TF(BLR, inc_ang, v_0, delta_v, grid_size=100, redshift=0, unit='hou
         vel_mask = np.logical_and((LOS_grid >= (v_0-delta_v)), (LOS_grid <= (v_0+delta_v)))
         density_map = BLR.density_grid[index_grid.astype(int)][:,:,0] * vel_mask
         TDs = rescale(QMF.MakeTimeDelayMap(density_map, inc_ang, massquasar=BLR.mass, redshift=redshift,
-                                   numGRs=2*BLR.max_r, coronaheight=0, jitters=jitters, source_plane=source_plane), scaleratio)
+                                        numGRs=2*BLR.max_r, coronaheight=0, axisoffset = axisoffset, angleoffset = angleoffset,
+                                        jitters=jitters, source_plane=source_plane), scaleratio)
         weights = rescale(density_map, scaleratio)
         if np.sum(weights) > 0:
                 TF = np.histogram(TDs, range=(0, np.max(TDs)+1), bins=int(np.max(TDs)+1), weights=np.nan_to_num(weights), density=True)[0]
@@ -1216,6 +1218,7 @@ def animate_snapshots(snapshots, limit=100, interval=50):
         contour_levels = np.linspace(minimum_value, np.max(snapshots), 20)
         
         global cont
+        
 
         def animate_plot(time):
                 global cont
@@ -1225,12 +1228,12 @@ def animate_snapshots(snapshots, limit=100, interval=50):
                 if mask.ndim == 3:
                         mask[:time-1, :, :] = 0
                         mask[time+1:, :, :] = 0
-                        cont = plt.contourf(X, Y, mask[time] * snapshots[time], contour_levels)
+                        cont = ax.contourf(X, Y, mask[time] * snapshots[time], contour_levels)
                         
                 elif mask.ndim == 4:
                         mask[:, :time-1, :, :] = 0
                         mask[:, time+1:, :, :] = 0
-                        cont = plt.contourf(X, Y, mask[0, time] * snapshots[0, time], contour_levels)
+                        cont = ax.contourf(X, Y, mask[0, time] * snapshots[0, time], contour_levels)
                         
                 return(cont)
 

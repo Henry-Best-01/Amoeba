@@ -40,7 +40,7 @@ H0 = 70
 
 
 ################ Generate File 1 #################
-Step_1 = 'DRW'
+Step_1 = 'user'
 tau = 30
 SF_inf = 100
 

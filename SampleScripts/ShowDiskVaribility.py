@@ -12,6 +12,7 @@ import sys
 sys.path.append("../Functions")
 import QuasarModelFunctions as QMF
 import glob
+import matplotlib.animation
 
 if len(sys.argv) > 1:
     file_name = sys.argv[1]
@@ -46,6 +47,14 @@ if header['output_type'] == 'LC-multi':
 plt.show()
 
 if header['output_type'][:9] == 'snapshots':
-    animation = QMF.animate_snapshots(variable_out, interval=10)
+    if variable_out.ndim == 3:
+        t_length = np.size(variable_out, 0)
+    else:
+        t_length = np.size(variable_out, 1)
+    animation = QMF.animate_snapshots(variable_out[0, ::10], limit=t_length, interval=10)
+    print("Input file name to save animation to (leave blank to cancel save)")
+    outputname = input()
+    if outputname != '':
+        animation.save(outputname+".gif", fps = 30)
 
 

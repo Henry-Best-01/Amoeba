@@ -334,16 +334,20 @@ class BroadLineRegion():
                                 density_weighting=density_weighting)
 
 
-    def Scattering_BLR_TF(self, inc_ang, grid_size=100, redshift=0, unit='hours', jitters=True, scaleratio=10, source_plane=True):
+    def Scattering_BLR_TF(self, inc_ang, grid_size=100, redshift=0, unit='hours', jitters=True, axisoffset = 0,
+                                angleoffset = 0, scaleratio=10, source_plane=True):
 
         return QMF.Scattering_BLR_TF(self, inc_ang, grid_size=grid_size, redshift=redshift, unit=unit,
-                                jitters=jitters, scaleratio=scaleratio, source_plane=source_plane)
+                                jitters=jitters, axisoffset = axisoffset, angleoffset = angleoffset,
+                                scaleratio=scaleratio, source_plane=source_plane)
 
 
-    def Scattering_Vel_Line_BLR_TF(self, inc_ang, v_0, delta_v, grid_size=100, redshift=0, unit='hours', jitters=True, scaleratio=10, source_plane=True):
+    def Scattering_Vel_Line_BLR_TF(self, inc_ang, v_0, delta_v, grid_size=100, redshift=0, unit='hours', jitters=True,
+                                axisoffset = 0, angleoffset = 0, scaleratio=10, source_plane=True):
 
         return QMF.Line_BLR_TF(self, inc_ang, v_0, delta_v, grid_size=grid_size, redshift=redshift, unit=unit,
-                                jitters=jitters, scaleratio=scaleratio, source_plane=source_plane)
+                                jitters=jitters, axisoffset = axisoffset, angleoffset = angleoffset,
+                                scaleratio=scaleratio, source_plane=source_plane)
 
 
     def Check_Line_Contamination(self, inc_ang, emit_wavelength, passband_min, passband_max, redshift=0):
