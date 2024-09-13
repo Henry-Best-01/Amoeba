@@ -3,7 +3,7 @@ from amoeba.Classes.flux_projection import FluxProjection
 from amoeba.Classes.accretion_disk import AccretionDisk
 from amoeba.Classes.blr import BroadLineRegion
 from amoeba.Classes.blr_streamline import Streamline
-from amoeba.util.Util import create_maps
+from amoeba.Util.util import create_maps
 import astropy.units as u
 
 import numpy as np
@@ -40,7 +40,7 @@ def test_initialization():
     # check it sum naturally
     assert np.sum(flux_map) == my_gaussian_projection.total_flux
     assert (
-        observer_frame_wavelength_in_nm * u.nm
+        observer_frame_wavelength_in_nm
         == my_gaussian_projection.observer_frame_wavelength_in_nm
     )
     assert smbh_mass_exp == my_gaussian_projection.smbh_mass_exp
@@ -115,9 +115,9 @@ def test_initialization():
 
     projection = blr.project_blr_total_intensity(inclination_angle)
 
-    assert projection.flux_map.ndim == 2
+    assert projection.flux_array.ndim == 2
     assert projection.total_flux > 0
-    assert isinstance(projection.observer_frame_wavelength_in_nm, (u.Quantity, list))
+    assert isinstance(projection.observer_frame_wavelength_in_nm, (u.Quantity, float, list, np.ndarray))
     assert projection.smbh_mass_exp == smbh_mass_exp
     assert projection.r_out_in_gravitational_radii > max_height + launch_radius
     assert projection.inclination_angle == inclination_angle

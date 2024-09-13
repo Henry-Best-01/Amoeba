@@ -1,7 +1,7 @@
 import numpy as np
 import numpy.testing as npt
 from amoeba.Classes.accretion_disk import AccretionDisk
-from amoeba.util.Util import (
+from amoeba.Util.util import (
     create_maps,
 )
 from astropy import units as u
@@ -15,7 +15,7 @@ redshift_source = 2.0
 inclination_angle = 30.0
 corona_height = 10
 number_grav_radii = 500
-resolution = 5000
+resolution = 1000
 spin = 0.0
 wavelength_1 = 400
 wavelength_2 = 700

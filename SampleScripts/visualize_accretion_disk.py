@@ -1,7 +1,7 @@
 import numpy as np
 import numpy.testing as npt
 from amoeba.Classes.accretion_disk import AccretionDisk
-from amoeba.util.Util import (
+from amoeba.Util.util import (
     create_maps,
 )
 from astropy import units as u

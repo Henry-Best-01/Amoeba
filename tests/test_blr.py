@@ -146,13 +146,13 @@ class TestBlr:
         assert isinstance(flux_projection_1, FluxProjection)
 
         assert flux_projection_1.total_flux * 2 == flux_projection_2.total_flux
-        assert np.shape(flux_projection_1.flux_map) == np.shape(
-            flux_projection_2.flux_map
+        assert np.shape(flux_projection_1.flux_array) == np.shape(
+            flux_projection_2.flux_array
         )
-        assert flux_projection_1.observer_frame_wavelength_in_nm[0] == 0 * u.nm
-        assert flux_projection_1.observer_frame_wavelength_in_nm[1] == np.inf * u.nm
-        assert flux_projection_2.observer_frame_wavelength_in_nm[0] == 0 * u.nm
-        assert flux_projection_2.observer_frame_wavelength_in_nm[1] == np.inf * u.nm
+        assert flux_projection_1.observer_frame_wavelength_in_nm[0] == 0 
+        assert flux_projection_1.observer_frame_wavelength_in_nm[1] == np.inf 
+        assert flux_projection_2.observer_frame_wavelength_in_nm[0] == 0 
+        assert flux_projection_2.observer_frame_wavelength_in_nm[1] == np.inf
 
     def test_project_blr_intensity_over_velocity_range(self):
 

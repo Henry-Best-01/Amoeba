@@ -3,7 +3,7 @@ import numpy.testing as npt
 from amoeba.Classes.magnification_map import MagnificationMap, ConvolvedMap
 from amoeba.Classes.flux_projection import FluxProjection
 from amoeba.Classes.accretion_disk import AccretionDisk
-from amoeba.util.Util import create_maps
+from amoeba.Util.util import create_maps
 import matplotlib.pyplot as plt
 
 plt.style.use("/Users/henrybest/PythonStuff/Code/plot_style.txt")

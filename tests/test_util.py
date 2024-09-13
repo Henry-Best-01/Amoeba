@@ -1,4 +1,4 @@
-from amoeba.util.Util import (
+from amoeba.Util.util import (
     create_maps,
     calculate_keplerian_velocity,
     convert_spin_to_isco_radius,
@@ -1060,12 +1060,16 @@ def test_calculate_microlensed_transfer_function():
         relative_orientation=orientation_2,
     )
 
-    tau_axis = np.linspace(
+    tau_axis_ml = np.linspace(
         0, len(transfer_function_test_id_ml) - 1, len(transfer_function_test_id_ml)
     )
-    mean_tau_no_ml = np.sum(transfer_function_test_no_ml * tau_axis)
-    mean_tau_id_ml = np.sum(transfer_function_test_id_ml * tau_axis)
-    mean_tau_id_ml_rotated = np.sum(transfer_function_test_id_ml_rotate * tau_axis)
+
+    tau_axis_no_ml = np.linspace(
+        0, len(transfer_function_test_no_ml) - 1, len(transfer_function_test_no_ml)
+    )
+    mean_tau_no_ml = np.sum(transfer_function_test_no_ml * tau_axis_no_ml)
+    mean_tau_id_ml = np.sum(transfer_function_test_id_ml * tau_axis_ml)
+    mean_tau_id_ml_rotated = np.sum(transfer_function_test_id_ml_rotate * tau_axis_ml)
 
     # note there is some rounding when rescale is used and inverted
     tolerance = mean_tau_no_ml / 100

@@ -112,16 +112,14 @@ class AccretionDisk:
             If returnwavelength is True, returns a tuple of 2d arrays.
         """
 
-        if type(observer_frame_wavelength_in_nm) != u.Quantity:
-            observer_frame_wavelength_in_nm *= u.nm
-        else:
+        if isinstance(observer_frame_wavelength_in_nm, u.Quantity):
             dummy = observer_frame_wavelength_in_nm.to(u.nm)
-            observer_frame_wavelength_in_nm = dummy
+            observer_frame_wavelength_in_nm = dummy.value
 
         # invert redshifts to find locally emitted wavelengths
         redshiftfactor = 1 / (1 + self.redshift_source)
         totalshiftfactor = redshiftfactor * self.g_array
-        rest_frame_wavelength = totalshiftfactor * observer_frame_wavelength_in_nm.value
+        rest_frame_wavelength = totalshiftfactor * observer_frame_wavelength_in_nm
 
         output = (
             np.nan_to_num(
@@ -150,15 +148,14 @@ class AccretionDisk:
         calculate at :return: 2d array representing the partial derivative of the Planck
         function with respect to a small change in temperature at each pixel."""
 
-        if type(observer_frame_wavelength_in_nm) != u.Quantity:
-            observer_frame_wavelength_in_nm *= u.nm
-        else:
+        if isinstance(observer_frame_wavelength_in_nm, u.Quantity):
             dummy = observer_frame_wavelength_in_nm.to(u.nm)
-            observer_frame_wavelength_in_nm = dummy
+            observer_frame_wavelength_in_nm = dummy.value
+
 
         redshiftfactor = 1 / (1 + self.redshift_source)
         totalshiftfactor = redshiftfactor * self.g_array
-        rest_frame_wavelength = totalshiftfactor * observer_frame_wavelength_in_nm.value
+        rest_frame_wavelength = totalshiftfactor * observer_frame_wavelength_in_nm
 
         output = (
             planck_law_derivative(self.temp_array, rest_frame_wavelength)
