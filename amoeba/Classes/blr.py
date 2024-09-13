@@ -25,8 +25,6 @@ class BroadLineRegion:
         # res holds the number of R_g each pixel is
 
         self.smbh_mass_exp = smbh_mass_exp
-        if not isinstance(rest_frame_wavelength_in_nm, u.Quantity):
-            rest_frame_wavelength_in_nm *= u.nm
         self.rest_frame_wavelength_in_nm = rest_frame_wavelength_in_nm
         self.redshift_source = redshift_source
         self.Om0 = Om0
@@ -237,10 +235,10 @@ class BroadLineRegion:
             * ((1 - np.min(velocity_range)) / (1 + np.min(velocity_range))) ** 0.5
         )
 
-        if not isinstance(min_obs_plane_wavelength_in_nm, u.Quantity):
-            min_obs_plane_wavelength_in_nm *= u.nm
-        if not isinstance(min_obs_plane_wavelength_in_nm, u.Quantity):
-            min_obs_plane_wavelength_in_nm *= u.nm
+#        if not isinstance(min_obs_plane_wavelength_in_nm, u.Quantity):
+#            min_obs_plane_wavelength_in_nm *= u.nm
+#        if not isinstance(min_obs_plane_wavelength_in_nm, u.Quantity):
+#            min_obs_plane_wavelength_in_nm *= u.nm
 
         max_radius = (
             self.max_height * np.tan(inclination_angle * np.pi / 180) + self.max_radius

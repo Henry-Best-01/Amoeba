@@ -1652,7 +1652,7 @@ def project_blr_to_source_plane(
         line_of_sight_velocities = (
             np.cos(inclination_angle)
             * blr_vertical_velocity_grid[index_grid.astype(int), height]
-            - np.sin(inclination_angle)
+            + np.sin(inclination_angle)
             * np.sin(Phi)
             * blr_radial_velocity_grid[index_grid.astype(int), height]
             + np.sin(inclination_angle)
@@ -1794,7 +1794,7 @@ def calculate_blr_transfer_function(
         line_of_sight_velocities = (
             np.cos(inclination_angle)
             * blr_vertical_velocity_grid[index_grid.astype(int), height]
-            - np.sin(inclination_angle)
+            + np.sin(inclination_angle)
             * np.sin(Phi)
             * blr_radial_velocity_grid[index_grid.astype(int), height]
             + np.sin(inclination_angle)

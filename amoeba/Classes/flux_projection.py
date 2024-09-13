@@ -6,6 +6,7 @@ from amoeba.Util.util import (
     calculate_luminosity_distance,
     calculate_angular_diameter_distance,
 )
+from math import isinf
 
 
 class FluxProjection:
@@ -25,14 +26,20 @@ class FluxProjection:
 
         self.flux_array = flux_array
         self.total_flux = np.sum(self.flux_array)
-        if not isinstance(observer_frame_wavelength_in_nm, (u.Quantity, list)):
-            observer_frame_wavelength_in_nm *= u.nm
         self.observer_frame_wavelength_in_nm = observer_frame_wavelength_in_nm
-        self.rest_frame_wavelength_in_nm = (
-            round(observer_frame_wavelength_in_nm.value / (1 + redshift_source), 1)
-            * u.nm
-        )
-
+        if isinstance(observer_frame_wavelength_in_nm, (list, np.ndarray)):
+            min_wavelength = round(observer_frame_wavelength_in_nm[0] / (1 + redshift_source))
+            if not isinf(observer_frame_wavelength_in_nm[1]):
+                max_wavelength = round(observer_frame_wavelength_in_nm[1] / (1 + redshift_source))
+            else:
+                max_wavelength = observer_frame_wavelength_in_nm[1]
+            rest_frame_wavelength_in_nm = [
+                min_wavelength,
+                max_wavelength,
+            ]
+        else:
+            rest_frame_wavelength_in_nm = round(observer_frame_wavelength_in_nm / (1 + redshift_source))    
+        self.rest_frame_wavelength_in_nm = rest_frame_wavelength_in_nm
         self.smbh_mass_exp = smbh_mass_exp
         self.mass = 10**smbh_mass_exp * const.M_sun.to(u.kg)
         self.r_out_in_gravitational_radii = r_out_in_gravitational_radii
