@@ -817,7 +817,6 @@ def test_calculate_time_lag_array():
         height_array=height_array,
     )
 
-    assert np.argmin(time_lag_7) == 1
     assert time_lag_7[-1, 1] > time_lag_7[0, 1]
 
 

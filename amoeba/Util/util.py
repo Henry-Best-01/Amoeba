@@ -967,9 +967,6 @@ def calculate_time_lag_array(
 
     new_radii, new_azimuths = convert_cartesian_to_polar(x_array, y_array)
 
-    # define 0 azimuth towards the observer
-    new_azimuths += np.pi / 2
-
     time_lag_array = (
         (new_radii**2 + height_array**2) ** 0.5
         - height_array * np.cos(inclination_angle)
@@ -1191,10 +1188,10 @@ def construct_accretion_disk_transfer_function(
         return response_factors, time_lag_array
 
     transfer_function = np.histogram(
-        time_lag_array,
+        rescale(time_lag_array, 10),
         range=(0, np.max(time_lag_array) + 1),
         bins=int(np.max(time_lag_array) + 1),
-        weights=np.nan_to_num(response_factors),
+        weights=np.nan_to_num(rescale(response_factors, 10)),
         density=True,
     )[0]
 
