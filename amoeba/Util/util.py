@@ -1013,13 +1013,23 @@ def calculate_geometric_disk_factor(
         height_array = np.zeros(np.shape(radii_array))
     height_array -= corona_height
 
+    angle_offset_in_degrees *= np.pi / 180
+
+    x_axis_offset = - axis_offset_in_gravitational_radii * np.cos(angle_offset_in_degrees)
+    y_axis_offset = axis_offset_in_gravitational_radii * np.sin(angle_offset_in_degrees)
+    x_array, y_array = convert_polar_to_cartesian(radii_array, phi_array)
+    x_array += x_axis_offset
+    y_array += y_axis_offset
+
+    new_radii, new_azimuths = convert_cartesian_to_polar(x_array, y_array)
+
     # check albedo array if it was input
     if isinstance(albedo_array, (int, float)):
-        albedo_array *= np.ones(np.shape(radii_array))
+        albedo_array *= np.ones(np.shape(new_radii))
     elif isinstance(albedo_array, (np.ndarray)):
-        assert np.shape(albedo_array) == np.shape(radii_array)
+        assert np.shape(albedo_array) == np.shape(new_radii)
     else:
-        albedo_array = np.zeros(np.shape(radii_array))
+        albedo_array = np.zeros(np.shape(new_radii))
 
     gravitational_radius = calculate_gravitational_radius(10**smbh_mass_exponent)
 
@@ -1028,7 +1038,7 @@ def calculate_geometric_disk_factor(
     # both height array and radii array are calculated on the same field, so chain rule works
     # gradient function takes x and y directions individually.
     height_gradient_x, height_gradient_y = np.gradient(height_array)
-    radii_gradient_x, radii_gradient_y = np.gradient(radii_array)
+    radii_gradient_x, radii_gradient_y = np.gradient(new_radii)
 
     # need to find a way to make negative dh/dr values, and assign them no reprocessing
 
@@ -1039,7 +1049,7 @@ def calculate_geometric_disk_factor(
 
     # use arctan for dh_dr since there is only one argument.
     # arctan2 is for angles relative to two arguments.
-    theta_star = np.pi - np.arctan(dh_dr) - np.arctan2(height_array, radii_array)
+    theta_star = np.pi - np.arctan(dh_dr) - np.arctan2(height_array, new_radii)
 
     # fix the quadrant
     theta_star = abs(theta_star % (np.pi))
@@ -1047,7 +1057,7 @@ def calculate_geometric_disk_factor(
     # cos_theta_star = np.ones(np.shape(radii_array)) * corona_height * gravitational_radius / radii_array
     cos_theta_star = np.cos(theta_star)
 
-    radii_star = (radii_array**2 + height_array**2) ** 0.5 * gravitational_radius
+    radii_star = (new_radii**2 + height_array**2) ** 0.5 * gravitational_radius
 
     return (
         (1 - albedo_array)
