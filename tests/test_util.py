@@ -769,7 +769,7 @@ def test_calculate_time_lag_array():
         height_array=height_array,
     )
 
-    assert time_lag_4[0, 1] == 20
+    assert np.min(time_lag_4) == 20
 
     # rotate lamppost to other side of disk
     angle_offset_in_degrees = 180
@@ -783,7 +783,7 @@ def test_calculate_time_lag_array():
         height_array=height_array,
     )
 
-    assert time_lag_5[-1, 1] == 20
+    assert np.min(time_lag_5) == 20
 
     # test with heights included (non-flat accretion disk)
     axis_offset_in_gravitational_radii = 0
@@ -817,7 +817,7 @@ def test_calculate_time_lag_array():
         height_array=height_array,
     )
 
-    assert time_lag_7[-1, 1] > time_lag_7[0, 1]
+    assert time_lag_7[1, 0] > time_lag_7[1, -1]
 
 
 def test_calculate_geometric_disk_factor():

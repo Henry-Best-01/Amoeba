@@ -948,8 +948,8 @@ def calculate_time_lag_array(
     inclination_angle *= np.pi / 180
     angle_offset_in_degrees *= np.pi / 180
 
-    x_axis_offset = axis_offset_in_gravitational_radii * np.sin(angle_offset_in_degrees)
-    y_axis_offset = axis_offset_in_gravitational_radii * np.cos(angle_offset_in_degrees)
+    x_axis_offset = - axis_offset_in_gravitational_radii * np.cos(angle_offset_in_degrees)
+    y_axis_offset = axis_offset_in_gravitational_radii * np.sin(angle_offset_in_degrees)
 
     if height_array is not None:
         assert np.shape(height_array) == np.shape(radii_array)
