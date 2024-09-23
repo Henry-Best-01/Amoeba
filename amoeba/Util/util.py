@@ -766,7 +766,7 @@ def perform_microlensing_convolution(
     convolution = fft.irfft2(fft.rfft2(dummy_map) * fft.rfft2(magnification_array))
 
     # determine shift of coordinates relative to smbh position
-    pixel_shift = np.size(flux_array, 0) // 2
+    pixel_shift = np.size(flux_array_rescaled, 0) // 2
 
     return convolution.real, pixel_shift
 
@@ -847,9 +847,7 @@ def extract_light_curve(
         )
         return np.sum(convolution_array) / np.size(convolution_array)
 
-    # if starting coords were defined based on the magnification map, conserve this position
     if x_start_position is not None:
-        x_start_position -= pixel_shift
         if x_start_position < 0:
             print(
                 "Warning, chosen position lays in the convolution artifact region. Returning average flux."
@@ -857,8 +855,8 @@ def extract_light_curve(
             return np.sum(convolution_array) / np.size(convolution_array)
     else:
         x_start_position = rng.integers(0, np.size(safe_convolution_array, 0))
+
     if y_start_position is not None:
-        y_start_position -= pixel_shift
         if y_start_position < 0:
             print(
                 "Warning, chosen position lays in the convolution artifact region. Returning average flux."
@@ -948,7 +946,9 @@ def calculate_time_lag_array(
     inclination_angle *= np.pi / 180
     angle_offset_in_degrees *= np.pi / 180
 
-    x_axis_offset = - axis_offset_in_gravitational_radii * np.cos(angle_offset_in_degrees)
+    x_axis_offset = -axis_offset_in_gravitational_radii * np.cos(
+        angle_offset_in_degrees
+    )
     y_axis_offset = axis_offset_in_gravitational_radii * np.sin(angle_offset_in_degrees)
 
     if height_array is not None:
@@ -1015,7 +1015,9 @@ def calculate_geometric_disk_factor(
 
     angle_offset_in_degrees *= np.pi / 180
 
-    x_axis_offset = - axis_offset_in_gravitational_radii * np.cos(angle_offset_in_degrees)
+    x_axis_offset = -axis_offset_in_gravitational_radii * np.cos(
+        angle_offset_in_degrees
+    )
     y_axis_offset = axis_offset_in_gravitational_radii * np.sin(angle_offset_in_degrees)
     x_array, y_array = convert_polar_to_cartesian(radii_array, phi_array)
     x_array += x_axis_offset
@@ -1662,7 +1664,7 @@ def project_blr_to_source_plane(
             + np.sin(inclination_angle)
             * np.sin(Phi)
             * blr_radial_velocity_grid[index_grid.astype(int), height]
-            + np.sin(inclination_angle)
+            - np.sin(inclination_angle)
             * np.cos(Phi)
             * keplerian_velocities[index_grid.astype(int), height]
         )
@@ -1804,7 +1806,7 @@ def calculate_blr_transfer_function(
             + np.sin(inclination_angle)
             * np.sin(Phi)
             * blr_radial_velocity_grid[index_grid.astype(int), height]
-            + np.sin(inclination_angle)
+            - np.sin(inclination_angle)
             * np.cos(Phi)
             * keplerian_velocities[index_grid.astype(int), height]
         )
@@ -1832,10 +1834,12 @@ def calculate_blr_transfer_function(
         )
 
         transfer_function_of_slab = np.histogram(
-            time_delays_of_current_slab,
+            rescale(time_delays_of_current_slab, 2 * radial_resolution),
             range=(0, np.max(time_delays_of_current_slab) + 1),
             bins=int(np.max(time_delays_of_current_slab) + 1),
-            weights=np.nan_to_num(response_of_current_slab),
+            weights=np.nan_to_num(
+                rescale(response_of_current_slab, 2 * radial_resolution)
+            ),
             density=True,
         )[0]
 

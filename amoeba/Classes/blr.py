@@ -4,6 +4,7 @@ from astropy import constants as const
 from amoeba.Util.util import (
     project_blr_to_source_plane,
     calculate_blr_transfer_function,
+    determine_emission_line_velocities,
 )
 from amoeba.Classes.flux_projection import FluxProjection
 
@@ -207,9 +208,23 @@ class BroadLineRegion:
     def project_blr_intensity_over_velocity_range(
         self,
         inclination_angle,
-        emission_efficiency_array,
-        velocity_range,
+        velocity_range=None,
+        observed_wavelength_range_in_nm=None,
+        emission_efficiency_array=None,
     ):
+
+        if velocity_range is not None and observed_wavelength_range_in_nm is not None:
+            print("Please only provide the velocities or wavelengths. Not both!")
+        if velocity_range is None and observed_wavelength_range_in_nm is None:
+            print("Please provide the velocities or wavelengths.")
+        if observed_wavelength_range_in_nm is not None:
+            velocity_range = determine_emission_line_velocities(
+                self.rest_frame_wavelength_in_nm,
+                np.min(observed_wavelength_range_in_nm),
+                np.max(observed_wavelength_range_in_nm),
+                self.redshift_source,
+            )
+
         # Similar to above's density calculation, but this time only includes voxels within a velocity range
         flux_map = project_blr_to_source_plane(
             self.density_grid,
@@ -234,11 +249,6 @@ class BroadLineRegion:
             obs_plane_wavelength_in_nm
             * ((1 - np.min(velocity_range)) / (1 + np.min(velocity_range))) ** 0.5
         )
-
-#        if not isinstance(min_obs_plane_wavelength_in_nm, u.Quantity):
-#            min_obs_plane_wavelength_in_nm *= u.nm
-#        if not isinstance(min_obs_plane_wavelength_in_nm, u.Quantity):
-#            min_obs_plane_wavelength_in_nm *= u.nm
 
         max_radius = (
             self.max_height * np.tan(inclination_angle * np.pi / 180) + self.max_radius
@@ -274,9 +284,23 @@ class BroadLineRegion:
     def calculate_blr_emission_line_transfer_function(
         self,
         inclination_angle,
-        velocity_range,
+        velocity_range=None,
+        observed_wavelength_range_in_nm=None,
         emission_efficiency_array=None,
     ):
+
+        if velocity_range is not None and observed_wavelength_range_in_nm is not None:
+            print("Please only provide the velocities or wavelengths. Not both!")
+        if velocity_range is None and observed_wavelength_range_in_nm is None:
+            print("Please provide the velocities or wavelengths.")
+        if observed_wavelength_range_in_nm is not None:
+            velocity_range = determine_emission_line_velocities(
+                self.rest_frame_wavelength_in_nm,
+                np.min(observed_wavelength_range_in_nm),
+                np.max(observed_wavelength_range_in_nm),
+                self.redshift_source,
+            )
+
         # similar to previous function, but selects a region based on line-of-sight velocity range
         return calculate_blr_transfer_function(
             self.density_grid,

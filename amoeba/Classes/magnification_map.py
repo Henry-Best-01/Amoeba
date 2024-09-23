@@ -105,7 +105,7 @@ class MagnificationMap:
     def convolve_with_flux_projection(
         self, FluxProjection, relative_orientation=False, random_seed=None
     ):
-        """Prepare the convolution between this magnification map and a FluxProjection
+        """Prepare the convolution between this magnification map and a FluxProjection.
 
         :param FluxProjection: FluxProjection object representing the source plane flux
         density.
@@ -247,9 +247,7 @@ class MagnificationMap:
 
 class ConvolvedMap(MagnificationMap):
     """This class represents the convoultion of a magnification map with a surface flux
-    density.
-
-    """
+    density."""
 
     def __init__(
         self,
