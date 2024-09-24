@@ -152,7 +152,6 @@ class AccretionDisk:
             dummy = observer_frame_wavelength_in_nm.to(u.nm)
             observer_frame_wavelength_in_nm = dummy.value
 
-
         redshiftfactor = 1 / (1 + self.redshift_source)
         totalshiftfactor = redshiftfactor * self.g_array
         rest_frame_wavelength = totalshiftfactor * observer_frame_wavelength_in_nm

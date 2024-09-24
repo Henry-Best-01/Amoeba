@@ -117,7 +117,10 @@ def test_initialization():
 
     assert projection.flux_array.ndim == 2
     assert projection.total_flux > 0
-    assert isinstance(projection.observer_frame_wavelength_in_nm, (u.Quantity, float, list, np.ndarray))
+    assert isinstance(
+        projection.observer_frame_wavelength_in_nm,
+        (u.Quantity, float, list, np.ndarray),
+    )
     assert projection.smbh_mass_exp == smbh_mass_exp
     assert projection.r_out_in_gravitational_radii > max_height + launch_radius
     assert projection.inclination_angle == inclination_angle

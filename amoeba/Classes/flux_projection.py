@@ -28,9 +28,13 @@ class FluxProjection:
         self.total_flux = np.sum(self.flux_array)
         self.observer_frame_wavelength_in_nm = observer_frame_wavelength_in_nm
         if isinstance(observer_frame_wavelength_in_nm, (list, np.ndarray)):
-            min_wavelength = round(observer_frame_wavelength_in_nm[0] / (1 + redshift_source))
+            min_wavelength = round(
+                observer_frame_wavelength_in_nm[0] / (1 + redshift_source)
+            )
             if not isinf(observer_frame_wavelength_in_nm[1]):
-                max_wavelength = round(observer_frame_wavelength_in_nm[1] / (1 + redshift_source))
+                max_wavelength = round(
+                    observer_frame_wavelength_in_nm[1] / (1 + redshift_source)
+                )
             else:
                 max_wavelength = observer_frame_wavelength_in_nm[1]
             rest_frame_wavelength_in_nm = [
@@ -38,7 +42,9 @@ class FluxProjection:
                 max_wavelength,
             ]
         else:
-            rest_frame_wavelength_in_nm = round(observer_frame_wavelength_in_nm / (1 + redshift_source))    
+            rest_frame_wavelength_in_nm = round(
+                observer_frame_wavelength_in_nm / (1 + redshift_source)
+            )
         self.rest_frame_wavelength_in_nm = rest_frame_wavelength_in_nm
         self.smbh_mass_exp = smbh_mass_exp
         self.mass = 10**smbh_mass_exp * const.M_sun.to(u.kg)

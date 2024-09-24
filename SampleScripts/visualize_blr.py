@@ -1,5 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
+
 plt.style.use("/Users/henrybest/PythonStuff/Code/plot_style.txt")
 from amoeba.Classes.blr import BroadLineRegion
 from amoeba.Classes.blr_streamline import Streamline
@@ -16,26 +17,26 @@ from astropy import constants as const
 
 smbh_mass_exp = 8.0
 redshift_source = 0.0
-inclination_angle = 70 # deg
+inclination_angle = 70  # deg
 smbh_spin = 0.6
 name = "test agn"
-max_disk_radius = 1000 # rg
-accretion_disk_resolution = 1000 # pixels / radial length
+max_disk_radius = 1000  # rg
+accretion_disk_resolution = 1000  # pixels / radial length
 
 # blr params
 
-inner_launch_radius = 100 # rg
-inner_launch_angle = 70 # deg
-outer_launch_radius = 200 # rg
-outer_launch_angle = 70 # deg
+inner_launch_radius = 100  # rg
+inner_launch_angle = 70  # deg
+outer_launch_radius = 200  # rg
+outer_launch_angle = 70  # deg
 
-maximum_blr_height = 1000 # rg
-characteristic_distance = 500 # in rg, for outflowing velocity model
-asymptotic_poloidal_velocity = 0.5 # units v / c
-height_step = 10 # rg, defines thickness of each blr slab
-radial_step = 10 # rg, defines resolution of each slab
+maximum_blr_height = 1000  # rg
+characteristic_distance = 500  # in rg, for outflowing velocity model
+asymptotic_poloidal_velocity = 0.5  # units v / c
+height_step = 10  # rg, defines thickness of each blr slab
+radial_step = 10  # rg, defines resolution of each slab
 
-blr_rest_frame_emission = 500 # nm
+blr_rest_frame_emission = 500  # nm
 
 
 # projection params
@@ -53,7 +54,7 @@ agn_params_dict = create_maps(
     inclination_angle,
     accretion_disk_resolution,
     spin=smbh_spin,
-    name=name
+    name=name,
 )
 
 accretion_disk = AccretionDisk(**agn_params_dict)
@@ -100,34 +101,19 @@ eff_wavelength_2 = np.mean(filter_2)
 eff_wavelength_3 = np.mean(filter_3)
 
 
-disk_projection_1 = accretion_disk.calculate_surface_intensity_map(
-    eff_wavelength_1
-)
-disk_projection_2 = accretion_disk.calculate_surface_intensity_map(
-    eff_wavelength_2
-)
-disk_projection_3 = accretion_disk.calculate_surface_intensity_map(
-    eff_wavelength_3
-)
+disk_projection_1 = accretion_disk.calculate_surface_intensity_map(eff_wavelength_1)
+disk_projection_2 = accretion_disk.calculate_surface_intensity_map(eff_wavelength_2)
+disk_projection_3 = accretion_disk.calculate_surface_intensity_map(eff_wavelength_3)
 
 
 v_range_1 = determine_emission_line_velocities(
-    blr_rest_frame_emission,
-    filter_1[0],
-    filter_1[1],
-    redshift_source
+    blr_rest_frame_emission, filter_1[0], filter_1[1], redshift_source
 )
 v_range_2 = determine_emission_line_velocities(
-    blr_rest_frame_emission,
-    filter_2[0],
-    filter_2[1],
-    redshift_source
+    blr_rest_frame_emission, filter_2[0], filter_2[1], redshift_source
 )
 v_range_3 = determine_emission_line_velocities(
-    blr_rest_frame_emission,
-    filter_3[0],
-    filter_3[1],
-    redshift_source
+    blr_rest_frame_emission, filter_3[0], filter_3[1], redshift_source
 )
 
 
@@ -147,13 +133,12 @@ blr_projection_3 = broad_line_region.project_blr_intensity_over_velocity_range(
 )
 
 
-
 # plot
 
 xax_disk = np.linspace(
     -disk_projection_1.r_out_in_gravitational_radii,
     disk_projection_1.r_out_in_gravitational_radii,
-    np.size(disk_projection_1.flux_array, 0)
+    np.size(disk_projection_1.flux_array, 0),
 )
 
 X, Y = np.meshgrid(xax_disk, xax_disk)
@@ -161,14 +146,11 @@ X, Y = np.meshgrid(xax_disk, xax_disk)
 xax_blr = np.linspace(
     -blr_projection_1.r_out_in_gravitational_radii,
     blr_projection_1.r_out_in_gravitational_radii,
-    np.size(blr_projection_1.flux_array, 0)
+    np.size(blr_projection_1.flux_array, 0),
 )
 
 Xb, Yb = np.meshgrid(xax_blr, xax_blr)
 
-
-
-    
 
 fig, ax = plt.subplots(3, 2, sharex=True, sharey=True)
 
@@ -199,18 +181,3 @@ ax[0, 0].set_xlim(-max_disk_radius, max_disk_radius)
 ax[0, 0].set_ylim(-max_disk_radius, max_disk_radius)
 
 plt.show()
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-    
