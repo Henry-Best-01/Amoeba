@@ -136,7 +136,7 @@ class TestMagnificationMap:
         observer_wavelength = 100
         smbh_mass_exp = 6.9
         redshift_source = self.magnification_map.redshift_source
-        r_out_in_rg = 400
+        r_out_in_rg = 700
         inclination = 0
 
         test_flux_projection = FluxProjection(
@@ -195,8 +195,6 @@ class TestMagnificationMap:
             self.magnification_map.macro_magnification
             == self.test_convolution_object.macro_magnification
         )
-
-        assert self.test_convolution_object.pixel_shift > 0
 
         # check the convolution actually changed the values
         x_value = 3

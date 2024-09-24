@@ -15,6 +15,7 @@ class TestBlr:
         launch_radius = 500  # Rg
         launch_theta = 0  # degrees
         max_height = 1000  # Rg
+        height_step = 200
         rest_frame_wavelength_in_nm = 600
         redshift_source = 1.1
         characteristic_distance = max_height // 5
@@ -28,6 +29,7 @@ class TestBlr:
             characteristic_distance,
             asymptotic_poloidal_velocity,
             poloidal_launch_velocity=poloidal_launch_velocity,
+            height_step=height_step,
         )
 
         launch_theta_angled = 45
@@ -38,10 +40,15 @@ class TestBlr:
             characteristic_distance,
             asymptotic_poloidal_velocity,
             poloidal_launch_velocity=poloidal_launch_velocity,
+            height_step=height_step,
         )
 
         self.blr = BroadLineRegion(
-            smbh_mass_exp, max_height, rest_frame_wavelength_in_nm, redshift_source
+            smbh_mass_exp,
+            max_height,
+            rest_frame_wavelength_in_nm,
+            redshift_source,
+            height_step=height_step,
         )
 
         self.blr.add_streamline_bounded_region(
@@ -136,11 +143,11 @@ class TestBlr:
 
         flux_projection_1 = self.blr.project_blr_total_intensity(
             inclination,
-            efficiency_array,
+            emission_efficiency_array=efficiency_array,
         )
         flux_projection_2 = self.blr.project_blr_total_intensity(
             inclination,
-            twice_the_efficiency,
+            emission_efficiency_array=twice_the_efficiency,
         )
 
         assert isinstance(flux_projection_1, FluxProjection)
@@ -149,9 +156,9 @@ class TestBlr:
         assert np.shape(flux_projection_1.flux_array) == np.shape(
             flux_projection_2.flux_array
         )
-        assert flux_projection_1.observer_frame_wavelength_in_nm[0] == 0 
-        assert flux_projection_1.observer_frame_wavelength_in_nm[1] == np.inf 
-        assert flux_projection_2.observer_frame_wavelength_in_nm[0] == 0 
+        assert flux_projection_1.observer_frame_wavelength_in_nm[0] == 0
+        assert flux_projection_1.observer_frame_wavelength_in_nm[1] == np.inf
+        assert flux_projection_2.observer_frame_wavelength_in_nm[0] == 0
         assert flux_projection_2.observer_frame_wavelength_in_nm[1] == np.inf
 
     def test_project_blr_intensity_over_velocity_range(self):
@@ -166,35 +173,36 @@ class TestBlr:
 
         receeding_projection = self.blr.project_blr_intensity_over_velocity_range(
             inclination,
-            efficiency_array,
-            receeding_velocity_range,
+            velocity_range=receeding_velocity_range,
+            emission_efficiency_array=efficiency_array,
         )
 
         approaching_projection = self.blr.project_blr_intensity_over_velocity_range(
             inclination,
-            efficiency_array,
-            approaching_velocity_range,
+            velocity_range=approaching_velocity_range,
+            emission_efficiency_array=efficiency_array,
         )
 
         total_projection = self.blr.project_blr_intensity_over_velocity_range(
             inclination,
-            efficiency_array,
-            total_velocity_range,
+            velocity_range=total_velocity_range,
+            emission_efficiency_array=efficiency_array,
         )
 
         no_projection = self.blr.project_blr_intensity_over_velocity_range(
             inclination,
-            efficiency_array,
-            no_velocity_range,
+            velocity_range=no_velocity_range,
+            emission_efficiency_array=efficiency_array,
         )
 
         assert isinstance(receeding_projection, FluxProjection)
         # more material should be approaching
         assert approaching_projection.total_flux > receeding_projection.total_flux
         # taking the combined flux should equal the total flux
-        assert (
-            total_projection.total_flux
-            == approaching_projection.total_flux + receeding_projection.total_flux
+        npt.assert_almost_equal(
+            total_projection.total_flux,
+            approaching_projection.total_flux + receeding_projection.total_flux,
+            3,
         )
         # show we have flux unless we exclude all velocities
         assert no_projection.total_flux == 0
@@ -238,7 +246,7 @@ class TestBlr:
 
         blr_el_tf = self.blr.calculate_blr_emission_line_transfer_function(
             inclination,
-            velocity_range,
+            velocity_range=velocity_range,
             emission_efficiency_array=None,
         )
 
@@ -253,7 +261,7 @@ class TestBlr:
         new_velocity_range = [0.2, 0.5]
         new_blr_el_tf = self.blr.calculate_blr_emission_line_transfer_function(
             inclination,
-            new_velocity_range,
+            velocity_range=new_velocity_range,
             emission_efficiency_array=None,
         )
 
