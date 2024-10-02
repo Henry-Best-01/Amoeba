@@ -88,7 +88,7 @@ def create_maps(
     assert temp_beta >= 0
     bh_mass_in_solar_masses = 10**mass_exp
     bh_mass_in_kg = bh_mass_in_solar_masses * const.M_sun.to(u.kg)
-    grav_rad = calculate_gravitational_radius(bh_mass_in_kg)
+    grav_rad = calculate_gravitational_radius(bh_mass_in_solar_masses)
     temp_array = np.zeros((resolution, resolution))
     g_array = temp_array.copy()
     r_array = temp_array.copy()
@@ -912,8 +912,8 @@ def extract_light_curve(
             )
         )
     if return_track_coords:
-        return light_curve, x_positions, y_positions
-    return light_curve
+        return np.asarray(light_curve), x_positions, y_positions
+    return np.asarray(light_curve)
 
 
 def calculate_time_lag_array(
