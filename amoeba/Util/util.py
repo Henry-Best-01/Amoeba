@@ -10,6 +10,8 @@ import astropy
 import warnings
 from scipy.ndimage import rotate
 from skimage.transform import rescale
+from scipy.interpolate import interp1d
+from scipy.signal import convolve
 
 warnings.filterwarnings("ignore")
 np.seterr(divide="ignore", invalid="ignore")
@@ -1885,3 +1887,56 @@ def determine_emission_line_velocities(
     ) / ((rest_frame_passband_minimum / rest_frame_emitted_wavelength) ** 2 + 1)
 
     return [required_velocity_minimum, required_velocity_maximum]
+
+
+def convolve_signal_with_transfer_function(
+    mass_exponent=None,
+    driving_signal=None,
+    transfer_function=None,
+    redshift=None
+):
+    """Helper function to convolve a signal with even daily cadence with a trasnfer
+    function which has spacing in gravitational radii.
+
+    :param mass_exponent: solution to log_{10}(M_{bh} / M_{sun}).
+    :param driving_signal: driving signal to convolve with the transfer function
+        at daily cadence.
+    :param transfer_function: transfer function which represents the response of
+        an AGN component to an impulse.
+    :return: reprocessed signal at daily cadence
+    """
+
+    gravitational_radius = calculate_gravitational_radius(10**mass_exponent)
+    gr_per_day = gravitational_radius / const.c.to(u.m / u.day).value
+
+    transfer_function_lags_in_rg = np.linspace(0, len(transfer_function) - 1, len(transfer_function))
+    transfer_function_lags_in_days = transfer_function_lags_in_rg * gr_per_day
+    
+    transfer_function_interp = interp1d(transfer_function_lags_in_days, transfer_function)
+    tau_axis = np.linspace(0, max(transfer_function_lags_in_days)-1, int(max(transfer_function_lags_in_days)))
+
+    daily_spaced_lags = transfer_function_interp(tau_axis)
+    daily_spaced_lags /= np.sum(daily_spaced_lags)
+
+    output_signal = convolve(
+        driving_signal,
+        daily_spaced_lags
+    )
+
+    if redshift is not None:
+        signal_times = np.linspace(0, len(output_signal)-1, len(output_signal))
+        signal_interp = interp1d(signal_times, output_signal)
+        redshifted_times = signal_times / (1+redshift)
+        output_signal = signal_interp(redshifted_times)
+    
+    return output_signal
+
+
+
+
+
+
+
+
+
+
