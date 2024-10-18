@@ -224,6 +224,7 @@ class MagnificationMap:
             AccretionDisk.temp_array,
             AccretionDisk.radii_array,
             AccretionDisk.phi_array,
+            AccretionDisk.g_array,
             AccretionDisk.inclination_angle,
             AccretionDisk.smbh_mass_exp,
             corona_height,
