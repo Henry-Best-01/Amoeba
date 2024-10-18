@@ -128,6 +128,7 @@ def create_maps(
         y_vals = x_vals.copy() / np.cos(np.pi * inc_ang / 180)
         X, Y = np.meshgrid(x_vals, y_vals)
         r_array, phi_array = convert_cartesian_to_polar(X, Y)
+        phi_array = (5 / 2 * np.pi + phi_array) % (2 * np.pi)
         g_array = np.ones(np.shape(r_array))
     r_in = convert_spin_to_isco_radius(spin)
     temp_array = accretion_disk_temperature(
@@ -1132,6 +1133,7 @@ def construct_accretion_disk_transfer_function(
     temp_array,
     radii_array,
     phi_array,
+    g_array,
     inclination_angle,
     smbh_mass_exponent,
     corona_height,
@@ -1196,7 +1198,7 @@ def construct_accretion_disk_transfer_function(
         albedo_array=albedo_array,
     )
 
-    response_factors = db_dt_array * dt_dlx_array
+    response_factors = db_dt_array * dt_dlx_array * g_array**4
 
     if return_response_array_and_lags:
         return response_factors, time_lag_array
@@ -1221,6 +1223,7 @@ def calculate_microlensed_transfer_function(
     temp_array,
     radii_array,
     phi_array,
+    g_array,
     inclination_angle,
     smbh_mass_exponent,
     corona_height,
@@ -1282,6 +1285,7 @@ def calculate_microlensed_transfer_function(
         temp_array,
         radii_array,
         phi_array,
+        g_array,
         inclination_angle,
         smbh_mass_exponent,
         corona_height,
@@ -1424,7 +1428,7 @@ def generate_signal_from_psd(
         curve ranging from values between the Nyquist frequency [1/(2 * max(frequency))] and 1/min(frequency)
     :param power_spectrum: the input power spectrum of the stochastic signal at each fourier frequency
         defined in the frequencies parameter.
-    :param frequencies: the input fouer frequencies associated with the power spectrum. Note these should be
+    :param frequencies: the input fourier frequencies associated with the power spectrum. Note these should be
         defined in linear space as:
         np.linspace(1/length_of_light_curve, 1/(2 * desired_time_resolution), int(length_of_light_curve)+1)
     :param random_seed: random seed to use for reproducibility
@@ -1450,7 +1454,7 @@ def generate_signal_from_psd(
     if np.std(light_curve) > 0:
         light_curve /= np.std(light_curve)
 
-    return light_curve
+    return light_curve.real
 
 
 def generate_snapshots_of_radiation_pattern(
@@ -1459,6 +1463,7 @@ def generate_snapshots_of_radiation_pattern(
     temp_array,
     radii_array,
     phi_array,
+    g_array,
     smbh_mass_exponent,
     driving_signal,
     driving_signal_fractional_strength,
@@ -1497,7 +1502,7 @@ def generate_snapshots_of_radiation_pattern(
         time_stamps
     """
 
-    static_flux = planck_law(temp_array, rest_wavelength_in_nm)
+    static_flux = planck_law(temp_array, rest_wavelength_in_nm) * g_array**4
 
     total_static_flux = np.sum(static_flux)
 
@@ -1506,6 +1511,7 @@ def generate_snapshots_of_radiation_pattern(
         temp_array,
         radii_array,
         phi_array,
+        g_array,
         inclination_angle,
         smbh_mass_exponent,
         corona_height,
@@ -1524,7 +1530,8 @@ def generate_snapshots_of_radiation_pattern(
     maximum_time_lag_in_days = np.max(time_lag_array)
 
     # normalize response_array because we want a fractional response w.r.t. the static_flux array
-    response_array *= total_static_flux / np.sum(response_array)
+
+    response_array *= total_static_flux / np.sum(response_array)   
 
     if len(driving_signal) < np.max(time_stamps + maximum_time_lag_in_days):
         print(
@@ -1537,7 +1544,7 @@ def generate_snapshots_of_radiation_pattern(
     # define a burn in such that the whole disk is being driven at t=0
     burn_in_time = maximum_time_lag_in_days
     accretion_disk_mask = temp_array > 0
-
+    
     list_of_snapshots = []
     # prepare snapshots
     for time in time_stamps:
@@ -1929,6 +1936,6 @@ def convolve_signal_with_transfer_function(
         signal_times = np.linspace(0, len(output_signal) - 1, len(output_signal))
         signal_interp = interp1d(signal_times, output_signal)
         redshifted_times = signal_times / (1 + redshift)
-        output_signal = signal_interp(redshifted_times)
+        output_signal = signal_interp(redshifted_times)[:len(output_signal)]
 
     return output_signal
