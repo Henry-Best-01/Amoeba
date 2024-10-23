@@ -671,9 +671,6 @@ def test_extract_light_curve():
         y_start_position=90,
         phi_travel_direction=0,
     )
-    print(light_curve_avg_1)
-    print(light_curve_avg_2)
-    print(light_curve_avg_3)
 
     assert light_curve_avg_1 == light_curve_avg_2
     assert light_curve_avg_3 == light_curve_avg_2
@@ -916,6 +913,7 @@ def test_construct_accretion_disk_transfer_function():
     temp_array = disk_dict["temp_array"]
     radii_array = disk_dict["radii_array"]
     phi_array = disk_dict["phi_array"]
+    g_array = disk_dict["g_array"]
     inclination_angle = disk_dict["inclination_angle"]
     smbh_mass_exponent = disk_dict["smbh_mass_exp"]
     corona_height = disk_dict["corona_height"]
@@ -925,6 +923,7 @@ def test_construct_accretion_disk_transfer_function():
         temp_array,
         radii_array,
         phi_array,
+        g_array,
         inclination_angle,
         smbh_mass_exponent,
         corona_height,
@@ -947,6 +946,7 @@ def test_construct_accretion_disk_transfer_function():
         temp_array,
         radii_array,
         phi_array,
+        g_array,
         inclination_angle,
         smbh_mass_exponent,
         corona_height,
@@ -981,6 +981,7 @@ def test_calculate_microlensed_transfer_function():
     temp_array = disk_dict["temp_array"]
     radii_array = disk_dict["radii_array"]
     phi_array = disk_dict["phi_array"]
+    g_array = disk_dict["g_array"]
     inclination_angle = disk_dict["inclination_angle"]
     smbh_mass_exponent = disk_dict["smbh_mass_exp"]
     corona_height = disk_dict["corona_height"]
@@ -990,6 +991,7 @@ def test_calculate_microlensed_transfer_function():
         temp_array,
         radii_array,
         phi_array,
+        g_array,
         inclination_angle,
         smbh_mass_exponent,
         corona_height,
@@ -1019,6 +1021,7 @@ def test_calculate_microlensed_transfer_function():
         temp_array,
         radii_array,
         phi_array,
+        g_array,
         inclination_angle,
         smbh_mass_exponent,
         corona_height,
@@ -1036,6 +1039,7 @@ def test_calculate_microlensed_transfer_function():
         temp_array,
         radii_array,
         phi_array,
+        g_array,
         inclination_angle,
         smbh_mass_exponent,
         corona_height,
@@ -1131,6 +1135,7 @@ def test_generate_snapshots_of_radiation_pattern():
     temp_array = disk_dict["temp_array"]
     radii_array = disk_dict["radii_array"]
     phi_array = disk_dict["phi_array"]
+    g_array = disk_dict["g_array"]
     inclination_angle = disk_dict["inclination_angle"]
     smbh_mass_exponent = disk_dict["smbh_mass_exp"]
     corona_height = disk_dict["corona_height"]
@@ -1158,6 +1163,7 @@ def test_generate_snapshots_of_radiation_pattern():
         temp_array,
         radii_array,
         phi_array,
+        g_array,
         smbh_mass_exponent,
         drw_signal,
         driving_signal_fractional_strength_half,
@@ -1171,6 +1177,7 @@ def test_generate_snapshots_of_radiation_pattern():
         temp_array,
         radii_array,
         phi_array,
+        g_array,
         smbh_mass_exponent,
         drw_signal,
         driving_signal_fractional_strength_zero,
@@ -1184,6 +1191,7 @@ def test_generate_snapshots_of_radiation_pattern():
         temp_array,
         radii_array,
         phi_array,
+        g_array,
         smbh_mass_exponent,
         drw_signal,
         driving_signal_fractional_strength_all,
@@ -1209,6 +1217,7 @@ def test_generate_snapshots_of_radiation_pattern():
         temp_array,
         radii_array,
         phi_array,
+        g_array,
         smbh_mass_exponent,
         signal_increasing_power,
         driving_signal_fractional_strength_all,
