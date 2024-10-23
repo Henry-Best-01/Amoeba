@@ -10,7 +10,7 @@ from amoeba.Util.util import (
     calculate_time_lag_array,
     calculate_dt_dlx,
     construct_accretion_disk_transfer_function,
-    generate_snapshots_of_radiation_pattern
+    generate_snapshots_of_radiation_pattern,
 )
 
 
@@ -310,7 +310,6 @@ class AccretionDisk:
 
         return rest_frame_transfer_function
 
-
     def generate_snapshots(
         self,
         observer_frame_wavelength_in_nm,
@@ -320,13 +319,12 @@ class AccretionDisk:
         corona_height=None,
         axis_offset_in_gravitational_radii=0,
         angle_offset_in_degrees=0,
-        
     ):
 
-        rest_frame_wavelength_in_nm = observer_frame_wavelength_in_nm / (
-            1 + self.redshift_source
-        ) / self.g_array
-        
+        rest_frame_wavelength_in_nm = (
+            observer_frame_wavelength_in_nm / (1 + self.redshift_source) / self.g_array
+        )
+
         if corona_height is None:
             corona_height = self.corona_height
 
@@ -345,25 +343,7 @@ class AccretionDisk:
             axis_offset_in_gravitational_radii,
             angle_offset_in_degrees,
             self.height_array,
-            self.albedo_array
+            self.albedo_array,
         )
 
         return radiation_patterns
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-        

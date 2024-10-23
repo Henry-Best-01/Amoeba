@@ -25,7 +25,6 @@ class FluxProjection:
         """Initialize the projection."""
 
         self.flux_array = flux_array
-        self.total_flux = np.sum(self.flux_array)
         self.observer_frame_wavelength_in_nm = observer_frame_wavelength_in_nm
         if isinstance(observer_frame_wavelength_in_nm, (list, np.ndarray)):
             min_wavelength = round(
@@ -55,6 +54,7 @@ class FluxProjection:
         self.pixel_size = (
             2 * self.rg * self.r_out_in_gravitational_radii / np.size(flux_array, 0)
         )
+        self.total_flux = np.sum(self.flux_array * self.pixel_size**2)
         self.Om0 = Om0
         self.little_h = H0 / 100
         self.lum_dist = calculate_luminosity_distance(
