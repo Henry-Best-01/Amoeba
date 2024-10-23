@@ -1990,36 +1990,3 @@ def convolve_signal_with_transfer_function(
     )
 
     return hypersample_times, convolution
-
-
-"""
-
-    gr_per_day = gravitational_radius / const.c.to(u.m / u.day).value
-
-    transfer_function_lags_in_rg = np.linspace(
-        0, len(transfer_function) - 1, len(transfer_function)
-    )
-    transfer_function_lags_in_days = transfer_function_lags_in_rg * gr_per_day
-
-    transfer_function_interp = interp1d(
-        transfer_function_lags_in_days, transfer_function
-    )
-    tau_axis = np.linspace(
-        0,
-        max(transfer_function_lags_in_days) - 1,
-        int(max(transfer_function_lags_in_days)),
-    )
-
-    daily_spaced_lags = transfer_function_interp(tau_axis)
-    daily_spaced_lags /= np.sum(daily_spaced_lags)
-
-    output_signal = convolve(driving_signal, daily_spaced_lags)
-
-    if redshift is not None:
-        signal_times = np.linspace(0, len(output_signal) - 1, len(output_signal))
-        signal_interp = interp1d(signal_times, output_signal)
-        redshifted_times = signal_times / (1 + redshift)
-        output_signal = signal_interp(redshifted_times)[:len(output_signal)]
-
-    return output_signal
-"""
