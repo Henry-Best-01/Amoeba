@@ -1,11 +1,11 @@
 # Amoeba
-Amoeba is a new, modular, and open source quasar modeling code designed to model intrinsic and extrinsic variability within the context of wide field surveys such as LSST. It treats both emissions and reverberations with corrections from Doppler shifting, general relativity, and ray-tracing around the central black hole. We can simulate any inclination angle, where moderate to edge-on cases can significantly deviate from the flat metric case. 
+Amoeba is a new, modular, and open source quasar modeling code designed to model intrinsic and extrinsic variability within the context of wide field optical surveys such as LSST. It has the capability to treat both emission and reverberation with general relativistic corrections, including Doppler shifting, gravitational redshifting, and light bending around the central black hole. We can simulate any inclination, where moderate to edge-on cases can significantly deviate from the flat metric case. 
 
-Accretion disk temperature profiles have been modelled as a thin disk profile[^3], an irradiated disk profile[^4], or the disk+wind profile[^5]. We provide a flexible temperature profile which can include contributions from lamp post heating and variable accretion flows, which smoothly converges to the thin disk temperature profile. Beyond this temperature profile, Amoeba allows for any input (effective) temperature mapping to be used to create arbitrary surface brightness / response maps. Transfer functions may be constructed from these response maps under the assumed lamppost model.
+Accretion disk temperature profiles have been modelled as a thin disk profile[^3], an irradiated disk profile[^4], or the disk+wind profile[^5]. We provide a flexible temperature profile which can include contributions from lamppost heating and variable accretion flows, which smoothly converges to the thin disk temperature profile. Beyond this temperature profile, Amoeba allows for any input (effective) temperature mapping to be used to create arbitrary surface brightness / response maps. Transfer functions may be constructed from these response maps under the assumed lamppost model.
 
-We cannot upload a magnification map sample due to size limits. This code was written to use microlensing magnification maps which are pre-calculated, where many can be found on the [GERLUMPH](https://gerlumph.swin.edu.au) database[^1]. 
+We cannot upload magnification maps due to size limits. This code was written to use external microlensing magnification maps, where many can be found on the [GERLUMPH](https://gerlumph.swin.edu.au) database[^1]. 
 
-The function "CreateMaps" within QMF is designed to generate all accretion disk maps required for making a disk object. This function relies on [Sim5](https://github.com/mbursa/sim5), a public geodesic ray-tracing code[^2], to calculate impact positions of observed photons on the accretion disk. Only geometrically flat disks are supported, as the position of impact is calculated rapidly at the midplane. 
+The function "CreateMaps" within QMF is designed to generate all accretion disk maps required for making a disk object. This function calls [Sim5](https://github.com/mbursa/sim5), a public geodesic ray-tracing code[^2], if available to calculate impact positions of observed photons on the accretion disk.
 
 If you would like to run the AmoebaExamples.ipynb notebook, you will be required to change file paths and provide the disk file (creatable with QMF.CreateMaps) and magnification map.
 
@@ -21,28 +21,24 @@ First clone Amoeba onto your local machine using:
 
 ```git clone https://github.com/Henry-Best-01/Amoeba.git```
 
-Make sure all dependencies are up to date, for pip users:  
+Make sure all dependencies are up to date:  
 ```pip install -U numpy```  
 ```pip install -U matplotlib```  
 ```pip install -U scipy```  
 ```pip install -U astropy```  
 ```pip install -U scikit-image``` 
 
-Or for Conda users:  
-```conda install numpy```  
-```conda install matplotlib```  
-```conda install scipy```  
-```conda install astropy```  
-```conda install scikit-image```  
-```conda update --all```  
+The setup.py script is still a work in progress, though it can be ran with:
+```pip install .```
+from the Amoeba directory containing setup.py
 
-To use Sim5 for ray tracing and the "CreateMaps" functionality, please follow Sim5 installation instructions [here](https://github.com/mbursa/sim5), including the instructions to install the python interface.
+
+
+To use Sim5 for ray tracing, please follow Sim5 installation instructions [here](https://github.com/mbursa/sim5), including the instructions to install the python interface.
 
 Microlensing simulations will require an external magnification map. In the example notebook please provide the directory to these maps.
 
 Some precomputed ray tracings may be found [here](https://drive.google.com/drive/folders/1vx8HUBXw6SaDq5uS4jQCyWdg13XfCRCv?usp=share_link) which contains a zipped folder of .fits files for various inclination angles and black hole spins. Providing the path to one of these ray traces in the notebook will show you how to use these files with Amoeba. Beyond this zip file, a single file is included with Amoeba.
-
-
 
 
 
