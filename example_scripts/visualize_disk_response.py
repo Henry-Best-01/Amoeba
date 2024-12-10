@@ -6,7 +6,6 @@ from amoeba.Classes.accretion_disk import AccretionDisk
 from amoeba.Util.util import create_maps
 import matplotlib.pyplot as plt
 
-plt.style.use("/Users/henrybest/PythonStuff/Code/plot_style.txt")
 
 
 smbh_mass_exp = 8.0
@@ -66,7 +65,7 @@ id_microlensed_response, descaled_timelags = (
     )
 )
 
-contour_levels = np.linspace(100, 1000, 10)
+contour_levels = np.linspace(100, 1000, 5)
 
 
 x_ax_numbers = np.linspace(
@@ -77,17 +76,17 @@ X, Y = np.meshgrid(x_ax_numbers, x_ax_numbers)
 
 fig, ax = plt.subplots(1, 3, sharex=True, sharey=True)
 
-ax[0].set_title("manual db/dlx map")
-conts1 = ax[0].contourf(X, Y, response_map_manual, cmap="plasma")
-cbar1 = plt.colorbar(conts1, ax=ax[0])
+ax[0].set_title("manual")
+conts1 = ax[0].contourf(X, Y, response_map_manual/np.max(response_map_manual), cmap="plasma")
+cbar1 = plt.colorbar(conts1, ax=ax[0], label='relative db/dL_{x}')
 
-ax[1].set_title("auto ml db/dlx map")
-conts2 = ax[1].contourf(X, Y, id_microlensed_response, cmap="plasma")
-cbar2 = plt.colorbar(conts2, ax=ax[1])
+ax[1].set_title("auto microlensed")
+conts2 = ax[1].contourf(X, Y, id_microlensed_response/np.max(id_microlensed_response), cmap="plasma")
+cbar2 = plt.colorbar(conts2, ax=ax[1], label='relative db/dL_{x}')
 
-ax[2].set_title("auto db/dlx map")
-conts1 = ax[2].contourf(X, Y, response_map_auto, cmap="plasma")
-cbar1 = plt.colorbar(conts1, ax=ax[2])
+ax[2].set_title("automatic")
+conts1 = ax[2].contourf(X, Y, response_map_auto/np.max(response_map_auto), cmap="plasma")
+cbar1 = plt.colorbar(conts1, ax=ax[2], label='relative db/dL_{x}')
 
 for axis in ax:
 
@@ -99,6 +98,6 @@ for axis in ax:
     axis.set_aspect(1)
     axis.set_xlabel(r"X, $R_{\rm{g}}$")
     axis.set_ylabel(r"Y, $R_{\rm{g}}$")
-
+fig.set_figwidth(14)
 
 plt.show()

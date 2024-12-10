@@ -37,8 +37,9 @@ def test_initialization():
         H0=70,
     )
 
-    # check it sum naturally
-    assert np.sum(flux_map) == my_gaussian_projection.total_flux
+    # check the sum naturally
+    natural_sum = np.sum(flux_map * my_gaussian_projection.pixel_size**2)
+    assert natural_sum == my_gaussian_projection.total_flux
     assert (
         observer_frame_wavelength_in_nm
         == my_gaussian_projection.observer_frame_wavelength_in_nm
@@ -124,3 +125,38 @@ def test_initialization():
     assert projection.smbh_mass_exp == smbh_mass_exp
     assert projection.r_out_in_gravitational_radii > max_height + launch_radius
     assert projection.inclination_angle == inclination_angle
+
+
+def test_get_plotting_axes():
+    x_vals = np.linspace(-100, 100, 201)
+    X, Y = np.meshgrid(x_vals, x_vals)
+    R2 = X**2 + Y**2
+    flux_map = np.exp(-(R2 / 20**2))
+
+    observer_frame_wavelength_in_nm = 500
+    smbh_mass_exp = 7.5
+    redshift_source = 1.2
+    r_out_in_gravitational_radii = 100
+    inclination_angle = 0
+    Om0 = 0.3
+    H0 = 70
+
+    my_gaussian_projection = FluxProjection(
+        flux_map,
+        observer_frame_wavelength_in_nm,
+        smbh_mass_exp,
+        redshift_source,
+        r_out_in_gravitational_radii,
+        inclination_angle,
+        Om0=0.3,
+        H0=70,
+    )
+
+    generated_X, generated_Y = my_gaussian_projection.get_plotting_axes()
+
+    assert np.shape(generated_X) == np.shape(generated_Y)
+    assert np.shape(generated_X) == np.shape(X)
+    assert np.sum(X - generated_X) == 0
+    assert np.sum(Y - generated_Y) == 0
+
+    

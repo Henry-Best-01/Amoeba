@@ -78,7 +78,7 @@ class MagnificationMap:
         elif magnification_array[-4:] == "fits":
             with fits.open(magnification_array) as f:
                 self.ray_map = f[0].data
-        elif magnification_array[-4:] == ".dat":
+        elif magnification_array[-4:] == ".dat" or magnification_array[-4:] == ".bin":
             with open(magnification_array, "rb") as f:
                 extracted_magnification_array = np.fromfile(f, "i", count=-1, sep="")
                 self.ray_map = convert_1d_array_to_2d_array(

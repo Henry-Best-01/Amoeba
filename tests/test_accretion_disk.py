@@ -1,9 +1,7 @@
 import numpy as np
 import numpy.testing as npt
 from amoeba.Classes.accretion_disk import AccretionDisk
-from amoeba.Util.util import (
-    create_maps,
-)
+from amoeba.Util.util import create_maps, convert_spin_to_isco_radius
 from astropy import units as u
 
 
@@ -52,6 +50,8 @@ class TestAccretionDisk:
         spin = 1.0
         number_grav_radii = 50
         resolution = 50
+
+        print(1 - (1 - 2 / (3 * convert_spin_to_isco_radius(spin))) ** 0.5)
 
         accretion_disk_data_zoom_spin = create_maps(
             smbh_mass_exp,

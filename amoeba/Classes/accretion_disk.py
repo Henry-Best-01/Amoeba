@@ -54,6 +54,8 @@ class AccretionDisk:
             factors) on the accretion disk. Requires general relativistic ray tracing.
         :param radii_array: a 2d representation of the radii on the accretion disk, in
             R_g = GM/c^2
+        :param height_array: a 2d representation of the height of the accretion disk in
+            units of R_g = GM/c^2
         :param spin: float representing the dimensionless spin component of the SMBH
             (often denoted a_{*}) which may range from -1 to 1. Negative values
             represent accretion disks anti-aligned with the spin of the black hole.

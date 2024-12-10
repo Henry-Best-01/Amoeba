@@ -1,7 +1,5 @@
 import numpy as np
 import matplotlib.pyplot as plt
-
-plt.style.use("/Users/henrybest/PythonStuff/Code/plot_style.txt")
 from amoeba.Classes.blr import BroadLineRegion
 from amoeba.Classes.blr_streamline import Streamline
 from amoeba.Classes.accretion_disk import AccretionDisk
@@ -170,6 +168,17 @@ cbar4 = plt.colorbar(conts4, ax=ax[0, 1])
 cbar5 = plt.colorbar(conts5, ax=ax[1, 1])
 cbar6 = plt.colorbar(conts6, ax=ax[2, 1])
 
+ax[0, 0].set_xlim(-500, 500)
+ax[0, 0].set_ylim(-300, 300)
+
+ax[0, 0].set_title("$\lambda$ = "+str(filter_1[0])+" - "+str(filter_1[1])+" nm")
+ax[1, 0].set_title("$\lambda$ = "+str(filter_2[0])+" - "+str(filter_2[1])+" nm")
+ax[2, 0].set_title("$\lambda$ = "+str(filter_3[0])+" - "+str(filter_3[1])+" nm")
+ax[0, 1].set_title("$\lambda$ = "+str(filter_1[0])+" - "+str(filter_1[1])+" nm")
+ax[1, 1].set_title("$\lambda$ = "+str(filter_2[0])+" - "+str(filter_2[1])+" nm")
+ax[2, 1].set_title("$\lambda$ = "+str(filter_3[0])+" - "+str(filter_3[1])+" nm")
+                   
+
 
 for axis_row in ax:
     for axis in axis_row:
@@ -177,7 +186,7 @@ for axis_row in ax:
         axis.set_xlabel(r"X [$r_{\rm{g}}$]")
         axis.set_ylabel(r"Y [$r_{\rm{g}}$]")
 
-ax[0, 0].set_xlim(-max_disk_radius, max_disk_radius)
-ax[0, 0].set_ylim(-max_disk_radius, max_disk_radius)
+fig.set_figheight(10)
+fig.set_figwidth(8)
 
 plt.show()
