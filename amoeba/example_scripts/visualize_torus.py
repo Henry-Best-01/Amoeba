@@ -8,8 +8,6 @@ import numpy.testing as npt
 import matplotlib.pyplot as plt
 
 
-
-
 smbh_mass_exp = 7.2
 launch_radius = 600  # Rg
 launch_theta = 50  # degrees
@@ -42,28 +40,16 @@ my_torus = Torus(
 
 my_torus.add_streamline_bounded_region(test_torus_streamline)
 
-projection = my_torus.project_density_to_source_plane(
-    inclination
-)
+projection = my_torus.project_density_to_source_plane(inclination)
 
 xax = np.linspace(-my_torus.max_radius, my_torus.max_radius, np.size(projection, 0))
 
 X, Y = np.meshgrid(xax, xax)
 
 fig, ax = plt.subplots()
-contours = ax.contourf(X, Y, projection, 50, cmap='plasma')
-cbar = plt.colorbar(contours, ax=ax, label='column density [arb.]')
+contours = ax.contourf(X, Y, projection, 50, cmap="plasma")
+cbar = plt.colorbar(contours, ax=ax, label="column density [arb.]")
 ax.set_xlabel("X [Rg]")
 ax.set_ylabel("Y [Rg]")
 ax.set_aspect(1)
 plt.show()
-
-
-
-
-
-
-
-
-
-        

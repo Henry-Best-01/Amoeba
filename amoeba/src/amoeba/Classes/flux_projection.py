@@ -1,7 +1,7 @@
 from astropy import units as u
 from astropy import constants as const
 import numpy as np
-from amoeba.Util.util import (
+from amoeba.src.amoeba.Util.util import (
     calculate_gravitational_radius,
     calculate_luminosity_distance,
     calculate_angular_diameter_distance,
@@ -23,6 +23,9 @@ class FluxProjection:
         H0=70,
     ):
         """Initialize the projection."""
+
+        if isinstance(flux_array, list):
+            flux_array = np.asarray(flux_array)
 
         self.flux_array = flux_array
         self.observer_frame_wavelength_in_nm = observer_frame_wavelength_in_nm
@@ -69,11 +72,7 @@ class FluxProjection:
         xax = np.linspace(
             -self.r_out_in_gravitational_radii,
             self.r_out_in_gravitational_radii,
-            np.size(self.flux_array, 0)
+            np.size(self.flux_array, 0),
         )
         X, Y = np.meshgrid(xax, xax)
         return X, Y
-
-
-
-        

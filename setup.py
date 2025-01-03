@@ -4,7 +4,7 @@
 
 from setuptools import setup, find_packages
 
-with open("README.md") as readme_file:
+with open("README.rst") as readme_file:
     readme = readme_file.read()
 
 # with open("HISTORY.rst") as history_file:
@@ -41,7 +41,7 @@ setup(
     keywords="amoeba",
     name="amoeba",
     packages=find_packages(),
-    test_suite="tests",
+    test_suite="amoeba/tests",
     tests_require=test_requirements,
     url="https://github.com/Henry-Best-01/Amoeba",
     version="0.1.0",

@@ -1,8 +1,8 @@
 import numpy as np
 from astropy import units as u
 from astropy import constants as const
-from amoeba.Classes.blr_streamline import Streamline
-from amoeba.Util.util import project_blr_to_source_plane
+from amoeba.src.amoeba.Classes.blr_streamline import Streamline
+from amoeba.src.amoeba.Util.util import project_blr_to_source_plane
 
 
 class Torus:

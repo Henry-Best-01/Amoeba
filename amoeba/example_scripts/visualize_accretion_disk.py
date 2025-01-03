@@ -8,7 +8,6 @@ from astropy import units as u
 import matplotlib.pyplot as plt
 
 
-
 smbh_mass_exp = 8.0
 redshift_source = 2.0
 inclination_angle = 80.0

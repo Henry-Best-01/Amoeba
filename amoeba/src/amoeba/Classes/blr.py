@@ -1,12 +1,12 @@
 import numpy as np
 from astropy import units as u
 from astropy import constants as const
-from amoeba.Util.util import (
+from amoeba.src.amoeba.Util.util import (
     project_blr_to_source_plane,
     calculate_blr_transfer_function,
     determine_emission_line_velocities,
 )
-from amoeba.Classes.flux_projection import FluxProjection
+from amoeba.src.amoeba.Classes.flux_projection import FluxProjection
 
 
 class BroadLineRegion:
@@ -266,7 +266,6 @@ class BroadLineRegion:
         )
 
         return flux_projection
-
 
     def calculate_blr_scattering_transfer_function(self, inclination_angle):
 

@@ -1,4 +1,4 @@
-from amoeba.Util.util import (
+from amoeba.src.amoeba.Util.util import (
     create_maps,
     calculate_keplerian_velocity,
     convert_spin_to_isco_radius,
@@ -272,14 +272,14 @@ def test_calculate_gravitational_radius():
 
 def test_calculate_angular_diameter_distance():
     redshift = 0.1
-    Om0 = 0.3
+    OmM = 0.3
     little_h = 0.7
     H0 = 100 * little_h
 
     ang_diam_dist = calculate_angular_diameter_distance(
-        redshift, Om0=Om0, little_h=little_h
+        redshift, OmM=OmM, little_h=little_h
     )
-    astropy_cosmo = FlatLambdaCDM(H0, Om0)
+    astropy_cosmo = FlatLambdaCDM(H0, OmM)
     ang_diam_dist_astropy = astropy_cosmo.angular_diameter_distance(redshift).to(u.m)
 
     # set tolerance to 0.5% due to quadrature integration and
@@ -292,23 +292,23 @@ def test_calculate_angular_diameter_distance():
 def test_calculate_angular_diameter_distance():
     redshift_lens = 0.1
     redshift_source = 0.5
-    Om0 = 0.3
+    OmM = 0.3
     little_h = 0.7
     H0 = 100 * little_h
 
     ang_diam_dist_lens = calculate_angular_diameter_distance(
-        redshift_lens, Om0=Om0, little_h=little_h
+        redshift_lens, OmM=OmM, little_h=little_h
     )
     ang_diam_dist_source = calculate_angular_diameter_distance(
-        redshift_source, Om0=Om0, little_h=little_h
+        redshift_source, OmM=OmM, little_h=little_h
     )
 
     ang_diam_dist_diff = calculate_angular_diameter_distance_difference(
-        redshift_lens, redshift_source, Om0=Om0, little_h=little_h
+        redshift_lens, redshift_source, OmM=OmM, little_h=little_h
     )
 
     ang_diam_dist_diff_reversed = calculate_angular_diameter_distance_difference(
-        redshift_source, redshift_lens, Om0=Om0, little_h=little_h
+        redshift_source, redshift_lens, OmM=OmM, little_h=little_h
     )
 
     # Check that redshift misordering doesn't cause issues
@@ -323,10 +323,10 @@ def test_calculate_angular_diameter_distance():
     redshift_source = 0.5
 
     ang_diam_dist_diff_tiny = calculate_angular_diameter_distance_difference(
-        redshift_lens_tiny, redshift_source, Om0=Om0, little_h=little_h
+        redshift_lens_tiny, redshift_source, OmM=OmM, little_h=little_h
     )
     ang_diam_dist_tiny = calculate_angular_diameter_distance(
-        redshift_lens_tiny, Om0=Om0, little_h=little_h
+        redshift_lens_tiny, OmM=OmM, little_h=little_h
     )
     # define a relatively small tolerance
     tolerance = ang_diam_dist_source / 10**8
@@ -338,13 +338,13 @@ def test_calculate_angular_diameter_distance():
 
 def test_calculate_luminosity_distance():
     redshift = 0.1
-    Om0 = 0.3
+    OmM = 0.3
     little_h = 0.7
     H0 = 100 * little_h
 
-    lum_dist = calculate_luminosity_distance(redshift, Om0=Om0, little_h=little_h)
+    lum_dist = calculate_luminosity_distance(redshift, OmM=OmM, little_h=little_h)
 
-    astropy_cosmo = FlatLambdaCDM(H0, Om0)
+    astropy_cosmo = FlatLambdaCDM(H0, OmM)
     lum_dist_astropy = astropy_cosmo.luminosity_distance(redshift).to(u.m).value
 
     # define a small tolerance due to parameter rounding
@@ -356,14 +356,14 @@ def test_calculate_angular_einstein_radius():
     redshift_lens = 1.0
     redshift_source = 2.0
     avg_microlens_mass = 0.3 * const.M_sun.to(u.kg)
-    Om0 = 0.3
+    OmM = 0.3
     little_h = 0.7
 
     star_ang_ein_rad = calculate_angular_einstein_radius(
         redshift_lens,
         redshift_source,
         mean_microlens_mass_in_kg=avg_microlens_mass,
-        Om0=Om0,
+        OmM=OmM,
         little_h=little_h,
     )
 
@@ -372,7 +372,7 @@ def test_calculate_angular_einstein_radius():
         redshift_lens,
         redshift_source,
         mean_microlens_mass_in_kg=human_mass,
-        Om0=Om0,
+        OmM=OmM,
         little_h=little_h,
     )
 
@@ -384,14 +384,14 @@ def test_calculate_einstein_radius_in_meters():
     redshift_lens = 1.0
     redshift_source = 2.0
     avg_microlens_mass = 0.3 * const.M_sun.to(u.kg)
-    Om0 = 0.3
+    OmM = 0.3
     little_h = 0.7
 
     star_ein_rad = calculate_einstein_radius_in_meters(
         redshift_lens,
         redshift_source,
         mean_microlens_mass_in_kg=avg_microlens_mass,
-        Om0=Om0,
+        OmM=OmM,
         little_h=little_h,
     )
 
@@ -400,7 +400,7 @@ def test_calculate_einstein_radius_in_meters():
         redshift_lens,
         redshift_source,
         mean_microlens_mass_in_kg=human_mass,
-        Om0=Om0,
+        OmM=OmM,
         little_h=little_h,
     )
 
@@ -563,7 +563,7 @@ def test_extract_light_curve():
         redshift_lens=1.0,
         redshift_source=2.0,
         mean_microlens_mass_in_kg=0.3 * const.M_sun.to(u.kg),
-        Om0=0.3,
+        OmM=0.3,
         little_h=0.7,
     )
 
@@ -1235,8 +1235,8 @@ def test_project_blr_to_source_plane():
     # want 1000 in the R direction, 50 in the Z direction so the
     # loop over each slab doesn't take long
 
-    max_radius = 1000
-    max_height = 1000
+    max_radius = 500
+    max_height = 500
 
     r_points = 20
     z_points = 10
@@ -1447,8 +1447,8 @@ def test_project_blr_to_source_plane():
 
 def test_calculate_blr_transfer_function():
 
-    max_radius = 1000
-    max_height = 1000
+    max_radius = 100
+    max_height = 100
 
     r_points = 20
     z_points = 10

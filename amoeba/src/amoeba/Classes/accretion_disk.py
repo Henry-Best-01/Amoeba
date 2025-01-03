@@ -1,8 +1,8 @@
 from astropy import units as u
 from astropy import constants as const
 import numpy as np
-from amoeba.Classes.flux_projection import FluxProjection
-from amoeba.Util.util import (
+from amoeba.src.amoeba.Classes.flux_projection import FluxProjection
+from amoeba.src.amoeba.Util.util import (
     calculate_luminosity_distance,
     calculate_gravitational_radius,
     planck_law,

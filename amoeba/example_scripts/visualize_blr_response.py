@@ -129,5 +129,5 @@ ax[1, 1].set_ylabel(r"$\Psi_{\rm{BLR}}$ [arb.]")
 ax[1, 1].set_prop_cycle(None)
 ax[1, 1].plot([mean_blr_2, mean_blr_2], [0, 1], "--")
 
-plt.subplots_adjust(wspace = 0.4, hspace=0.4)
+plt.subplots_adjust(wspace=0.4, hspace=0.4)
 plt.show()

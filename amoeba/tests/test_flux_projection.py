@@ -1,9 +1,9 @@
 import pytest
-from amoeba.Classes.flux_projection import FluxProjection
-from amoeba.Classes.accretion_disk import AccretionDisk
-from amoeba.Classes.blr import BroadLineRegion
-from amoeba.Classes.blr_streamline import Streamline
-from amoeba.Util.util import create_maps
+from amoeba.src.amoeba.Classes.flux_projection import FluxProjection
+from amoeba.src.amoeba.Classes.accretion_disk import AccretionDisk
+from amoeba.src.amoeba.Classes.blr import BroadLineRegion
+from amoeba.src.amoeba.Classes.blr_streamline import Streamline
+from amoeba.src.amoeba.Util.util import create_maps
 import astropy.units as u
 
 import numpy as np
@@ -23,7 +23,7 @@ def test_initialization():
     redshift_source = 1.2
     r_out_in_gravitational_radii = 100
     inclination_angle = 0
-    Om0 = 0.3
+    OmM = 0.3
     H0 = 70
 
     my_gaussian_projection = FluxProjection(
@@ -33,7 +33,7 @@ def test_initialization():
         redshift_source,
         r_out_in_gravitational_radii,
         inclination_angle,
-        Om0=0.3,
+        OmM=0.3,
         H0=70,
     )
 
@@ -138,7 +138,7 @@ def test_get_plotting_axes():
     redshift_source = 1.2
     r_out_in_gravitational_radii = 100
     inclination_angle = 0
-    Om0 = 0.3
+    OmM = 0.3
     H0 = 70
 
     my_gaussian_projection = FluxProjection(
@@ -148,7 +148,7 @@ def test_get_plotting_axes():
         redshift_source,
         r_out_in_gravitational_radii,
         inclination_angle,
-        Om0=0.3,
+        OmM=0.3,
         H0=70,
     )
 
@@ -158,5 +158,3 @@ def test_get_plotting_axes():
     assert np.shape(generated_X) == np.shape(X)
     assert np.sum(X - generated_X) == 0
     assert np.sum(Y - generated_Y) == 0
-
-    

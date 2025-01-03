@@ -1,7 +1,7 @@
 import numpy as np
 import numpy.testing as npt
-from amoeba.Classes.accretion_disk import AccretionDisk
-from amoeba.Util.util import create_maps, convert_spin_to_isco_radius
+from amoeba.src.amoeba.Classes.accretion_disk import AccretionDisk
+from amoeba.src.amoeba.Util.util import create_maps, convert_spin_to_isco_radius
 from astropy import units as u
 
 

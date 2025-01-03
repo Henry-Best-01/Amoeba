@@ -302,7 +302,7 @@ def accretion_disk_temperature(
     inner_rad_in_grav_rad = min_radius_in_meters / grav_rad_in_meters
 
     # m
-    m0_dot = disk_acc / (inner_rad_in_grav_rad)**(beta)
+    m0_dot = disk_acc / (inner_rad_in_grav_rad) ** (beta)
     corona_height += 0.5  # Avoid singularities
     corona_height *= calculate_gravitational_radius(mass_in_solar_masses)
 
@@ -915,7 +915,11 @@ def extract_light_curve(
             )
         )
     if return_track_coords:
-        return np.asarray(light_curve), x_positions+pixel_shift, y_positions+pixel_shift
+        return (
+            np.asarray(light_curve),
+            x_positions + pixel_shift,
+            y_positions + pixel_shift,
+        )
     return np.asarray(light_curve)
 
 
@@ -1531,7 +1535,7 @@ def generate_snapshots_of_radiation_pattern(
 
     # normalize response_array because we want a fractional response w.r.t. the static_flux array
 
-    response_array *= total_static_flux / np.sum(response_array)   
+    response_array *= total_static_flux / np.sum(response_array)
 
     if len(driving_signal) < np.max(time_stamps + maximum_time_lag_in_days):
         print(
@@ -1544,7 +1548,7 @@ def generate_snapshots_of_radiation_pattern(
     # define a burn in such that the whole disk is being driven at t=0
     burn_in_time = maximum_time_lag_in_days
     accretion_disk_mask = temp_array > 0
-    
+
     list_of_snapshots = []
     # prepare snapshots
     for time in time_stamps:
@@ -1650,7 +1654,7 @@ def project_blr_to_source_plane(
             X,
             Y,
         )
-            
+
         # set phi to chosen coordinate system
         Phi = (5 / 2 * np.pi + Phi) % (2 * np.pi)
 
@@ -1768,7 +1772,7 @@ def calculate_blr_transfer_function(
         X,
         Y,
     )
-    
+
     # set phi to chosen coordinate system
     Phi = (5 / 2 * np.pi + Phi) % (2 * np.pi)
 
@@ -1908,7 +1912,7 @@ def convolve_signal_with_transfer_function(
     initial_time_axis=None,
     transfer_function=None,
     redshift=0,
-    desired_cadence_in_days=1
+    desired_cadence_in_days=1,
 ):
     """Helper function to convolve a signal with even daily cadence with a trasnfer
     function which has spacing in gravitational radii.
@@ -1924,77 +1928,77 @@ def convolve_signal_with_transfer_function(
     :return: reprocessed signal at daily cadence
     """
 
-    
     # this is the resolution of the transfer function
     gravitational_radius = calculate_gravitational_radius(10**mass_exponent)
-    
+
     # this will be the rescaling factor
-    light_travel_time_for_grav_rad = gravitational_radius / const.c.to(u.m / u.day).value
+    light_travel_time_for_grav_rad = (
+        gravitational_radius / const.c.to(u.m / u.day).value
+    )
 
     # determine how many points per day need to be calculated
     required_hyper_resolution = (1 + redshift) / min(desired_cadence_in_days, 1)
 
     # sample the signal at required cadence via interpolation
     if initial_time_axis is None:
-        initial_time_axis = np.linspace(0, len(driving_signal)-1, len(driving_signal))
-    
+        initial_time_axis = np.linspace(0, len(driving_signal) - 1, len(driving_signal))
+
     driving_signal_interpolation = interp1d(
-        initial_time_axis,
-        driving_signal,
-        bounds_error=False,
-        fill_value='extrapolate'
+        initial_time_axis, driving_signal, bounds_error=False, fill_value="extrapolate"
     )
-    
-    # increase sampling rate 
+
+    # increase sampling rate
     desired_time_axis = np.linspace(
         0,
         max(initial_time_axis),
-        int(max(initial_time_axis)*required_hyper_resolution)
+        int(max(initial_time_axis) * required_hyper_resolution),
     )
 
     # resample the transfer function at required cadence
     tau_axis = np.linspace(
         0,
-        (len(transfer_function)-1)*light_travel_time_for_grav_rad,
-        len(transfer_function)
+        (len(transfer_function) - 1) * light_travel_time_for_grav_rad,
+        len(transfer_function),
     )
 
     interpolated_transfer_function = interp1d(
-        tau_axis,
-        transfer_function,
-        bounds_error=False,
-        fill_value='extrapolate'
+        tau_axis, transfer_function, bounds_error=False, fill_value="extrapolate"
     )
 
     desired_tau_axis = np.linspace(
         0,
-        (len(transfer_function)-1)*light_travel_time_for_grav_rad,
-        int((len(transfer_function)-1)*light_travel_time_for_grav_rad*required_hyper_resolution)
+        (len(transfer_function) - 1) * light_travel_time_for_grav_rad,
+        int(
+            (len(transfer_function) - 1)
+            * light_travel_time_for_grav_rad
+            * required_hyper_resolution
+        ),
     )
-    
+
     # sample
     hypersampled_signal = driving_signal_interpolation(desired_time_axis)
-    
+
     if len(desired_tau_axis) <= 1:
         print("warning: unresolvable transfer function")
-        hypersample_times = np.linspace(0, max(initial_time_axis), len(hypersampled_signal)) * (1+redshift)
+        hypersample_times = np.linspace(
+            0, max(initial_time_axis), len(hypersampled_signal)
+        ) * (1 + redshift)
         return hypersample_times, hypersampled_signal
 
     # convolve
     hypersampled_transfer_function = interpolated_transfer_function(desired_tau_axis)
 
-    convolution = convolve(hypersampled_signal, hypersampled_transfer_function)[:len(hypersampled_signal)]
-    hypersample_times = np.linspace(0, max(initial_time_axis), len(convolution)) * (1+redshift)
+    convolution = convolve(hypersampled_signal, hypersampled_transfer_function)[
+        : len(hypersampled_signal)
+    ]
+    hypersample_times = np.linspace(0, max(initial_time_axis), len(convolution)) * (
+        1 + redshift
+    )
 
     return hypersample_times, convolution
-    
 
 
-
-
-
-    
-'''
+"""
 
     gr_per_day = gravitational_radius / const.c.to(u.m / u.day).value
 
@@ -2024,4 +2028,4 @@ def convolve_signal_with_transfer_function(
         output_signal = signal_interp(redshifted_times)[:len(output_signal)]
 
     return output_signal
-'''
+"""

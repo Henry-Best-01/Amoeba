@@ -2,7 +2,7 @@ from astropy import units as u
 from astropy import constants as const
 import numpy as np
 from astropy.io import fits
-from amoeba.Util.util import (
+from amoeba.src.amoeba.Util.util import (
     calculate_angular_diameter_distance,
     calculate_einstein_radius_in_meters,
     convert_1d_array_to_2d_array,
