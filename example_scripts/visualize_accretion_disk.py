@@ -7,7 +7,6 @@ from amoeba.Util.util import (
 from astropy import units as u
 import matplotlib.pyplot as plt
 
-plt.style.use("/Users/henrybest/PythonStuff/Code/plot_style.txt")
 
 
 smbh_mass_exp = 8.0

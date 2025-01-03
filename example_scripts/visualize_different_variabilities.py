@@ -7,8 +7,6 @@ from astropy import units as u
 from astropy import constants as const
 from scipy.interpolate import interp1d
 
-plt.style.use("/Users/henrybest/PythonStuff/Code/plot_style.txt")
-
 
 # signal
 signal_length = 20000

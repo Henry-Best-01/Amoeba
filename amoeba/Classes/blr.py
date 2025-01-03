@@ -20,7 +20,7 @@ class BroadLineRegion:
         radial_step=10,
         height_step=10,
         max_radius=0,
-        Om0=0.3,
+        OmM=0.3,
         H0=70,
     ):
         # res holds the number of R_g each pixel is
@@ -28,7 +28,7 @@ class BroadLineRegion:
         self.smbh_mass_exp = smbh_mass_exp
         self.rest_frame_wavelength_in_nm = rest_frame_wavelength_in_nm
         self.redshift_source = redshift_source
-        self.Om0 = Om0
+        self.OmM = OmM
         self.H0 = H0
         self.max_height = max_height
         self.radial_step = radial_step
@@ -199,7 +199,7 @@ class BroadLineRegion:
             self.redshift_source,
             max_radius,
             inclination_angle,
-            Om0=self.Om0,
+            OmM=self.OmM,
             H0=self.H0,
         )
 
@@ -261,11 +261,12 @@ class BroadLineRegion:
             self.redshift_source,
             max_radius,
             inclination_angle,
-            Om0=self.Om0,
+            OmM=self.OmM,
             H0=self.H0,
         )
 
         return flux_projection
+
 
     def calculate_blr_scattering_transfer_function(self, inclination_angle):
 

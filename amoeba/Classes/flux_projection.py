@@ -19,7 +19,7 @@ class FluxProjection:
         redshift_source,
         r_out_in_gravitational_radii,
         inclination_angle,
-        Om0=0.3,
+        OmM=0.3,
         H0=70,
     ):
         """Initialize the projection."""
@@ -55,11 +55,25 @@ class FluxProjection:
             2 * self.rg * self.r_out_in_gravitational_radii / np.size(flux_array, 0)
         )
         self.total_flux = np.sum(self.flux_array * self.pixel_size**2)
-        self.Om0 = Om0
+        self.OmM = OmM
+        self.H0 = H0
         self.little_h = H0 / 100
         self.lum_dist = calculate_luminosity_distance(
-            self.redshift_source, Om0=self.Om0, little_h=self.little_h
+            self.redshift_source, OmM=self.OmM, little_h=self.little_h
         )
         self.ang_diam_dist = calculate_angular_diameter_distance(
-            self.redshift_source, Om0=self.Om0, little_h=self.little_h
+            self.redshift_source, OmM=self.OmM, little_h=self.little_h
         )
+
+    def get_plotting_axes(self):
+        xax = np.linspace(
+            -self.r_out_in_gravitational_radii,
+            self.r_out_in_gravitational_radii,
+            np.size(self.flux_array, 0)
+        )
+        X, Y = np.meshgrid(xax, xax)
+        return X, Y
+
+
+
+        

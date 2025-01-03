@@ -3,8 +3,6 @@ from amoeba.Classes.blr import BroadLineRegion
 from amoeba.Classes.blr_streamline import Streamline
 import matplotlib.pyplot as plt
 
-plt.style.use("/Users/henrybest/PythonStuff/Code/plot_style.txt")
-
 
 inc_ang = 45  # deg
 redshift = 1
@@ -131,5 +129,5 @@ ax[1, 1].set_ylabel(r"$\Psi_{\rm{BLR}}$ [arb.]")
 ax[1, 1].set_prop_cycle(None)
 ax[1, 1].plot([mean_blr_2, mean_blr_2], [0, 1], "--")
 
-
+plt.subplots_adjust(wspace = 0.4, hspace=0.4)
 plt.show()

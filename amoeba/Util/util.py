@@ -21,7 +21,7 @@ def create_maps(
     mass_exp,
     redshift,
     number_grav_radii,
-    inc_ang,
+    inclination_angle,
     resolution,
     spin=0,
     eddington_ratio=0.1,
@@ -33,7 +33,7 @@ def create_maps(
     disk_acc=None,
     height_array=None,
     albedo_array=None,
-    Om0=0.3,
+    OmM=0.3,
     H0=70,
     efficiency=1.0,
     visc_temp_prof="SS",
@@ -45,7 +45,7 @@ def create_maps(
     :param redshift: the redshift of the AGN
     :param number_grav_radii: the max radius of the accretion disk in gravitational
         radii
-    :param inc_ang: the inclination of the accretion disk w.r.t. the observer, in
+    :param inclination_angle: the inclination of the accretion disk w.r.t. the observer, in
         degrees
     :param resolution: the number of pixels along one axis the images are resolved to.
         All images are created square.
@@ -70,7 +70,7 @@ def create_maps(
     :param efficiency: efficiency of the conversion of gravitational potential energy to
         thermal energy.
     :return: a list representing 6 values (mass_exp, redshift, number_grav_radii,
-        inc_ang, corona_height, spin) and 4 arrays (temp_array, r_array, g_array,
+        inclination_angle, corona_height, spin) and 4 arrays (temp_array, r_array, g_array,
         phi_array) These are all recorded for conveninence, as they all get put into the
         AccretionDisk constructor in order.
     """
@@ -82,10 +82,10 @@ def create_maps(
         sim5_installed = False
 
     assert redshift >= 0
-    assert inc_ang >= 0
-    assert inc_ang <= 90
-    if inc_ang == 90:
-        inc_ang -= 0.001
+    assert inclination_angle >= 0
+    assert inclination_angle <= 90
+    if inclination_angle == 90:
+        inclination_angle -= 0.001
     assert abs(spin) <= 1
     assert temp_beta >= 0
     bh_mass_in_solar_masses = 10**mass_exp
@@ -96,8 +96,8 @@ def create_maps(
     r_array = temp_array.copy()
     phi_array = temp_array.copy()
     if sim5_installed == True:
-        if inc_ang == 0:
-            inc_ang += 0.001
+        if inclination_angle == 0:
+            inclination_angle += 0.001
         bh_rms = sim5.r_ms(spin)
         for yy in range(resolution):
             for xx in range(resolution):
@@ -107,7 +107,7 @@ def create_maps(
                 gd = sim5.geodesic()
                 error = sim5.intp()
                 sim5.geodesic_init_inf(
-                    inc_ang * np.pi / 180, abs(spin), alpha, beta, gd, error
+                    inclination_angle * np.pi / 180, abs(spin), alpha, beta, gd, error
                 )
                 if error.value():
                     continue
@@ -125,7 +125,7 @@ def create_maps(
                     r_array[xx, yy] = r
     else:
         x_vals = np.linspace(-number_grav_radii, number_grav_radii, resolution)
-        y_vals = x_vals.copy() / np.cos(np.pi * inc_ang / 180)
+        y_vals = x_vals.copy() / np.cos(np.pi * inclination_angle / 180)
         X, Y = np.meshgrid(x_vals, y_vals)
         r_array, phi_array = convert_cartesian_to_polar(X, Y)
         phi_array = (5 / 2 * np.pi + phi_array) % (2 * np.pi)
@@ -149,7 +149,7 @@ def create_maps(
     disk_params = {
         "smbh_mass_exp": mass_exp,
         "redshift_source": redshift,
-        "inclination_angle": inc_ang,
+        "inclination_angle": inclination_angle,
         "corona_height": corona_height,
         "temp_array": temp_array,
         "phi_array": phi_array,
@@ -159,7 +159,7 @@ def create_maps(
         "height_array": height_array,
         "albedo_array": albedo_array,
         "spin": spin,
-        "Om0": Om0,
+        "OmM": OmM,
         "H0": H0,
         "name": name,
     }
@@ -302,7 +302,7 @@ def accretion_disk_temperature(
     inner_rad_in_grav_rad = min_radius_in_meters / grav_rad_in_meters
 
     # m
-    m0_dot = disk_acc / (inner_rad_in_grav_rad**beta)
+    m0_dot = disk_acc / (inner_rad_in_grav_rad)**(beta)
     corona_height += 0.5  # Avoid singularities
     corona_height *= calculate_gravitational_radius(mass_in_solar_masses)
 
@@ -467,29 +467,29 @@ def calculate_gravitational_radius(mass_in_solar_masses):
     return (const.G * mass_in_kg / const.c**2).decompose().value
 
 
-def calculate_angular_diameter_distance(redshift, Om0=0.3, little_h=0.7):
+def calculate_angular_diameter_distance(redshift, OmM=0.3, little_h=0.7):
     """This funciton takes in a redshift value of z, and calculates the angular diameter
     distance. This is given as the output. This assumes LCDM model. Follows Distance
     measures in cosmology (Hogg 1999) :param redshift: redshift the object of interest
-    is at :param Om0: total fraction of the Universe's energy budget is in mass.
+    is at :param OmM: total fraction of the Universe's energy budget is in mass.
 
     :param little_h: reduced Hubble constant defined by H_0 = little_h * 100 [km s^-1
         Mpc^-1]
     :return: angular diameter distance in units meters, assuming a flat lambda-CDM
         universe
     """
-    OmL = 1 - Om0
+    OmL = 1 - OmM
     multiplier = (
         (9.26 * 10**25) * (little_h) ** (-1) * (1 / (1 + redshift))
     )  # This does not need to be integrated over
-    integrand = lambda z_p: (Om0 * (1 + z_p) ** (3.0) + OmL) ** (-0.5)
+    integrand = lambda z_p: (OmM * (1 + z_p) ** (3.0) + OmL) ** (-0.5)
     integral, err = quad(integrand, 0, redshift)
     value = multiplier * integral
     return value
 
 
 def calculate_angular_diameter_distance_difference(
-    redshift_lens, redshift_source, Om0=0.3, little_h=0.7
+    redshift_lens, redshift_source, OmM=0.3, little_h=0.7
 ):
     """This function takes in 2 redshifts, designed to represent z1 = redshift (lens)
     and z2 = redshift (source). This assumes LCDM model. Follows Distance measures in
@@ -497,7 +497,7 @@ def calculate_angular_diameter_distance_difference(
 
     :param redshift_lens: redshift the gravitational lens
     :param redshift_source: redshift the source
-    :param Om0: total fraction of the Universe's energy budget is in mass
+    :param OmM: total fraction of the Universe's energy budget is in mass
     :param little_h: reduced Hubble constant defined by H_0 = little_h * 100 [km s^-1
         Mpc^-1]
     :return: angular diameter distance difference in units meters
@@ -508,26 +508,26 @@ def calculate_angular_diameter_distance_difference(
         redshift_source = redshift_lens
         redshift_lens = dummy_var
 
-    OmL = 1 - Om0
+    OmL = 1 - OmM
     multiplier = (9.26 * 10**25) * (little_h) ** (-1) * (1 / (1 + redshift_source))
-    integrand = lambda z_p: (Om0 * (1 + z_p) ** (3.0) + OmL) ** (-0.5)
+    integrand = lambda z_p: (OmM * (1 + z_p) ** (3.0) + OmL) ** (-0.5)
     integral1, err1 = quad(integrand, 0, redshift_lens)
     integral2, err2 = quad(integrand, 0, redshift_source)
     return multiplier * (integral2 - integral1)
 
 
-def calculate_luminosity_distance(redshift, Om0=0.3, little_h=0.7):
+def calculate_luminosity_distance(redshift, OmM=0.3, little_h=0.7):
     """This calculates the luminosity distance using the
     calculate_angular_diameter_distance formula for flat lambda-CDM model. Follows
     Distance measures in cosmology (Hogg 1999). :param redshift: redshift of the object
-    :param Om0: total fraction of the Universe's energy budget is in mass.
+    :param OmM: total fraction of the Universe's energy budget is in mass.
 
     :param little_h: reduced Hubble constant defined by H_0 = little_h * 100 [km s^-1
         Mpc^-1]
     :return: luminosity distance of the object
     """
     return (1 + redshift) ** 2 * calculate_angular_diameter_distance(
-        redshift, Om0=Om0, little_h=little_h
+        redshift, OmM=OmM, little_h=little_h
     )
 
 
@@ -535,7 +535,7 @@ def calculate_angular_einstein_radius(
     redshift_lens,
     redshift_source,
     mean_microlens_mass_in_kg=1 * const.M_sun.to(u.kg),
-    Om0=0.3,
+    OmM=0.3,
     little_h=0.7,
 ):
     """This function calculates the Einstein radius of the microlens in radians.
@@ -545,18 +545,18 @@ def calculate_angular_einstein_radius(
     :param redshift_source: redshift of the source
     :param mean_microlens_mass_in_kg: average mass of microlenses in the lensing galaxy.
         This is typically modeled between 0.1 and 1.0 solar masses
-    :param Om0: energy budget of the Universe in mass
+    :param OmM: energy budget of the Universe in mass
     :param little_h: reduced Hubble constant
     :return: average Einstein radius in radians
     """
     D_lens = calculate_angular_diameter_distance(
-        redshift_lens, Om0=Om0, little_h=little_h
+        redshift_lens, OmM=OmM, little_h=little_h
     )
     D_source = calculate_angular_diameter_distance(
-        redshift_source, Om0=Om0, little_h=little_h
+        redshift_source, OmM=OmM, little_h=little_h
     )
     D_LS = calculate_angular_diameter_distance_difference(
-        redshift_lens, redshift_source, Om0=Om0, little_h=little_h
+        redshift_lens, redshift_source, OmM=OmM, little_h=little_h
     )
     value = (
         (
@@ -573,7 +573,7 @@ def calculate_einstein_radius_in_meters(
     redshift_lens,
     redshift_source,
     mean_microlens_mass_in_kg=1 * const.M_sun.to(u.kg),
-    Om0=0.3,
+    OmM=0.3,
     little_h=0.7,
 ):
     """This function determines the einstein radius of the microlenses in physical
@@ -582,18 +582,18 @@ def calculate_einstein_radius_in_meters(
     in the lensing galaxy.
 
     This is typically     modeled between 0.1 and 1.0 solar masses
-    :param Om0: energy budget of the Universe in mass
+    :param OmM: energy budget of the Universe in mass
     :param little_h: reduced Hubble constant
     :return: average Einstein radius of the microlenses in meters
     """
     ang_diam_dist_source_plane = calculate_angular_diameter_distance(
-        redshift_source, Om0=Om0, little_h=little_h
+        redshift_source, OmM=OmM, little_h=little_h
     )
     ein_rad_in_radians = calculate_angular_einstein_radius(
         redshift_lens,
         redshift_source,
         mean_microlens_mass_in_kg=mean_microlens_mass_in_kg,
-        Om0=0.3,
+        OmM=0.3,
         little_h=0.7,
     )
     value = ang_diam_dist_source_plane * ein_rad_in_radians
@@ -690,7 +690,7 @@ def perform_microlensing_convolution(
     number_of_microlens_einstein_radii=25,
     number_of_smbh_gravitational_radii=1000,
     relative_orientation=0,
-    Om0=0.3,
+    OmM=0.3,
     little_h=0.7,
     return_preconvolution_info=False,
     random_seed=None,
@@ -714,7 +714,7 @@ def perform_microlensing_convolution(
     :param relative_orientation: angular rotation of flux distribution w.r.t.
         microlensing magnification distribution. If int or float, this defines the
         specific orientation. Any other input will be assigned a random value.
-    :param Om0: mass fraction of the Universe in the lambda-CDM model
+    :param OmM: mass fraction of the Universe in the lambda-CDM model
     :param little_h: the reduced Hubble constant defined as H0 / 100 km / s / Mpc
     :param return_preconvolution_info: return the rescaled flux_array instead of the
         convolution
@@ -746,7 +746,7 @@ def perform_microlensing_convolution(
             redshift_lens,
             redshift_source,
             mean_microlens_mass_in_kg=mean_microlens_mass_in_kg,
-            Om0=Om0,
+            OmM=OmM,
             little_h=little_h,
         )
     ) / np.size(magnification_array, 0)
@@ -915,7 +915,7 @@ def extract_light_curve(
             )
         )
     if return_track_coords:
-        return np.asarray(light_curve), x_positions, y_positions
+        return np.asarray(light_curve), x_positions+pixel_shift, y_positions+pixel_shift
     return np.asarray(light_curve)
 
 
@@ -1064,7 +1064,7 @@ def calculate_geometric_disk_factor(
 
     radii_star = (new_radii**2 + height_array**2) ** 0.5 * gravitational_radius
 
-    return (
+    return np.nan_to_num(
         (1 - albedo_array)
         * cos_theta_star
         / (4 * np.pi * const.sigma_sb * radii_star**2)
@@ -1231,7 +1231,7 @@ def calculate_microlensed_transfer_function(
     number_of_microlens_einstein_radii=25,
     number_of_smbh_gravitational_radii=1000,
     relative_orientation=0,
-    Om0=0.3,
+    OmM=0.3,
     little_h=0.7,
     axis_offset_in_gravitational_radii=0,
     angle_offset_in_degrees=0,
@@ -1306,7 +1306,7 @@ def calculate_microlensed_transfer_function(
         number_of_microlens_einstein_radii=number_of_microlens_einstein_radii,
         number_of_smbh_gravitational_radii=number_of_smbh_gravitational_radii,
         relative_orientation=relative_orientation,
-        Om0=Om0,
+        OmM=OmM,
         little_h=little_h,
         return_preconvolution_info=True,
     )
@@ -1531,7 +1531,7 @@ def generate_snapshots_of_radiation_pattern(
 
     # normalize response_array because we want a fractional response w.r.t. the static_flux array
 
-    response_array *= total_static_flux / np.sum(response_array)
+    response_array *= total_static_flux / np.sum(response_array)   
 
     if len(driving_signal) < np.max(time_stamps + maximum_time_lag_in_days):
         print(
@@ -1544,7 +1544,7 @@ def generate_snapshots_of_radiation_pattern(
     # define a burn in such that the whole disk is being driven at t=0
     burn_in_time = maximum_time_lag_in_days
     accretion_disk_mask = temp_array > 0
-
+    
     list_of_snapshots = []
     # prepare snapshots
     for time in time_stamps:
@@ -1650,7 +1650,7 @@ def project_blr_to_source_plane(
             X,
             Y,
         )
-
+            
         # set phi to chosen coordinate system
         Phi = (5 / 2 * np.pi + Phi) % (2 * np.pi)
 
@@ -1768,7 +1768,7 @@ def calculate_blr_transfer_function(
         X,
         Y,
     )
-
+    
     # set phi to chosen coordinate system
     Phi = (5 / 2 * np.pi + Phi) % (2 * np.pi)
 
@@ -1908,7 +1908,7 @@ def convolve_signal_with_transfer_function(
     initial_time_axis=None,
     transfer_function=None,
     redshift=0,
-    desired_cadence_in_days=1,
+    desired_cadence_in_days=1
 ):
     """Helper function to convolve a signal with even daily cadence with a trasnfer
     function which has spacing in gravitational radii.
@@ -1924,69 +1924,104 @@ def convolve_signal_with_transfer_function(
     :return: reprocessed signal at daily cadence
     """
 
+    
     # this is the resolution of the transfer function
     gravitational_radius = calculate_gravitational_radius(10**mass_exponent)
-
+    
     # this will be the rescaling factor
-    light_travel_time_for_grav_rad = (
-        gravitational_radius / const.c.to(u.m / u.day).value
-    )
+    light_travel_time_for_grav_rad = gravitational_radius / const.c.to(u.m / u.day).value
 
     # determine how many points per day need to be calculated
     required_hyper_resolution = (1 + redshift) / min(desired_cadence_in_days, 1)
 
     # sample the signal at required cadence via interpolation
     if initial_time_axis is None:
-        initial_time_axis = np.linspace(0, len(driving_signal) - 1, len(driving_signal))
-
+        initial_time_axis = np.linspace(0, len(driving_signal)-1, len(driving_signal))
+    
     driving_signal_interpolation = interp1d(
-        initial_time_axis, driving_signal, bounds_error=False, fill_value="extrapolate"
+        initial_time_axis,
+        driving_signal,
+        bounds_error=False,
+        fill_value='extrapolate'
     )
-
-    # increase sampling rate
+    
+    # increase sampling rate 
     desired_time_axis = np.linspace(
         0,
         max(initial_time_axis),
-        int(max(initial_time_axis) * required_hyper_resolution),
+        int(max(initial_time_axis)*required_hyper_resolution)
     )
 
     # resample the transfer function at required cadence
     tau_axis = np.linspace(
         0,
-        (len(transfer_function) - 1) * light_travel_time_for_grav_rad,
-        len(transfer_function),
+        (len(transfer_function)-1)*light_travel_time_for_grav_rad,
+        len(transfer_function)
     )
 
     interpolated_transfer_function = interp1d(
-        tau_axis, transfer_function, bounds_error=False, fill_value="extrapolate"
+        tau_axis,
+        transfer_function,
+        bounds_error=False,
+        fill_value='extrapolate'
     )
 
     desired_tau_axis = np.linspace(
         0,
-        (len(transfer_function) - 1) * light_travel_time_for_grav_rad,
-        int(
-            (len(transfer_function) - 1)
-            * light_travel_time_for_grav_rad
-            * required_hyper_resolution
-        ),
+        (len(transfer_function)-1)*light_travel_time_for_grav_rad,
+        int((len(transfer_function)-1)*light_travel_time_for_grav_rad*required_hyper_resolution)
     )
-
+    
     # sample
     hypersampled_signal = driving_signal_interpolation(desired_time_axis)
-
+    
     if len(desired_tau_axis) <= 1:
         print("warning: unresolvable transfer function")
-        hypersample_times = np.linspace(
-            0, max(initial_time_axis), len(hypersampled_signal)
-        ) * (1 + redshift)
+        hypersample_times = np.linspace(0, max(initial_time_axis), len(hypersampled_signal)) * (1+redshift)
         return hypersample_times, hypersampled_signal
 
     # convolve
     hypersampled_transfer_function = interpolated_transfer_function(desired_tau_axis)
 
-    convolution = convolve(hypersampled_signal, hypersampled_transfer_function)
-    hypersample_times = np.linspace(0, max(initial_time_axis), len(convolution)) * (
-        1 + redshift
-    )
+    convolution = convolve(hypersampled_signal, hypersampled_transfer_function)[:len(hypersampled_signal)]
+    hypersample_times = np.linspace(0, max(initial_time_axis), len(convolution)) * (1+redshift)
 
     return hypersample_times, convolution
+    
+
+
+
+
+
+    
+'''
+
+    gr_per_day = gravitational_radius / const.c.to(u.m / u.day).value
+
+    transfer_function_lags_in_rg = np.linspace(
+        0, len(transfer_function) - 1, len(transfer_function)
+    )
+    transfer_function_lags_in_days = transfer_function_lags_in_rg * gr_per_day
+
+    transfer_function_interp = interp1d(
+        transfer_function_lags_in_days, transfer_function
+    )
+    tau_axis = np.linspace(
+        0,
+        max(transfer_function_lags_in_days) - 1,
+        int(max(transfer_function_lags_in_days)),
+    )
+
+    daily_spaced_lags = transfer_function_interp(tau_axis)
+    daily_spaced_lags /= np.sum(daily_spaced_lags)
+
+    output_signal = convolve(driving_signal, daily_spaced_lags)
+
+    if redshift is not None:
+        signal_times = np.linspace(0, len(output_signal) - 1, len(output_signal))
+        signal_interp = interp1d(signal_times, output_signal)
+        redshifted_times = signal_times / (1 + redshift)
+        output_signal = signal_interp(redshifted_times)[:len(output_signal)]
+
+    return output_signal
+'''
