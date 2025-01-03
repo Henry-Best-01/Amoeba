@@ -27,7 +27,7 @@ class MagnificationMap:
         shear,
         mean_microlens_mass_in_kg=1 * const.M_sun.to(u.kg),
         total_microlens_einstein_radii=25,
-        Om0=0.3,
+        OmM=0.3,
         H0=70,
         name="",
     ):
@@ -45,7 +45,7 @@ class MagnificationMap:
         :param mean_microlens_mass_in_kg: Average microlens mass
         :param total_microlens_einstein_radii: Number of Einstein radii the
             magnification map covers along one square edge.
-        :param Om0: Cosmological fraction of mass
+        :param OmM: Cosmological fraction of mass
         :param OmL: Cosmological fraction of dark energy
         :param H0: Hubble constant in units km/s/Mpc
         :param name: Name space.
@@ -58,14 +58,14 @@ class MagnificationMap:
         self.shear = shear
         self.total_microlens_einstein_radii = total_microlens_einstein_radii
         self.mean_microlens_mass_in_kg = mean_microlens_mass_in_kg
-        self.Om0 = Om0
+        self.OmM = OmM
         self.H0 = H0
         self.little_h = H0 / 100
         self.einstein_radius_in_meters = calculate_einstein_radius_in_meters(
             self.redshift_lens,
             self.redshift_source,
             mean_microlens_mass_in_kg=self.mean_microlens_mass_in_kg,
-            Om0=Om0,
+            OmM=OmM,
             little_h=self.little_h,
         )
 
@@ -172,7 +172,7 @@ class MagnificationMap:
         y_position=None,
         axis_offset_in_gravitational_radii=0,
         angle_offset_in_degrees=0,
-        Om0=0.3,
+        OmM=0.3,
         little_h=0.7,
         return_response_array_and_lags=False,
         return_descaled_response_array_and_lags=False,
@@ -232,7 +232,7 @@ class MagnificationMap:
             number_of_microlens_einstein_radii=self.total_microlens_einstein_radii,
             number_of_smbh_gravitational_radii=AccretionDisk.r_out_in_gravitational_radii,
             relative_orientation=relative_orientation,
-            Om0=Om0,
+            OmM=OmM,
             little_h=little_h,
             axis_offset_in_gravitational_radii=axis_offset_in_gravitational_radii,
             angle_offset_in_degrees=angle_offset_in_degrees,
@@ -268,7 +268,7 @@ class ConvolvedMap(MagnificationMap):
             number_of_microlens_einstein_radii=magnification_map.total_microlens_einstein_radii,
             number_of_smbh_gravitational_radii=projected_flux_distribution.r_out_in_gravitational_radii,
             relative_orientation=relative_orientation,
-            Om0=magnification_map.Om0,
+            OmM=magnification_map.OmM,
             little_h=magnification_map.H0 / 100,
             random_seed=random_seed,
         )

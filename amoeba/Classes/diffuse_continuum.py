@@ -54,7 +54,6 @@ class DiffuseContinuum:
         self.r_out_in_gravitational_radii = r_out_in_gravitational_radii
         self.r_in_in_gravitational_radii = r_in_in_gravitational_radii
         
-        
         if r_out_in_gravitational_radii is not None:
             radial_mask = radii_array <= r_out_in_gravitational_radii
         else:
@@ -178,8 +177,6 @@ class DiffuseContinuum:
             H0=self.H0,
         )
 
-        
-        
         return projection
     
 
@@ -258,8 +255,7 @@ class DiffuseContinuum:
         tau_diffuse = self.get_diffuse_continuum_mean_lag(observer_frame_wavelength_in_nm)
         emissivity = self.interpolate_spectrum_to_wavelength(observer_frame_wavelength_in_nm)
         const_a = self.responsivity_constant
-
-
+        
         tau_dc_vs_continuum = tau_diffuse * (1 - const_a) * emissivity / (1 - const_a * emissivity)
 
         return tau_dc_vs_continuum

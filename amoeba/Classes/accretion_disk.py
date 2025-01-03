@@ -29,7 +29,7 @@ class AccretionDisk:
         height_array=None,
         albedo_array=None,
         spin=0,
-        Om0=0.3,
+        OmM=0.3,
         H0=70,
         r_out_in_gravitational_radii=None,
         name="",
@@ -59,7 +59,7 @@ class AccretionDisk:
         :param spin: float representing the dimensionless spin component of the SMBH
             (often denoted a_{*}) which may range from -1 to 1. Negative values
             represent accretion disks anti-aligned with the spin of the black hole.
-        :param Om0: Cosmological parameter representing the mass fraction of the
+        :param OmM: Cosmological parameter representing the mass fraction of the
             universe
         :param H0: Hubble constant in units of km/s/Mpc
         :param r_out_in_gravitational_radii: maximum radius of the accretion disk, in
@@ -87,11 +87,11 @@ class AccretionDisk:
         self.temp_array = temp_array * radial_mask
         self.phi_array = phi_array * radial_mask
         self.g_array = g_array
-        self.Om0 = Om0
+        self.OmM = OmM
         self.H0 = H0
         self.little_h = self.H0 / 100
         self.lum_dist = calculate_luminosity_distance(
-            self.redshift_source, Om0=self.Om0, little_h=self.little_h
+            self.redshift_source, OmM=self.OmM, little_h=self.little_h
         )
         self.rg = calculate_gravitational_radius(10**self.smbh_mass_exp)
         self.pixel_size = (
@@ -140,7 +140,7 @@ class AccretionDisk:
             self.redshift_source,
             self.r_out_in_gravitational_radii,
             self.inclination_angle,
-            Om0=self.Om0,
+            OmM=self.OmM,
             H0=self.H0,
         )
         return FluxArray
