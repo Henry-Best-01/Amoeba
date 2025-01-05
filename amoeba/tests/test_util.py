@@ -451,18 +451,24 @@ def test_conversions_between_cartesian_and_polar():
     x1 = 1
     y1 = 2
 
+    hyp1 = (x1**2 + y1**2)**0.5
+
+    # we want phi = 0 pointing along the -y axis, to the observer if
+    # the plane is inclined. Need to test using a different np function.
+
+    expected_angle = np.arcsin(y1 / hyp1) + np.pi / 2
+
     x2 = 2
     y2 = 4
 
     r1, azi1 = convert_cartesian_to_polar(x1, y1)
     r2, azi2 = convert_cartesian_to_polar(x2, y2)
-
+    
+    np.testing.assert_almost_equal(azi1, expected_angle)
+    
     assert azi2 == azi1
     assert r1 == (x1**2 + y1**2) ** 0.5
     assert r2 == (x2**2 + y2**2) ** 0.5
-    # we should be in quadrant 1
-    assert azi1 > 0
-    assert azi1 < np.pi / 2
 
     # show this is invertible
     x_out_1, y_out_1 = convert_polar_to_cartesian(r1, azi1)
@@ -476,9 +482,15 @@ def test_conversions_between_cartesian_and_polar():
 
     _, x_axis = convert_cartesian_to_polar(1, 0)
     _, y_axis = convert_cartesian_to_polar(0, 1)
+    _, neg_x_axis = convert_cartesian_to_polar(-1, 0)
+    _, neg_y_axis = convert_cartesian_to_polar(0, -1)
+    
 
-    np.testing.assert_almost_equal(x_axis, 0)
-    np.testing.assert_almost_equal(y_axis, np.pi / 2)
+    np.testing.assert_almost_equal(x_axis, np.pi / 2)
+    np.testing.assert_almost_equal(y_axis, np.pi)
+    np.testing.assert_almost_equal(neg_x_axis, 3 * np.pi / 2)
+    np.testing.assert_almost_equal(neg_y_axis, 0)
+    
 
 
 def test_perform_microlensing_convolution():
@@ -697,7 +709,7 @@ def test_calculate_time_lag_array():
         height_array=height_array,
     )
 
-    assert time_lag_1 == (10 + 10)
+    assert time_lag_1 == (2 * corona_height)
 
     corona_height = 0
     time_lag_2 = calculate_time_lag_array(
@@ -710,16 +722,27 @@ def test_calculate_time_lag_array():
         height_array=height_array,
     )
 
-    assert time_lag_2 == (0 + 0)
+    assert time_lag_2 == (2 * corona_height)
 
+    # test manual construction of radii and phi arrays
     root2 = np.sqrt(2)
 
-    radii_array = [[root2, 1, root2], [1, 0, 1], [root2, 1, root2]]
-    phi_array = [
-        [5 * np.pi / 4, 3 * np.pi / 2, 7 * np.pi / 4],
-        [np.pi, 0, 0],
-        [3 * np.pi / 4, np.pi / 2, np.pi / 4],
-    ]
+    radii_array = np.asarray(
+        [
+            [root2, 1, root2],
+            [1, 0, 1],
+            [root2, 1, root2]
+        ]
+    )
+    
+    phi_array = np.asarray(
+        [
+            [5 * np.pi / 4, np.pi, 3 * np.pi / 4],
+            [6 * np.pi / 4, 0, 2 * np.pi / 4],
+            [7 * np.pi / 4, 0, 1 * np.pi / 4]
+        ]
+    )
+    
     height_array = None
     corona_height = 10
 
@@ -737,7 +760,7 @@ def test_calculate_time_lag_array():
     assert time_lag_3[0, 0] == time_lag_3[0, -1]
     assert time_lag_3[1, 0] == time_lag_3[1, -1]
     assert time_lag_3[0, 1] == time_lag_3[-1, 1]
-    assert time_lag_3[1, 1] == 20
+    assert time_lag_3[1, 1] == 2 * corona_height
 
     # test off axis time lags
     axis_offset_in_gravitational_radii = 1
@@ -752,7 +775,7 @@ def test_calculate_time_lag_array():
         height_array=height_array,
     )
 
-    assert np.min(time_lag_4) == 20
+    assert np.min(time_lag_4) == 2 * corona_height
 
     # rotate lamppost to other side of disk
     angle_offset_in_degrees = 180
@@ -766,25 +789,38 @@ def test_calculate_time_lag_array():
         height_array=height_array,
     )
 
-    assert np.min(time_lag_5) == 20
+    assert np.min(time_lag_5) == 2 * corona_height
+    assert time_lag_4[1, -1] < time_lag_5[1, -1]
+    assert time_lag_4[0, 1] == time_lag_5[0, 1]
+    assert time_lag_4[1, 0] > time_lag_5[1, 0]
 
     # test with heights included (non-flat accretion disk)
     axis_offset_in_gravitational_radii = 0
     height_array = radii_array
+    corona_height = 10
 
     time_lag_6 = calculate_time_lag_array(
         radii_array,
         phi_array,
         inclination_angle,
         corona_height,
-        axis_offset_in_gravitational_radii=axis_offset_in_gravitational_radii,
-        angle_offset_in_degrees=angle_offset_in_degrees,
         height_array=height_array,
     )
 
     # with disk flaring, center time lag should be longest lag.
-    # argmax of a 2d array flattens the array first, so index 4 is center.
+    # argmax of a 2d array flattens the array, so index 4 is center.
     assert np.argmax(time_lag_6) == 4
+    assert time_lag_6[1, 1] == 2 * corona_height
+
+    # compare with other points on isodelay surface
+    assert time_lag_6[1, 0] == time_lag_6[1, -1]
+    assert time_lag_6[1, 0] == time_lag_6[1, 0]
+    assert time_lag_6[1, 0] == time_lag_6[-1, 1]
+
+    # explicitly calculate delay for one point
+    assert time_lag_6[1, 1] == (
+        (corona_height - height_array[1, 1])**2 + radii_array[1, 1]**2
+    )**0.5 + corona_height
 
     # test inclined disk
     inclination_angle = 35
@@ -795,12 +831,10 @@ def test_calculate_time_lag_array():
         phi_array,
         inclination_angle,
         corona_height,
-        axis_offset_in_gravitational_radii=axis_offset_in_gravitational_radii,
-        angle_offset_in_degrees=angle_offset_in_degrees,
-        height_array=height_array,
     )
 
-    assert time_lag_7[1, 0] > time_lag_7[1, -1]
+    assert time_lag_7[1, 0] == time_lag_7[1, -1]
+    assert time_lag_7[-1, 1] < time_lag_7[0, 1]
 
 
 def test_calculate_geometric_disk_factor():

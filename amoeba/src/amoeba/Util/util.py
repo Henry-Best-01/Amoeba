@@ -119,7 +119,7 @@ def create_maps(
                 if isnan(r):
                     continue
                 if r >= convert_spin_to_isco_radius(spin):
-                    phi = sim5.geodesic_position_azm(gd, r, pol, P)
+                    phi = (sim5.geodesic_position_azm(gd, r, pol, P) + 5 / 2 * np.pi) % (2 * np.pi)
                     g_array[xx, yy] = sim5.gfactorK(r, abs(spin), gd.l)
                     phi_array[xx, yy] = phi
                     r_array[xx, yy] = r
@@ -128,7 +128,7 @@ def create_maps(
         y_vals = x_vals.copy() / np.cos(np.pi * inclination_angle / 180)
         X, Y = np.meshgrid(x_vals, y_vals)
         r_array, phi_array = convert_cartesian_to_polar(X, Y)
-        phi_array = (5 / 2 * np.pi + phi_array) % (2 * np.pi)
+        #phi_array = (5 / 2 * np.pi + phi_array) % (2 * np.pi)
         g_array = np.ones(np.shape(r_array))
     r_in = convert_spin_to_isco_radius(spin)
     temp_array = accretion_disk_temperature(
@@ -662,8 +662,11 @@ def convert_cartesian_to_polar(x, y):
     :return: tuple representation of radius and azimuth coordinates
     """
     r = (x**2 + y**2) ** 0.5
-    # Note numpy uses (y, x)
+    # Note numpy.arctan2 uses (y, x) convention
     phi = np.arctan2(y, x)
+
+    # Convert to our phi convention
+    phi = (5 / 2 * np.pi + phi) % (2 * np.pi)
     return (r, phi)
 
 
@@ -674,9 +677,13 @@ def convert_polar_to_cartesian(r, phi):
     :param phi: azimuth angle in radians
     :return: tuple representation of x and y coordinates
     """
+
+    # Convert to numpy's phi convention
+    phi = (phi + 2 * np.pi - 5 / 2 * np.pi) % (2 * np.pi)
+    
     x = r * np.sin(phi)
     y = r * np.cos(phi)
-    # Note numpy uses (y, x)
+    # Note numpy uses (y, x) convention
     return (y, x)
 
 
@@ -951,18 +958,18 @@ def calculate_time_lag_array(
     """
 
     inclination_angle *= np.pi / 180
-    angle_offset_in_degrees *= np.pi / 180
+    angle_offset_in_radians = angle_offset_in_degrees * np.pi / 180
 
     x_axis_offset = -axis_offset_in_gravitational_radii * np.cos(
-        angle_offset_in_degrees
+        angle_offset_in_radians
     )
-    y_axis_offset = axis_offset_in_gravitational_radii * np.sin(angle_offset_in_degrees)
+    y_axis_offset = axis_offset_in_gravitational_radii * np.sin(angle_offset_in_radians)
 
     if height_array is not None:
         assert np.shape(height_array) == np.shape(radii_array)
-        height_array = np.asarray(height_array)
+        height_array = np.asarray(height_array).copy()
     else:
-        height_array = np.zeros(np.shape(radii_array))
+        height_array = np.zeros(np.shape(radii_array)).copy()
 
     # get height relative to lamppost source
     height_array -= corona_height
@@ -1046,6 +1053,7 @@ def calculate_geometric_disk_factor(
     # I really need dh/dr to do this.
     # both height array and radii array are calculated on the same field, so chain rule works
     # gradient function takes x and y directions individually.
+    # still buggy, fix at some point
     height_gradient_x, height_gradient_y = np.gradient(height_array)
     radii_gradient_x, radii_gradient_y = np.gradient(new_radii)
 
@@ -1656,7 +1664,7 @@ def project_blr_to_source_plane(
         )
 
         # set phi to chosen coordinate system
-        Phi = (5 / 2 * np.pi + Phi) % (2 * np.pi)
+        #Phi = (5 / 2 * np.pi + Phi) % (2 * np.pi)
 
         # define the indexes to use
         index_grid = R // radial_resolution
@@ -1774,7 +1782,7 @@ def calculate_blr_transfer_function(
     )
 
     # set phi to chosen coordinate system
-    Phi = (5 / 2 * np.pi + Phi) % (2 * np.pi)
+    #Phi = (5 / 2 * np.pi + Phi) % (2 * np.pi)
 
     # define the indexes to use
     index_grid = R // radial_resolution
@@ -1818,7 +1826,7 @@ def calculate_blr_transfer_function(
     # cycle through each slab of the blr
     for height in range(np.size(blr_density_rz_grid, 1)):
 
-        # non-relativistic approximation by addition of components
+        # approximation by addition of components
         line_of_sight_velocities = (
             np.cos(inclination_angle)
             * blr_vertical_velocity_grid[index_grid.astype(int), height]
@@ -1998,34 +2006,4 @@ def convolve_signal_with_transfer_function(
     return hypersample_times, convolution
 
 
-"""
 
-    gr_per_day = gravitational_radius / const.c.to(u.m / u.day).value
-
-    transfer_function_lags_in_rg = np.linspace(
-        0, len(transfer_function) - 1, len(transfer_function)
-    )
-    transfer_function_lags_in_days = transfer_function_lags_in_rg * gr_per_day
-
-    transfer_function_interp = interp1d(
-        transfer_function_lags_in_days, transfer_function
-    )
-    tau_axis = np.linspace(
-        0,
-        max(transfer_function_lags_in_days) - 1,
-        int(max(transfer_function_lags_in_days)),
-    )
-
-    daily_spaced_lags = transfer_function_interp(tau_axis)
-    daily_spaced_lags /= np.sum(daily_spaced_lags)
-
-    output_signal = convolve(driving_signal, daily_spaced_lags)
-
-    if redshift is not None:
-        signal_times = np.linspace(0, len(output_signal) - 1, len(output_signal))
-        signal_interp = interp1d(signal_times, output_signal)
-        redshifted_times = signal_times / (1 + redshift)
-        output_signal = signal_interp(redshifted_times)[:len(output_signal)]
-
-    return output_signal
-"""
