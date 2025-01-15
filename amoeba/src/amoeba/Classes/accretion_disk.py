@@ -1,8 +1,8 @@
 from astropy import units as u
 from astropy import constants as const
 import numpy as np
-from amoeba.src.amoeba.Classes.flux_projection import FluxProjection
-from amoeba.src.amoeba.Util.util import (
+from amoeba.Classes.flux_projection import FluxProjection
+from amoeba.Util.util import (
     calculate_luminosity_distance,
     calculate_gravitational_radius,
     planck_law,
@@ -83,9 +83,9 @@ class AccretionDisk:
         if r_out_in_gravitational_radii is None:
             r_out_in_gravitational_radii = radii_array[0, np.size(radii_array, 0) // 2]
         self.r_out_in_gravitational_radii = r_out_in_gravitational_radii
-        radial_mask = radii_array <= r_out_in_gravitational_radii
-        self.temp_array = temp_array * radial_mask
-        self.phi_array = phi_array * radial_mask
+        self.radial_mask = radii_array <= r_out_in_gravitational_radii
+        self.temp_array = temp_array * self.radial_mask
+        self.phi_array = phi_array * self.radial_mask
         self.g_array = g_array
         self.OmM = OmM
         self.H0 = H0
@@ -204,6 +204,8 @@ class AccretionDisk:
             angle_offset_in_degrees=angle_offset_in_degrees,
             height_array=self.height_array,
         )
+
+        time_lag_array *= self.radial_mask
 
         return time_lag_array
 

@@ -1,9 +1,9 @@
 import numpy as np
 import numpy.testing as npt
-from amoeba.src.amoeba.Classes.magnification_map import MagnificationMap, ConvolvedMap
-from amoeba.src.amoeba.Classes.flux_projection import FluxProjection
-from amoeba.src.amoeba.Classes.accretion_disk import AccretionDisk
-from amoeba.src.amoeba.Util.util import create_maps
+from amoeba.Classes.magnification_map import MagnificationMap, ConvolvedMap
+from amoeba.Classes.flux_projection import FluxProjection
+from amoeba.Classes.accretion_disk import AccretionDisk
+from amoeba.Util.util import create_maps
 import pytest
 
 

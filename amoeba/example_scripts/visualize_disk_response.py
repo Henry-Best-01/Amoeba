@@ -58,7 +58,7 @@ identity_magnification_array = MagnificationMap(
 )
 
 
-id_microlensed_response, descaled_timelags = (
+id_microlensed_response, descaled_timelags, x_pos, y_pos = (
     identity_magnification_array.calculate_microlensed_transfer_function(
         Disk, wavelength_1, return_descaled_response_array_and_lags=True
     )

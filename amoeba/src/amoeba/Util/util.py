@@ -35,7 +35,7 @@ def create_maps(
     albedo_array=None,
     OmM=0.3,
     H0=70,
-    efficiency=1.0,
+    efficiency=0.1,
     visc_temp_prof="SS",
     name="",
 ):
@@ -85,7 +85,7 @@ def create_maps(
     assert inclination_angle >= 0
     assert inclination_angle <= 90
     if inclination_angle == 90:
-        inclination_angle -= 0.001
+        inclination_angle -= 0.1
     assert abs(spin) <= 1
     assert temp_beta >= 0
     bh_mass_in_solar_masses = 10**mass_exp
@@ -97,7 +97,7 @@ def create_maps(
     phi_array = temp_array.copy()
     if sim5_installed == True:
         if inclination_angle == 0:
-            inclination_angle += 0.001
+            inclination_angle += 0.1
         bh_rms = sim5.r_ms(spin)
         for yy in range(resolution):
             for xx in range(resolution):
@@ -119,7 +119,9 @@ def create_maps(
                 if isnan(r):
                     continue
                 if r >= convert_spin_to_isco_radius(spin):
-                    phi = (sim5.geodesic_position_azm(gd, r, pol, P) + 5 / 2 * np.pi) % (2 * np.pi)
+                    phi = (
+                        sim5.geodesic_position_azm(gd, r, pol, P) + 5 / 2 * np.pi
+                    ) % (2 * np.pi)
                     g_array[xx, yy] = sim5.gfactorK(r, abs(spin), gd.l)
                     phi_array[xx, yy] = phi
                     r_array[xx, yy] = r
@@ -128,7 +130,6 @@ def create_maps(
         y_vals = x_vals.copy() / np.cos(np.pi * inclination_angle / 180)
         X, Y = np.meshgrid(x_vals, y_vals)
         r_array, phi_array = convert_cartesian_to_polar(X, Y)
-        #phi_array = (5 / 2 * np.pi + phi_array) % (2 * np.pi)
         g_array = np.ones(np.shape(r_array))
     r_in = convert_spin_to_isco_radius(spin)
     temp_array = accretion_disk_temperature(
@@ -680,7 +681,7 @@ def convert_polar_to_cartesian(r, phi):
 
     # Convert to numpy's phi convention
     phi = (phi + 2 * np.pi - 5 / 2 * np.pi) % (2 * np.pi)
-    
+
     x = r * np.sin(phi)
     y = r * np.cos(phi)
     # Note numpy uses (y, x) convention
@@ -778,7 +779,9 @@ def perform_microlensing_convolution(
     # determine shift of coordinates relative to smbh position
     pixel_shift = np.size(flux_array_rescaled, 0) // 2
 
-    return convolution.real, pixel_shift
+    output = rotate(convolution.real, -relative_orientation, axes=(0, 1), reshape=False)
+
+    return output, pixel_shift
 
 
 def extract_light_curve(
@@ -1361,7 +1364,7 @@ def calculate_microlensed_transfer_function(
     magnified_response_array = rescaled_response_array * magnification_crop
 
     if return_response_array_and_lags:
-        return magnified_response_array, rescaled_time_lag_array
+        return magnified_response_array, rescaled_time_lag_array, x_position, y_position
 
     unscaled_magnified_response_array = rescale(
         magnified_response_array, 1 / scale_ratio
@@ -1378,13 +1381,18 @@ def calculate_microlensed_transfer_function(
     unscaled_time_lag_array = rescale(rescaled_time_lag_array, 1 / scale_ratio)
 
     if return_descaled_response_array_and_lags:
-        return unscaled_magnified_response_array, unscaled_time_lag_array
+        return (
+            unscaled_magnified_response_array,
+            unscaled_time_lag_array,
+            x_position,
+            y_position,
+        )
 
     microlensed_transfer_function = np.histogram(
-        rescaled_time_lag_array,
+        rescale(rescaled_time_lag_array, 10),
         range=(0, np.max(rescaled_time_lag_array) + 1),
         bins=int(np.max(rescaled_time_lag_array) + 1),
-        weights=np.nan_to_num(magnified_response_array),
+        weights=np.nan_to_num(rescale(magnified_response_array, 10)),
         density=True,
     )[0]
 
@@ -1409,7 +1417,7 @@ def generate_drw_signal(
     """
     rng = np.random.default_rng(seed=random_seed)
 
-    number_of_points = int(length_of_light_curve / time_step) + 1
+    number_of_points = 2 * int(length_of_light_curve / time_step) + 1
 
     output_drw = np.zeros(number_of_points)
 
@@ -1421,6 +1429,13 @@ def generate_drw_signal(
         ) ** (
             1 / 2
         )
+
+    # remove extra points required for burn in time
+    output_drw = output_drw[int(number_of_points // 2) :]
+
+    # normalize to mean zero, standard deviation one
+    output_drw -= np.mean(output_drw)
+    output_drw /= np.std(output_drw)
 
     return output_drw
 
@@ -1613,9 +1628,6 @@ def project_blr_to_source_plane(
     assert inclination_angle < 90
     assert np.shape(blr_density_rz_grid) == np.shape(blr_vertical_velocity_grid)
     assert np.shape(blr_vertical_velocity_grid) == np.shape(blr_radial_velocity_grid)
-    if inclination_angle > 80:
-        print("warning, source plane is nearly orthogonal to each constant height slab")
-        print("each slab follows scaling O(tan(inc)^2)")
     inclination_angle *= np.pi / 180
 
     if weighting_grid is None:
@@ -1630,15 +1642,16 @@ def project_blr_to_source_plane(
     max_r = np.size(blr_density_rz_grid, 0) * radial_resolution
     max_z = np.size(blr_density_rz_grid, 1) * vertical_resolution
 
-    max_projected_size_in_source_plane = max_z * np.tan(inclination_angle) + max_r
+    max_projected_size_in_source_plane = np.max(
+        [max_z * np.sin(inclination_angle) + max_r * np.cos(inclination_angle), max_r]
+    )
+
+    new_max_r_required = int(
+        2 * max_projected_size_in_source_plane / source_plane_resolution
+    )
 
     # initialize the projection in the source plane
-    source_plane_projection = np.zeros(
-        (
-            int(2 * max_projected_size_in_source_plane / source_plane_resolution),
-            int(2 * max_projected_size_in_source_plane / source_plane_resolution),
-        )
-    )
+    source_plane_projection = np.zeros((new_max_r_required, new_max_r_required))
 
     # project each slab of the blr into the source plane
     for height in range(np.size(blr_density_rz_grid, 1)):
@@ -1663,9 +1676,6 @@ def project_blr_to_source_plane(
             Y,
         )
 
-        # set phi to chosen coordinate system
-        #Phi = (5 / 2 * np.pi + Phi) % (2 * np.pi)
-
         # define the indexes to use
         index_grid = R // radial_resolution
 
@@ -1681,7 +1691,7 @@ def project_blr_to_source_plane(
 
         index_grid *= index_mask
 
-        # non-relativistic approximation by addition of components
+        # approximation by addition of components
         line_of_sight_velocities = (
             np.cos(inclination_angle)
             * blr_vertical_velocity_grid[index_grid.astype(int), height]
@@ -1708,7 +1718,7 @@ def project_blr_to_source_plane(
 
         source_plane_projection += current_density
 
-    return source_plane_projection
+    return source_plane_projection, new_max_r_required
 
 
 def calculate_blr_transfer_function(
@@ -1780,9 +1790,6 @@ def calculate_blr_transfer_function(
         X,
         Y,
     )
-
-    # set phi to chosen coordinate system
-    #Phi = (5 / 2 * np.pi + Phi) % (2 * np.pi)
 
     # define the indexes to use
     index_grid = R // radial_resolution
@@ -2004,6 +2011,3 @@ def convolve_signal_with_transfer_function(
     )
 
     return hypersample_times, convolution
-
-
-

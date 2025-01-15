@@ -1,11 +1,10 @@
 import pytest
-from amoeba.src.amoeba.Classes.flux_projection import FluxProjection
-from amoeba.src.amoeba.Classes.accretion_disk import AccretionDisk
-from amoeba.src.amoeba.Classes.blr import BroadLineRegion
-from amoeba.src.amoeba.Classes.blr_streamline import Streamline
-from amoeba.src.amoeba.Util.util import create_maps
+from amoeba.Classes.flux_projection import FluxProjection
+from amoeba.Classes.accretion_disk import AccretionDisk
+from amoeba.Classes.blr import BroadLineRegion
+from amoeba.Classes.blr_streamline import Streamline
+from amoeba.Util.util import create_maps
 import astropy.units as u
-
 import numpy as np
 
 

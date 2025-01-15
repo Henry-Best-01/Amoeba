@@ -1,10 +1,10 @@
 import numpy as np
-from amoeba.src.amoeba.Util.util import (
+from amoeba.Util.util import (
     calculate_luminosity_distance,
     calculate_gravitational_radius,
     calculate_time_lag_array,
 )
-from amoeba.src.amoeba.Classes.flux_projection import FluxProjection
+from amoeba.Classes.flux_projection import FluxProjection
 import astropy.constants as const
 import astropy.units as u
 

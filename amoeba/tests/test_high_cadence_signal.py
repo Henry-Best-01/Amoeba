@@ -1,7 +1,6 @@
-from amoeba.src.amoeba.Util.util import convolve_signal_with_transfer_function
+from amoeba.Util.util import convolve_signal_with_transfer_function
 import numpy as np
 import matplotlib.pyplot as plt
-
 import numpy.testing as npt
 
 

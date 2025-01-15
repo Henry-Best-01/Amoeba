@@ -1,12 +1,12 @@
 import numpy as np
 import astropy.units as u
 import astropy.constants as const
-from amoeba.src.amoeba.Classes.accretion_disk import AccretionDisk
-from amoeba.src.amoeba.Classes.blr import BroadLineRegion
-from amoeba.src.amoeba.Classes.blr_streamline import Streamline
-from amoeba.src.amoeba.Classes.torus import Torus
-from amoeba.src.amoeba.Classes.diffuse_continuum import DiffuseContinuum
-from amoeba.src.amoeba.Util.util import (
+from amoeba.Classes.accretion_disk import AccretionDisk
+from amoeba.Classes.blr import BroadLineRegion
+from amoeba.Classes.blr_streamline import Streamline
+from amoeba.Classes.torus import Torus
+from amoeba.Classes.diffuse_continuum import DiffuseContinuum
+from amoeba.Util.util import (
     create_maps,
     generate_signal_from_psd,
     calculate_gravitational_radius,

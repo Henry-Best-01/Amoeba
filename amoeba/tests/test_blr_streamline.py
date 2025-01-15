@@ -1,6 +1,6 @@
 import pytest
 import numpy as np
-from amoeba.src.amoeba.Classes.blr_streamline import Streamline
+from amoeba.Classes.blr_streamline import Streamline
 
 
 def test_init():

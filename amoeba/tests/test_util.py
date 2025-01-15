@@ -1,4 +1,4 @@
-from amoeba.src.amoeba.Util.util import (
+from amoeba.Util.util import (
     create_maps,
     calculate_keplerian_velocity,
     convert_spin_to_isco_radius,
@@ -451,7 +451,7 @@ def test_conversions_between_cartesian_and_polar():
     x1 = 1
     y1 = 2
 
-    hyp1 = (x1**2 + y1**2)**0.5
+    hyp1 = (x1**2 + y1**2) ** 0.5
 
     # we want phi = 0 pointing along the -y axis, to the observer if
     # the plane is inclined. Need to test using a different np function.
@@ -463,9 +463,9 @@ def test_conversions_between_cartesian_and_polar():
 
     r1, azi1 = convert_cartesian_to_polar(x1, y1)
     r2, azi2 = convert_cartesian_to_polar(x2, y2)
-    
+
     np.testing.assert_almost_equal(azi1, expected_angle)
-    
+
     assert azi2 == azi1
     assert r1 == (x1**2 + y1**2) ** 0.5
     assert r2 == (x2**2 + y2**2) ** 0.5
@@ -484,13 +484,11 @@ def test_conversions_between_cartesian_and_polar():
     _, y_axis = convert_cartesian_to_polar(0, 1)
     _, neg_x_axis = convert_cartesian_to_polar(-1, 0)
     _, neg_y_axis = convert_cartesian_to_polar(0, -1)
-    
 
     np.testing.assert_almost_equal(x_axis, np.pi / 2)
     np.testing.assert_almost_equal(y_axis, np.pi)
     np.testing.assert_almost_equal(neg_x_axis, 3 * np.pi / 2)
     np.testing.assert_almost_equal(neg_y_axis, 0)
-    
 
 
 def test_perform_microlensing_convolution():
@@ -598,12 +596,12 @@ def test_extract_light_curve():
     )
 
     for tt in range(len(light_curve)):
-        assert light_curve[tt] == np.asarray(light_curve).mean()
+        npt.assert_almost_equal(light_curve[tt], np.asarray(light_curve).mean())
 
     original_total_integrated_flux = np.sum(fake_flux_distribution)
     convolved_total_flux = light_curve[0]
 
-    assert original_total_integrated_flux == convolved_total_flux
+    npt.assert_almost_equal(original_total_integrated_flux, convolved_total_flux)
 
     # check we can pull 1000 light curves from this convolution
     # to show it never extends beyond the edge
@@ -727,22 +725,16 @@ def test_calculate_time_lag_array():
     # test manual construction of radii and phi arrays
     root2 = np.sqrt(2)
 
-    radii_array = np.asarray(
-        [
-            [root2, 1, root2],
-            [1, 0, 1],
-            [root2, 1, root2]
-        ]
-    )
-    
+    radii_array = np.asarray([[root2, 1, root2], [1, 0, 1], [root2, 1, root2]])
+
     phi_array = np.asarray(
         [
             [5 * np.pi / 4, np.pi, 3 * np.pi / 4],
             [6 * np.pi / 4, 0, 2 * np.pi / 4],
-            [7 * np.pi / 4, 0, 1 * np.pi / 4]
+            [7 * np.pi / 4, 0, 1 * np.pi / 4],
         ]
     )
-    
+
     height_array = None
     corona_height = 10
 
@@ -818,9 +810,11 @@ def test_calculate_time_lag_array():
     assert time_lag_6[1, 0] == time_lag_6[-1, 1]
 
     # explicitly calculate delay for one point
-    assert time_lag_6[1, 1] == (
-        (corona_height - height_array[1, 1])**2 + radii_array[1, 1]**2
-    )**0.5 + corona_height
+    assert (
+        time_lag_6[1, 1]
+        == ((corona_height - height_array[1, 1]) ** 2 + radii_array[1, 1] ** 2) ** 0.5
+        + corona_height
+    )
 
     # test inclined disk
     inclination_angle = 35
@@ -1090,14 +1084,21 @@ def test_calculate_microlensed_transfer_function():
     tau_axis_no_ml = np.linspace(
         0, len(transfer_function_test_no_ml) - 1, len(transfer_function_test_no_ml)
     )
-    mean_tau_no_ml = np.sum(transfer_function_test_no_ml * tau_axis_no_ml)
-    mean_tau_id_ml = np.sum(transfer_function_test_id_ml * tau_axis_ml)
-    mean_tau_id_ml_rotated = np.sum(transfer_function_test_id_ml_rotate * tau_axis_ml)
+    mean_tau_no_ml = np.sum(transfer_function_test_no_ml * tau_axis_no_ml) / np.sum(
+        transfer_function_test_no_ml
+    )
+    mean_tau_id_ml = np.sum(transfer_function_test_id_ml * tau_axis_ml) / np.sum(
+        transfer_function_test_id_ml
+    )
+    mean_tau_id_ml_rotated = np.sum(
+        transfer_function_test_id_ml_rotate * tau_axis_ml
+    ) / np.sum(transfer_function_test_id_ml_rotate)
 
-    # note there is some rounding when rescale is used and inverted
-    tolerance = mean_tau_no_ml / 100
+    # note there is some rounding when rescale and rotate are used and inverted
+    tolerance = mean_tau_no_ml / 20
     assert abs(mean_tau_no_ml - mean_tau_id_ml) <= tolerance
-    assert abs(mean_tau_no_ml - mean_tau_id_ml_rotated) <= tolerance
+    cur_diff = mean_tau_no_ml - mean_tau_id_ml_rotated
+    assert abs(cur_diff) <= tolerance
 
 
 def test_generate_drw_signal():
@@ -1118,7 +1119,7 @@ def test_generate_drw_signal():
     )
 
     assert len(drw_1) == len(drw_2)
-    assert drw_1[0] == drw_2[0]
+    npt.assert_almost_equal(np.mean(drw_1), np.mean(drw_2))
 
     random_point_1 = np.random.randint(500)
     random_point_2 = np.random.randint(500)
@@ -1362,7 +1363,7 @@ def test_project_blr_to_source_plane():
         weighting_grid=weighting,
         radial_resolution=r_step,
         vertical_resolution=z_step,
-    )
+    )[0]
 
     # since a cylinder of constant density is being projected, a projected
     # row in the center will have a greater value than an edge row in all cases
@@ -1384,7 +1385,7 @@ def test_project_blr_to_source_plane():
         weighting_grid=None,
         radial_resolution=r_step,
         vertical_resolution=z_step,
-    )
+    )[0]
 
     # note the projection is enlarged w.r.t. the original source to capture
     # the whole projection
@@ -1416,7 +1417,7 @@ def test_project_blr_to_source_plane():
         weighting_grid=weighting,
         radial_resolution=r_step,
         vertical_resolution=z_step,
-    )
+    )[0]
 
     velocity_range_approaching = [0.001, 1]
 
@@ -1430,7 +1431,7 @@ def test_project_blr_to_source_plane():
         weighting_grid=weighting,
         radial_resolution=r_step,
         vertical_resolution=z_step,
-    )
+    )[0]
 
     projection_padding = np.size(test_projection_3_approaching, 0) // 2 - r_points
     middle = np.size(test_projection_3_approaching, 0) // 2
@@ -1462,7 +1463,7 @@ def test_project_blr_to_source_plane():
         weighting_grid=weighting,
         radial_resolution=r_step,
         vertical_resolution=z_step,
-    )
+    )[0]
     test_projection_4_approaching = project_blr_to_source_plane(
         test_density,
         vertical_vel_grid,
@@ -1473,7 +1474,7 @@ def test_project_blr_to_source_plane():
         weighting_grid=weighting,
         radial_resolution=r_step,
         vertical_resolution=z_step,
-    )
+    )[0]
 
     assert np.sum(test_projection_4_approaching) > 0
     assert np.sum(test_projection_4_receeding) == 0

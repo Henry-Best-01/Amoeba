@@ -1,8 +1,8 @@
 import pytest
 import numpy as np
-from amoeba.src.amoeba.Classes.blr_streamline import Streamline
-from amoeba.src.amoeba.Classes.blr import BroadLineRegion
-from amoeba.src.amoeba.Classes.flux_projection import FluxProjection
+from amoeba.Classes.blr_streamline import Streamline
+from amoeba.Classes.blr import BroadLineRegion
+from amoeba.Classes.flux_projection import FluxProjection
 import astropy.units as u
 import numpy.testing as npt
 

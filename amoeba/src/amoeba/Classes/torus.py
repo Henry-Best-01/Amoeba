@@ -1,8 +1,8 @@
 import numpy as np
 from astropy import units as u
 from astropy import constants as const
-from amoeba.src.amoeba.Classes.blr_streamline import Streamline
-from amoeba.src.amoeba.Util.util import project_blr_to_source_plane
+from amoeba.Classes.blr_streamline import Streamline
+from amoeba.Util.util import project_blr_to_source_plane
 
 
 class Torus:
@@ -92,6 +92,6 @@ class Torus:
             weighting_grid=self.density_grid,
             radial_resolution=self.radial_step,
             vertical_resolution=self.height_step,
-        )
+        )[0]
 
     # add support for extinction calculation

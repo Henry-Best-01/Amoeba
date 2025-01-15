@@ -1,11 +1,10 @@
 import pytest
-from amoeba.src.amoeba.Classes.diffuse_continuum import DiffuseContinuum
-from amoeba.src.amoeba.Classes.flux_projection import FluxProjection
+from amoeba.Classes.diffuse_continuum import DiffuseContinuum
+from amoeba.Classes.flux_projection import FluxProjection
 import numpy as np
 import astropy.units as u
 import astropy.constants as const
-
-from amoeba.src.amoeba.Util.util import convert_cartesian_to_polar
+from amoeba.Util.util import convert_cartesian_to_polar
 
 
 def test_initialization():

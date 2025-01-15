@@ -1,12 +1,12 @@
 import numpy as np
 from astropy import units as u
 from astropy import constants as const
-from amoeba.src.amoeba.Util.util import (
+from amoeba.Util.util import (
     project_blr_to_source_plane,
     calculate_blr_transfer_function,
     determine_emission_line_velocities,
 )
-from amoeba.src.amoeba.Classes.flux_projection import FluxProjection
+from amoeba.Classes.flux_projection import FluxProjection
 
 
 class BroadLineRegion:
@@ -156,7 +156,7 @@ class BroadLineRegion:
         self.blr_array_shape = np.shape(self.density_grid)
 
     def project_blr_density_to_source_plane(self, inclination_angle):
-        return project_blr_to_source_plane(
+        projection, projected_number_gravitational_radii = project_blr_to_source_plane(
             self.density_grid,
             self.z_velocity_grid,
             self.r_velocity_grid,
@@ -166,6 +166,20 @@ class BroadLineRegion:
             radial_resolution=self.radial_step,
             vertical_resolution=self.height_step,
         )
+
+        # This needs to be fixed so I can return a proper fluxprojection object
+        projection_object = FluxProjection(
+            projection,
+            self.rest_frame_wavelength_in_nm,
+            self.smbh_mass_exp,
+            self.redshift_source,
+            projected_number_gravitational_radii,
+            inclination_angle,
+            OmM=self.OmM,
+            H0=self.H0,
+        )
+
+        return projection
 
     def project_blr_total_intensity(
         self,
@@ -193,7 +207,7 @@ class BroadLineRegion:
         # note that projecting the total intensity is equivalent to the integrated
         # flux over all wavelengths
         flux_projection = FluxProjection(
-            flux_map,
+            flux_map[0],
             np.array([0, np.inf]),
             self.smbh_mass_exp,
             self.redshift_source,
@@ -226,7 +240,7 @@ class BroadLineRegion:
             )
 
         # Similar to above's density calculation, but this time only includes voxels within a velocity range
-        flux_map = project_blr_to_source_plane(
+        flux_map, _ = project_blr_to_source_plane(
             self.density_grid,
             self.z_velocity_grid,
             self.r_velocity_grid,
