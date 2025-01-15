@@ -7,7 +7,6 @@ from amoeba.Util.util import create_maps
 import matplotlib.pyplot as plt
 
 
-
 smbh_mass_exp = 8.0
 redshift_source = 2.0
 inclination_angle = 40.0
@@ -59,7 +58,7 @@ identity_magnification_array = MagnificationMap(
 )
 
 
-id_microlensed_response, descaled_timelags = (
+id_microlensed_response, descaled_timelags, x_pos, y_pos = (
     identity_magnification_array.calculate_microlensed_transfer_function(
         Disk, wavelength_1, return_descaled_response_array_and_lags=True
     )
@@ -77,16 +76,22 @@ X, Y = np.meshgrid(x_ax_numbers, x_ax_numbers)
 fig, ax = plt.subplots(1, 3, sharex=True, sharey=True)
 
 ax[0].set_title("manual")
-conts1 = ax[0].contourf(X, Y, response_map_manual/np.max(response_map_manual), cmap="plasma")
-cbar1 = plt.colorbar(conts1, ax=ax[0], label='relative db/dL_{x}')
+conts1 = ax[0].contourf(
+    X, Y, response_map_manual / np.max(response_map_manual), cmap="plasma"
+)
+cbar1 = plt.colorbar(conts1, ax=ax[0], label="relative db/dL_{x}")
 
 ax[1].set_title("auto microlensed")
-conts2 = ax[1].contourf(X, Y, id_microlensed_response/np.max(id_microlensed_response), cmap="plasma")
-cbar2 = plt.colorbar(conts2, ax=ax[1], label='relative db/dL_{x}')
+conts2 = ax[1].contourf(
+    X, Y, id_microlensed_response / np.max(id_microlensed_response), cmap="plasma"
+)
+cbar2 = plt.colorbar(conts2, ax=ax[1], label="relative db/dL_{x}")
 
 ax[2].set_title("automatic")
-conts1 = ax[2].contourf(X, Y, response_map_auto/np.max(response_map_auto), cmap="plasma")
-cbar1 = plt.colorbar(conts1, ax=ax[2], label='relative db/dL_{x}')
+conts1 = ax[2].contourf(
+    X, Y, response_map_auto / np.max(response_map_auto), cmap="plasma"
+)
+cbar1 = plt.colorbar(conts1, ax=ax[2], label="relative db/dL_{x}")
 
 for axis in ax:
 

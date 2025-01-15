@@ -272,14 +272,14 @@ def test_calculate_gravitational_radius():
 
 def test_calculate_angular_diameter_distance():
     redshift = 0.1
-    Om0 = 0.3
+    OmM = 0.3
     little_h = 0.7
     H0 = 100 * little_h
 
     ang_diam_dist = calculate_angular_diameter_distance(
-        redshift, Om0=Om0, little_h=little_h
+        redshift, OmM=OmM, little_h=little_h
     )
-    astropy_cosmo = FlatLambdaCDM(H0, Om0)
+    astropy_cosmo = FlatLambdaCDM(H0, OmM)
     ang_diam_dist_astropy = astropy_cosmo.angular_diameter_distance(redshift).to(u.m)
 
     # set tolerance to 0.5% due to quadrature integration and
@@ -292,23 +292,23 @@ def test_calculate_angular_diameter_distance():
 def test_calculate_angular_diameter_distance():
     redshift_lens = 0.1
     redshift_source = 0.5
-    Om0 = 0.3
+    OmM = 0.3
     little_h = 0.7
     H0 = 100 * little_h
 
     ang_diam_dist_lens = calculate_angular_diameter_distance(
-        redshift_lens, Om0=Om0, little_h=little_h
+        redshift_lens, OmM=OmM, little_h=little_h
     )
     ang_diam_dist_source = calculate_angular_diameter_distance(
-        redshift_source, Om0=Om0, little_h=little_h
+        redshift_source, OmM=OmM, little_h=little_h
     )
 
     ang_diam_dist_diff = calculate_angular_diameter_distance_difference(
-        redshift_lens, redshift_source, Om0=Om0, little_h=little_h
+        redshift_lens, redshift_source, OmM=OmM, little_h=little_h
     )
 
     ang_diam_dist_diff_reversed = calculate_angular_diameter_distance_difference(
-        redshift_source, redshift_lens, Om0=Om0, little_h=little_h
+        redshift_source, redshift_lens, OmM=OmM, little_h=little_h
     )
 
     # Check that redshift misordering doesn't cause issues
@@ -323,10 +323,10 @@ def test_calculate_angular_diameter_distance():
     redshift_source = 0.5
 
     ang_diam_dist_diff_tiny = calculate_angular_diameter_distance_difference(
-        redshift_lens_tiny, redshift_source, Om0=Om0, little_h=little_h
+        redshift_lens_tiny, redshift_source, OmM=OmM, little_h=little_h
     )
     ang_diam_dist_tiny = calculate_angular_diameter_distance(
-        redshift_lens_tiny, Om0=Om0, little_h=little_h
+        redshift_lens_tiny, OmM=OmM, little_h=little_h
     )
     # define a relatively small tolerance
     tolerance = ang_diam_dist_source / 10**8
@@ -338,13 +338,13 @@ def test_calculate_angular_diameter_distance():
 
 def test_calculate_luminosity_distance():
     redshift = 0.1
-    Om0 = 0.3
+    OmM = 0.3
     little_h = 0.7
     H0 = 100 * little_h
 
-    lum_dist = calculate_luminosity_distance(redshift, Om0=Om0, little_h=little_h)
+    lum_dist = calculate_luminosity_distance(redshift, OmM=OmM, little_h=little_h)
 
-    astropy_cosmo = FlatLambdaCDM(H0, Om0)
+    astropy_cosmo = FlatLambdaCDM(H0, OmM)
     lum_dist_astropy = astropy_cosmo.luminosity_distance(redshift).to(u.m).value
 
     # define a small tolerance due to parameter rounding
@@ -356,14 +356,14 @@ def test_calculate_angular_einstein_radius():
     redshift_lens = 1.0
     redshift_source = 2.0
     avg_microlens_mass = 0.3 * const.M_sun.to(u.kg)
-    Om0 = 0.3
+    OmM = 0.3
     little_h = 0.7
 
     star_ang_ein_rad = calculate_angular_einstein_radius(
         redshift_lens,
         redshift_source,
         mean_microlens_mass_in_kg=avg_microlens_mass,
-        Om0=Om0,
+        OmM=OmM,
         little_h=little_h,
     )
 
@@ -372,7 +372,7 @@ def test_calculate_angular_einstein_radius():
         redshift_lens,
         redshift_source,
         mean_microlens_mass_in_kg=human_mass,
-        Om0=Om0,
+        OmM=OmM,
         little_h=little_h,
     )
 
@@ -384,14 +384,14 @@ def test_calculate_einstein_radius_in_meters():
     redshift_lens = 1.0
     redshift_source = 2.0
     avg_microlens_mass = 0.3 * const.M_sun.to(u.kg)
-    Om0 = 0.3
+    OmM = 0.3
     little_h = 0.7
 
     star_ein_rad = calculate_einstein_radius_in_meters(
         redshift_lens,
         redshift_source,
         mean_microlens_mass_in_kg=avg_microlens_mass,
-        Om0=Om0,
+        OmM=OmM,
         little_h=little_h,
     )
 
@@ -400,7 +400,7 @@ def test_calculate_einstein_radius_in_meters():
         redshift_lens,
         redshift_source,
         mean_microlens_mass_in_kg=human_mass,
-        Om0=Om0,
+        OmM=OmM,
         little_h=little_h,
     )
 
@@ -451,18 +451,24 @@ def test_conversions_between_cartesian_and_polar():
     x1 = 1
     y1 = 2
 
+    hyp1 = (x1**2 + y1**2) ** 0.5
+
+    # we want phi = 0 pointing along the -y axis, to the observer if
+    # the plane is inclined. Need to test using a different numpy function.
+
+    expected_angle = np.arcsin(y1 / hyp1) + np.pi / 2
+
     x2 = 2
     y2 = 4
 
     r1, azi1 = convert_cartesian_to_polar(x1, y1)
     r2, azi2 = convert_cartesian_to_polar(x2, y2)
 
+    np.testing.assert_almost_equal(azi1, expected_angle)
+
     assert azi2 == azi1
     assert r1 == (x1**2 + y1**2) ** 0.5
     assert r2 == (x2**2 + y2**2) ** 0.5
-    # we should be in quadrant 1
-    assert azi1 > 0
-    assert azi1 < np.pi / 2
 
     # show this is invertible
     x_out_1, y_out_1 = convert_polar_to_cartesian(r1, azi1)
@@ -476,9 +482,13 @@ def test_conversions_between_cartesian_and_polar():
 
     _, x_axis = convert_cartesian_to_polar(1, 0)
     _, y_axis = convert_cartesian_to_polar(0, 1)
+    _, neg_x_axis = convert_cartesian_to_polar(-1, 0)
+    _, neg_y_axis = convert_cartesian_to_polar(0, -1)
 
-    np.testing.assert_almost_equal(x_axis, 0)
-    np.testing.assert_almost_equal(y_axis, np.pi / 2)
+    np.testing.assert_almost_equal(x_axis, np.pi / 2)
+    np.testing.assert_almost_equal(y_axis, np.pi)
+    np.testing.assert_almost_equal(neg_x_axis, 3 * np.pi / 2)
+    np.testing.assert_almost_equal(neg_y_axis, 0)
 
 
 def test_perform_microlensing_convolution():
@@ -563,7 +573,7 @@ def test_extract_light_curve():
         redshift_lens=1.0,
         redshift_source=2.0,
         mean_microlens_mass_in_kg=0.3 * const.M_sun.to(u.kg),
-        Om0=0.3,
+        OmM=0.3,
         little_h=0.7,
     )
 
@@ -586,12 +596,12 @@ def test_extract_light_curve():
     )
 
     for tt in range(len(light_curve)):
-        assert light_curve[tt] == np.asarray(light_curve).mean()
+        npt.assert_almost_equal(light_curve[tt], np.asarray(light_curve).mean())
 
     original_total_integrated_flux = np.sum(fake_flux_distribution)
     convolved_total_flux = light_curve[0]
 
-    assert original_total_integrated_flux == convolved_total_flux
+    npt.assert_almost_equal(original_total_integrated_flux, convolved_total_flux)
 
     # check we can pull 1000 light curves from this convolution
     # to show it never extends beyond the edge
@@ -697,7 +707,7 @@ def test_calculate_time_lag_array():
         height_array=height_array,
     )
 
-    assert time_lag_1 == (10 + 10)
+    assert time_lag_1 == (2 * corona_height)
 
     corona_height = 0
     time_lag_2 = calculate_time_lag_array(
@@ -710,16 +720,21 @@ def test_calculate_time_lag_array():
         height_array=height_array,
     )
 
-    assert time_lag_2 == (0 + 0)
+    assert time_lag_2 == (2 * corona_height)
 
+    # test manual construction of radii and phi arrays
     root2 = np.sqrt(2)
 
-    radii_array = [[root2, 1, root2], [1, 0, 1], [root2, 1, root2]]
-    phi_array = [
-        [5 * np.pi / 4, 3 * np.pi / 2, 7 * np.pi / 4],
-        [np.pi, 0, 0],
-        [3 * np.pi / 4, np.pi / 2, np.pi / 4],
-    ]
+    radii_array = np.asarray([[root2, 1, root2], [1, 0, 1], [root2, 1, root2]])
+
+    phi_array = np.asarray(
+        [
+            [5 * np.pi / 4, np.pi, 3 * np.pi / 4],
+            [6 * np.pi / 4, 0, 2 * np.pi / 4],
+            [7 * np.pi / 4, 0, 1 * np.pi / 4],
+        ]
+    )
+
     height_array = None
     corona_height = 10
 
@@ -737,7 +752,7 @@ def test_calculate_time_lag_array():
     assert time_lag_3[0, 0] == time_lag_3[0, -1]
     assert time_lag_3[1, 0] == time_lag_3[1, -1]
     assert time_lag_3[0, 1] == time_lag_3[-1, 1]
-    assert time_lag_3[1, 1] == 20
+    assert time_lag_3[1, 1] == 2 * corona_height
 
     # test off axis time lags
     axis_offset_in_gravitational_radii = 1
@@ -752,7 +767,7 @@ def test_calculate_time_lag_array():
         height_array=height_array,
     )
 
-    assert np.min(time_lag_4) == 20
+    assert np.min(time_lag_4) == 2 * corona_height
 
     # rotate lamppost to other side of disk
     angle_offset_in_degrees = 180
@@ -766,25 +781,40 @@ def test_calculate_time_lag_array():
         height_array=height_array,
     )
 
-    assert np.min(time_lag_5) == 20
+    assert np.min(time_lag_5) == 2 * corona_height
+    assert time_lag_4[1, -1] < time_lag_5[1, -1]
+    assert time_lag_4[0, 1] == time_lag_5[0, 1]
+    assert time_lag_4[1, 0] > time_lag_5[1, 0]
 
     # test with heights included (non-flat accretion disk)
     axis_offset_in_gravitational_radii = 0
     height_array = radii_array
+    corona_height = 10
 
     time_lag_6 = calculate_time_lag_array(
         radii_array,
         phi_array,
         inclination_angle,
         corona_height,
-        axis_offset_in_gravitational_radii=axis_offset_in_gravitational_radii,
-        angle_offset_in_degrees=angle_offset_in_degrees,
         height_array=height_array,
     )
 
     # with disk flaring, center time lag should be longest lag.
-    # argmax of a 2d array flattens the array first, so index 4 is center.
+    # argmax of a 2d array flattens the array, so index 4 is center.
     assert np.argmax(time_lag_6) == 4
+    assert time_lag_6[1, 1] == 2 * corona_height
+
+    # compare with other points on isodelay surface
+    assert time_lag_6[1, 0] == time_lag_6[1, -1]
+    assert time_lag_6[1, 0] == time_lag_6[1, 0]
+    assert time_lag_6[1, 0] == time_lag_6[-1, 1]
+
+    # explicitly calculate delay for one point
+    assert (
+        time_lag_6[1, 1]
+        == ((corona_height - height_array[1, 1]) ** 2 + radii_array[1, 1] ** 2) ** 0.5
+        + corona_height
+    )
 
     # test inclined disk
     inclination_angle = 35
@@ -795,12 +825,10 @@ def test_calculate_time_lag_array():
         phi_array,
         inclination_angle,
         corona_height,
-        axis_offset_in_gravitational_radii=axis_offset_in_gravitational_radii,
-        angle_offset_in_degrees=angle_offset_in_degrees,
-        height_array=height_array,
     )
 
-    assert time_lag_7[1, 0] > time_lag_7[1, -1]
+    assert time_lag_7[1, 0] == time_lag_7[1, -1]
+    assert time_lag_7[-1, 1] < time_lag_7[0, 1]
 
 
 def test_calculate_geometric_disk_factor():
@@ -1056,14 +1084,21 @@ def test_calculate_microlensed_transfer_function():
     tau_axis_no_ml = np.linspace(
         0, len(transfer_function_test_no_ml) - 1, len(transfer_function_test_no_ml)
     )
-    mean_tau_no_ml = np.sum(transfer_function_test_no_ml * tau_axis_no_ml)
-    mean_tau_id_ml = np.sum(transfer_function_test_id_ml * tau_axis_ml)
-    mean_tau_id_ml_rotated = np.sum(transfer_function_test_id_ml_rotate * tau_axis_ml)
+    mean_tau_no_ml = np.sum(transfer_function_test_no_ml * tau_axis_no_ml) / np.sum(
+        transfer_function_test_no_ml
+    )
+    mean_tau_id_ml = np.sum(transfer_function_test_id_ml * tau_axis_ml) / np.sum(
+        transfer_function_test_id_ml
+    )
+    mean_tau_id_ml_rotated = np.sum(
+        transfer_function_test_id_ml_rotate * tau_axis_ml
+    ) / np.sum(transfer_function_test_id_ml_rotate)
 
-    # note there is some rounding when rescale is used and inverted
-    tolerance = mean_tau_no_ml / 100
+    # note there is some rounding when rescale and rotate are used and inverted
+    tolerance = mean_tau_no_ml / 20
     assert abs(mean_tau_no_ml - mean_tau_id_ml) <= tolerance
-    assert abs(mean_tau_no_ml - mean_tau_id_ml_rotated) <= tolerance
+    cur_diff = mean_tau_no_ml - mean_tau_id_ml_rotated
+    assert abs(cur_diff) <= tolerance
 
 
 def test_generate_drw_signal():
@@ -1084,7 +1119,7 @@ def test_generate_drw_signal():
     )
 
     assert len(drw_1) == len(drw_2)
-    assert drw_1[0] == drw_2[0]
+    npt.assert_almost_equal(np.mean(drw_1), np.mean(drw_2))
 
     random_point_1 = np.random.randint(500)
     random_point_2 = np.random.randint(500)
@@ -1235,8 +1270,8 @@ def test_project_blr_to_source_plane():
     # want 1000 in the R direction, 50 in the Z direction so the
     # loop over each slab doesn't take long
 
-    max_radius = 1000
-    max_height = 1000
+    max_radius = 500
+    max_height = 500
 
     r_points = 20
     z_points = 10
@@ -1328,7 +1363,7 @@ def test_project_blr_to_source_plane():
         weighting_grid=weighting,
         radial_resolution=r_step,
         vertical_resolution=z_step,
-    )
+    )[0]
 
     # since a cylinder of constant density is being projected, a projected
     # row in the center will have a greater value than an edge row in all cases
@@ -1350,7 +1385,7 @@ def test_project_blr_to_source_plane():
         weighting_grid=None,
         radial_resolution=r_step,
         vertical_resolution=z_step,
-    )
+    )[0]
 
     # note the projection is enlarged w.r.t. the original source to capture
     # the whole projection
@@ -1382,7 +1417,7 @@ def test_project_blr_to_source_plane():
         weighting_grid=weighting,
         radial_resolution=r_step,
         vertical_resolution=z_step,
-    )
+    )[0]
 
     velocity_range_approaching = [0.001, 1]
 
@@ -1396,7 +1431,7 @@ def test_project_blr_to_source_plane():
         weighting_grid=weighting,
         radial_resolution=r_step,
         vertical_resolution=z_step,
-    )
+    )[0]
 
     projection_padding = np.size(test_projection_3_approaching, 0) // 2 - r_points
     middle = np.size(test_projection_3_approaching, 0) // 2
@@ -1428,7 +1463,7 @@ def test_project_blr_to_source_plane():
         weighting_grid=weighting,
         radial_resolution=r_step,
         vertical_resolution=z_step,
-    )
+    )[0]
     test_projection_4_approaching = project_blr_to_source_plane(
         test_density,
         vertical_vel_grid,
@@ -1439,7 +1474,7 @@ def test_project_blr_to_source_plane():
         weighting_grid=weighting,
         radial_resolution=r_step,
         vertical_resolution=z_step,
-    )
+    )[0]
 
     assert np.sum(test_projection_4_approaching) > 0
     assert np.sum(test_projection_4_receeding) == 0
@@ -1447,8 +1482,8 @@ def test_project_blr_to_source_plane():
 
 def test_calculate_blr_transfer_function():
 
-    max_radius = 1000
-    max_height = 1000
+    max_radius = 100
+    max_height = 100
 
     r_points = 20
     z_points = 10

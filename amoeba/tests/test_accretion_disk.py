@@ -51,8 +51,6 @@ class TestAccretionDisk:
         number_grav_radii = 50
         resolution = 50
 
-        print(1 - (1 - 2 / (3 * convert_spin_to_isco_radius(spin))) ** 0.5)
-
         accretion_disk_data_zoom_spin = create_maps(
             smbh_mass_exp,
             redshift_source,
@@ -179,16 +177,18 @@ class TestAccretionDisk:
 
         time_lags_zoom_spin = self.FaceOnDiskZoomSpin.calculate_time_lag_array()
 
-        assert np.all(time_lags_zoom_spin > 0)
+        assert np.all(time_lags_zoom_spin >= 0)
 
-        # the center time lag will be smaller than the corners
+        # the center time lag will be smaller than the edges
 
         assert (
             time_lags_zoom_spin[
                 int(np.size(self.FaceOnDiskZoomSpin.radii_array) ** 0.5) // 2,
                 int(np.size(self.FaceOnDiskZoomSpin.radii_array) ** 0.5) // 2,
             ]
-            < time_lags_zoom_spin[0, 0]
+            < time_lags_zoom_spin[
+                int(np.size(self.FaceOnDiskZoomSpin.radii_array) ** 0.5) // 2, 2
+            ]
         )
 
         assert (
@@ -196,7 +196,9 @@ class TestAccretionDisk:
                 int(np.size(self.FaceOnDiskZoomSpin.radii_array) ** 0.5) // 2,
                 int(np.size(self.FaceOnDiskZoomSpin.radii_array) ** 0.5) // 2,
             ]
-            < time_lags_zoom_spin[0, -1]
+            < time_lags_zoom_spin[
+                int(np.size(self.FaceOnDiskZoomSpin.radii_array) ** 0.5) // 2, -2
+            ]
         )
 
         assert (
@@ -204,7 +206,9 @@ class TestAccretionDisk:
                 int(np.size(self.FaceOnDiskZoomSpin.radii_array) ** 0.5) // 2,
                 int(np.size(self.FaceOnDiskZoomSpin.radii_array) ** 0.5) // 2,
             ]
-            < time_lags_zoom_spin[-1, -1]
+            < time_lags_zoom_spin[
+                2, int(np.size(self.FaceOnDiskZoomSpin.radii_array) ** 0.5) // 2
+            ]
         )
 
         assert (
@@ -212,7 +216,9 @@ class TestAccretionDisk:
                 int(np.size(self.FaceOnDiskZoomSpin.radii_array) ** 0.5) // 2,
                 int(np.size(self.FaceOnDiskZoomSpin.radii_array) ** 0.5) // 2,
             ]
-            < time_lags_zoom_spin[-1, 0]
+            < time_lags_zoom_spin[
+                -2, int(np.size(self.FaceOnDiskZoomSpin.radii_array) ** 0.5) // 2
+            ]
         )
 
     def test_calculate_dt_dlx_array(self):

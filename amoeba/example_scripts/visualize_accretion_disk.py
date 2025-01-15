@@ -1,12 +1,12 @@
 import numpy as np
 import numpy.testing as npt
+
 from amoeba.Classes.accretion_disk import AccretionDisk
 from amoeba.Util.util import (
     create_maps,
 )
 from astropy import units as u
 import matplotlib.pyplot as plt
-
 
 
 smbh_mass_exp = 8.0

@@ -92,6 +92,6 @@ class Torus:
             weighting_grid=self.density_grid,
             radial_resolution=self.radial_step,
             vertical_resolution=self.height_step,
-        )
+        )[0]
 
     # add support for extinction calculation
