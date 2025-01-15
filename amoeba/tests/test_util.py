@@ -454,7 +454,7 @@ def test_conversions_between_cartesian_and_polar():
     hyp1 = (x1**2 + y1**2) ** 0.5
 
     # we want phi = 0 pointing along the -y axis, to the observer if
-    # the plane is inclined. Need to test using a different np function.
+    # the plane is inclined. Need to test using a different numpy function.
 
     expected_angle = np.arcsin(y1 / hyp1) + np.pi / 2
 

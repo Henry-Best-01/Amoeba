@@ -679,13 +679,10 @@ def convert_polar_to_cartesian(r, phi):
     :return: tuple representation of x and y coordinates
     """
 
-    # Convert to numpy's phi convention
-    phi = (phi + 2 * np.pi - 5 / 2 * np.pi) % (2 * np.pi)
-
     x = r * np.sin(phi)
-    y = r * np.cos(phi)
-    # Note numpy uses (y, x) convention
-    return (y, x)
+    y = -r * np.cos(phi)
+
+    return (x, y)
 
 
 def perform_microlensing_convolution(
@@ -779,7 +776,7 @@ def perform_microlensing_convolution(
     # determine shift of coordinates relative to smbh position
     pixel_shift = np.size(flux_array_rescaled, 0) // 2
 
-    output = rotate(convolution.real, -relative_orientation, axes=(0, 1), reshape=False)
+    output = convolution.real
 
     return output, pixel_shift
 
