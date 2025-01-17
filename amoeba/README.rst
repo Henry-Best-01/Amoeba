@@ -21,13 +21,15 @@ Accretion disk temperature profiles have been modelled as a thin disk profile[^3
 
 We cannot upload magnification maps due to size limits. This code was written to use external microlensing magnification maps, where many can be found on the [GERLUMPH](https://gerlumph.swin.edu.au) database[^1]. 
 
-The function "CreateMaps" within QMF is designed to generate all accretion disk maps required for making a disk object. This function calls [Sim5](https://github.com/mbursa/sim5), a public geodesic ray-tracing code[^2], if available to calculate impact positions of observed photons on the accretion disk.
+The function create_maps within Util.util is designed to generate all accretion disk maps required for making a disk object. This function calls [Sim5](https://github.com/mbursa/sim5), a public geodesic ray-tracing code[^2], if available to calculate impact positions of observed photons on the accretion disk.
 
-If you would like to run the AmoebaExamples.ipynb notebook, you will be required to change file paths and provide the disk file (creatable with QMF.CreateMaps) and magnification map.
+If you would like to run the accretion disk and microlensing examples notebook, you will be required to change file paths and provide the disk file (creatable with Util.util.create_maps) and magnification map.
 
-Broad Line Region (BLR) models have been given some TLC and are added again! They may be tested using TestingBLR.ipynb. They are created by defining streamlines, similar to the disk-wind model[^6]. Simple projections, line-of-sight velocity slices, and scattering transfer functions may be constructed now.
+Broad Line Region (BLR) models are included. They may be tested using blr examples notebook. They are created by defining streamlines, similar to the disk-wind model[^6]. Simple projections, line-of-sight velocity slices, and scattering transfer functions may be constructed now.
 
-To make this code even more accessible, sample scripts are included to show exactly the kinds of variability involved with these accretion disks. Any scripts prefaced "Write" will create a .json file (stored in SampleJsons), and values may be adjusted either through the writing script or the .json directly. 
+Further examples are provided in the example_scripts directory, with individual scripts aimed at visualizing certain aspects of amoeba.
+
+Unit tests are included in the tests directory. 
 
 Thank you for taking notice of my code! I would be happy to answer any questions. I can be contacted directly at hbest@gradcenter.cuny.edu
 

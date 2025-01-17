@@ -265,10 +265,10 @@ class DiffuseContinuum:
         """
         Give me a wavelength, and if I have the diffuse continuum responsivity, I will
         estimate the mean increase in time lag for an accretion disk due to the diffuse
-        continuum, which must be multiplied by the mean lag of the continuum.
+        continuum, which must be added by the mean lag of the continuum.
         Follows equation 3 in Korista + Goad 2019
 
-        tau_lam(total) ~ tau_lam(DC) * (1 - const_a) * DC_percent_flux / ( 1 - const_a * DC_percent_flux )
+        tau_lam(inc - DC) ~ tau_lam(DC) * (1 - const_a) * DC_percent_flux / ( 1 - const_a * DC_percent_flux )
         """
 
         tau_diffuse = self.get_diffuse_continuum_mean_lag(
