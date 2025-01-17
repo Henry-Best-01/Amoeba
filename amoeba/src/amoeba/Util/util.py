@@ -229,7 +229,7 @@ def accretion_disk_temperature(
     eta_x_rays=0.1,
     generic_beta=False,
     disk_acc=None,
-    efficiency=1.0,
+    efficiency=0.1,
     spin=0,
     visc_temp_prof="SS",
 ):

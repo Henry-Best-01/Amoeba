@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "amoeba-agn"
-version = "0.1.0"
+version = "0.1.1"
 description = "This package is designed to model agn variability self consistently across multiple models"
 readme = "README.rst"
 authors = [
@@ -14,14 +14,14 @@ maintainers = [
   {name = "Henry James Best V", email = "hbest@gradcenter.cuny.edu"}
 ]
 classifiers = [
-  "Development Status :: 2 - Pre-Alpha",
+  "Development Status :: 4 - Beta",
   "License :: OSI Approved :: MIT License",
   "Natural Language :: English",
   "Programming Language :: Python :: 3"
 ]
 license = {text = "MIT license"}
 dependencies = [
-  "astropy", "numpy"
+  "astropy", "numpy", "scipy"
 ]
 
 [project.optional-dependencies]
