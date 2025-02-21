@@ -74,8 +74,9 @@ class DiffuseContinuum:
             self.cloud_density_array = cloud_density_array * radial_mask
         elif isinstance(cloud_density_radial_dependence, (float, int)):
             self.cloud_density_array = (
-                self.radii_array**cloud_density_radial_dependence
-            ) * self.radial_mask
+                np.nan_to_num(self.radii_array**cloud_density_radial_dependence)
+                * self.radial_mask
+            )
             self.cloud_density_radial_dependence = cloud_density_radial_dependence
         else:
             raise ValueError(
@@ -102,11 +103,15 @@ class DiffuseContinuum:
                 rest_frame_wavelengths=self.kwargs["rest_frame_wavelengths"],
                 emissivity_etas=self.kwargs["emissivity_etas"],
             )
+        else:
+            self.set_emissivity()
 
         if "responsivity_constant" in self.kwargs:
             self.set_responsivity_constant(
                 responsivity_constant=self.kwargs["responsivity_constant"]
             )
+        else:
+            self.set_responsivity_constant()
 
     def set_emissivity(self, rest_frame_wavelengths=None, emissivity_etas=None):
         """
@@ -114,10 +119,10 @@ class DiffuseContinuum:
         the 2d emissivity of the diffuse continuum
         """
 
-        self.emissivity_wavelengths = rest_frame_wavelengths
+        self.rest_frame_wavelengths = rest_frame_wavelengths
         self.emissivity_etas = emissivity_etas
 
-    def set_responsivity_constant(self, responsivity_constant=None):
+    def set_responsivity_constant(self, responsivity_constant=1):
         """
         Hand me a responsivity constant which will go into the responsivity calculation
         """
@@ -132,12 +137,16 @@ class DiffuseContinuum:
         Interpolates known spectra to a particular wavelength. Returns total emissivity.
         """
 
+        if self.rest_frame_wavelengths is None:
+            print("please initialize the diffuse continuum spectrum")
+            return False
+
         rest_frame_wavelength_in_nm = observer_frame_wavelength_in_nm / (
             1 + self.redshift_source
         )
         emissivity_interpolation = np.interp(
             rest_frame_wavelength_in_nm,
-            self.emissivity_wavelengths,
+            self.rest_frame_wavelengths,
             self.emissivity_etas,
         )
 
@@ -182,7 +191,7 @@ class DiffuseContinuum:
 
         if self.cloud_density_radial_dependence is not None:
 
-            # integration constant is set based on normalizing r_in = r_out, then we expect tau_mean = r_blr
+            # integration constant is set based on normalizing r_in = r_out, then we expect tau_mean = r_dc
             integration_constant = self.r_in_in_gravitational_radii
 
             if self.cloud_density_radial_dependence < 0:

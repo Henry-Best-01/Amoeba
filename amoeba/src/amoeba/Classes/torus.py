@@ -2,6 +2,7 @@ import numpy as np
 from astropy import units as u
 from astropy import constants as const
 from amoeba.Classes.blr_streamline import Streamline
+from amoeba.Classes.flux_projection import FluxProjection
 from amoeba.Util.util import project_blr_to_source_plane
 
 
@@ -15,12 +16,13 @@ class Torus:
         radial_step=10,
         height_step=10,
         power_law_density_dependence=0,
-        Om0=0.3,
+        OmM=0.3,
         H0=70,
+        **kwargs
     ):
         self.smbh_mass_exp = smbh_mass_exp
         self.redshift_source = redshift_source
-        self.Om0 = Om0
+        self.OmM = OmM
         self.H0 = H0
         self.max_height = max_height
         self.radial_step = radial_step
@@ -39,6 +41,17 @@ class Torus:
         self.torus_array_shape = np.shape(self.density_grid)
         self.mass = 10 ** (self.smbh_mass_exp) * const.M_sun.to(u.kg)
         self.power_law_density_dependence = power_law_density_dependence
+
+        if (
+            "rest_frame_wavelengths" in kwargs.keys()
+            and "extinction_coefficients" in kwargs.keys()
+        ):
+            self.define_extinction_coefficients(
+                rest_frame_wavelengths=kwargs["rest_frame_wavelengths"],
+                extinction_coefficients=kwargs["extinction_coefficients"],
+            )
+        else:
+            self.define_extinction_coefficients()
 
     # unlike the blr, we only need one boundary
     def add_streamline_bounded_region(self, Streamline):
@@ -82,8 +95,32 @@ class Torus:
 
         self.torus_array_shape = np.shape(self.density_grid)
 
+    def define_extinction_coefficients(
+        self, rest_frame_wavelengths=None, extinction_coefficients=None
+    ):
+
+        self.rest_frame_wavelengths = rest_frame_wavelengths
+        self.extinction_coefficients = extinction_coefficients
+
+    def interpolate_to_extinction_at_wavelength(self, observer_frame_wavelength):
+        rest_frame_wavelength = observer_frame_wavelength / (1 + self.redshift_source)
+
+        if self.rest_frame_wavelengths is None:
+            print(
+                "please provide an array of extinction coefficients and an array of wavelengths"
+            )
+            return False
+
+        extinction_interpolation = np.interp(
+            rest_frame_wavelength,
+            self.rest_frame_wavelengths,
+            self.extinction_coefficients,
+        )
+
+        return extinction_interpolation
+
     def project_density_to_source_plane(self, inclination_angle):
-        return project_blr_to_source_plane(
+        projection = project_blr_to_source_plane(
             self.density_grid,
             np.zeros(np.shape(self.density_grid)),
             np.zeros(np.shape(self.density_grid)),
@@ -94,4 +131,36 @@ class Torus:
             vertical_resolution=self.height_step,
         )[0]
 
-    # add support for extinction calculation
+        return projection
+
+    def project_extinction_to_source_plane(
+        self, inclination_angle, observer_frame_wavelength
+    ):
+
+        extinction_strength = self.interpolate_to_extinction_at_wavelength(
+            observer_frame_wavelength
+        )
+        projected_extinction_array = self.project_density_to_source_plane(
+            inclination_angle
+        )
+
+        extinction_mask = projected_extinction_array > 0
+
+        projected_extinction_array = np.nan_to_num(
+            -2.5
+            * np.log10(1 - np.exp(-projected_extinction_array / extinction_strength))
+            * extinction_mask
+        )
+
+        projected_extinction = FluxProjection(
+            projected_extinction_array,
+            observer_frame_wavelength,
+            self.smbh_mass_exp,
+            self.redshift_source,
+            np.max(self.radii_values),
+            inclination_angle,
+            OmM=self.OmM,
+            H0=self.H0,
+        )
+
+        return projected_extinction

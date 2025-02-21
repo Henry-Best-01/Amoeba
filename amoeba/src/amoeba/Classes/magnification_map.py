@@ -263,7 +263,7 @@ class ConvolvedMap(MagnificationMap):
             projected_flux_distribution.flux_array,
             redshift_lens=magnification_map.redshift_lens,
             redshift_source=magnification_map.redshift_source,
-            smbh_mass_exponent=projected_flux_distribution.smbh_mass_exp,
+            smbh_mass_exp=projected_flux_distribution.smbh_mass_exp,
             mean_microlens_mass_in_kg=magnification_map.mean_microlens_mass_in_kg,
             number_of_microlens_einstein_radii=magnification_map.total_microlens_einstein_radii,
             number_of_smbh_gravitational_radii=projected_flux_distribution.r_out_in_gravitational_radii,

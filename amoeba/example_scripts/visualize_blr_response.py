@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 
 inc_ang = 45  # deg
 redshift = 1
-zmax = 1000  # R_g
+zmax = 500  # R_g
 mexp = 8.0
 sl_1_rlaunch = 100  # R_g
 sl_2_rlaunch = 400
@@ -16,8 +16,8 @@ sl_1_char_dist = 200  # R_g
 sl_2_char_dist = 500
 sl_1_asy_vel = 0.10  # v/c
 sl_2_asy_vel = 0.05
-zres = 5
-rres = 5
+zres = 10
+rres = 10
 filter1min = 950
 filter1max = 1080
 filter1mp = 1020
@@ -71,11 +71,11 @@ filter_2_projection = blr.project_blr_intensity_over_velocity_range(
 
 # get blr transfer function
 
-filter_1_tf = blr.calculate_blr_emission_line_transfer_function(
+strength_1, filter_1_tf = blr.calculate_blr_emission_line_transfer_function(
     inc_ang, observed_wavelength_range_in_nm=[filter1min, filter1max]
 )
 
-filter_2_tf = blr.calculate_blr_emission_line_transfer_function(
+strength_2, filter_2_tf = blr.calculate_blr_emission_line_transfer_function(
     inc_ang, observed_wavelength_range_in_nm=[filter2min, filter2max]
 )
 
@@ -113,21 +113,27 @@ ax[1, 0].set_ylabel(r"Y [$r_{\rm{g}}$]")
 ax[1, 0].set_aspect(1)
 cbar2 = plt.colorbar(conts2, ax=ax[1, 0], label="response [arb.]")
 
-ax[0, 1].plot(filter_1_tf / np.max(filter_1_tf))
+
+if np.max(filter_1_tf) != 0:
+    ax[0, 1].plot((filter_1_tf / np.max(filter_1_tf)) * strength_1)
+else:
+    ax[0, 1].plot(filter_1_tf * strength_1)
 ax[0, 1].set_title(r"response in $y$ filter")
 ax[0, 1].set_xlabel(r"$\tau [r_{\rm{g}}]$")
 ax[0, 1].set_ylabel(r"$\Psi_{\rm{BLR}}$ [arb.]")
 
 ax[0, 1].set_prop_cycle(None)
-ax[0, 1].plot([mean_blr_1, mean_blr_1], [0, 1], "--")
+ax[0, 1].plot([mean_blr_1, mean_blr_1], [0, strength_1], "--")
 
-
-ax[1, 1].plot(filter_2_tf / np.max(filter_2_tf))
+if np.max(filter_2_tf) != 0:
+    ax[1, 1].plot((filter_2_tf / np.max(filter_2_tf)) * strength_2)
+else:
+    ax[1, 1].plot(filter_2_tf * strength_2)
 ax[1, 1].set_title(r"response in $z$ filter")
 ax[1, 1].set_xlabel(r"$\tau [r_{\rm{g}}]$")
 ax[1, 1].set_ylabel(r"$\Psi_{\rm{BLR}}$ [arb.]")
 ax[1, 1].set_prop_cycle(None)
-ax[1, 1].plot([mean_blr_2, mean_blr_2], [0, 1], "--")
+ax[1, 1].plot([mean_blr_2, mean_blr_2], [0, strength_2], "--")
 
 plt.subplots_adjust(wspace=0.4, hspace=0.4)
 plt.show()

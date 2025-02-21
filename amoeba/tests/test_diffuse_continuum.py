@@ -85,13 +85,11 @@ def test_initialization():
     boosted_kwargs["responsivity_constant"] = const_a
     boosted_kwargs["name"] = "b00sted boi"
 
-    print(boosted_kwargs["rest_frame_wavelengths"])
-
     my_boosted_continuum = DiffuseContinuum(**boosted_kwargs)
 
     assert my_boosted_continuum.name is not my_continuum.name
     assert type(my_boosted_continuum) is type(my_continuum)
-    assert type(my_boosted_continuum.emissivity_wavelengths) is not None
+    assert type(my_boosted_continuum.rest_frame_wavelengths) is not None
     assert type(my_boosted_continuum.emissivity_etas) is not None
     assert my_boosted_continuum.responsivity_constant is const_a
 
@@ -147,7 +145,7 @@ def test_set_emissivity():
 
     my_continuum.set_emissivity(rest_frame_wavelengths=lams, emissivity_etas=etas)
 
-    assert np.shape(my_continuum.emissivity_wavelengths) == np.shape(lams)
+    assert np.shape(my_continuum.rest_frame_wavelengths) == np.shape(lams)
     assert np.shape(my_continuum.emissivity_etas) == np.shape(etas)
 
 

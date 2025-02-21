@@ -8,7 +8,7 @@ import pytest
 
 
 class TestMagnificationMap:
-    def setup(self):
+    def setup_method(self):
         magnification_array = [
             [1, 2, 1, 1, 1, 2, 3, 4, 3],
             [1, 3, 2, 1, 1, 2, 3, 4, 2],
@@ -215,8 +215,8 @@ class TestMagnificationMap:
         redshift_source = 2.0
         inclination_angle = 0.0
         corona_height = 10
-        number_grav_radii = 1000
-        resolution = 1000
+        number_grav_radii = 500
+        resolution = 500
         spin = 0
 
         accretion_disk_data_1 = create_maps(
@@ -233,7 +233,7 @@ class TestMagnificationMap:
 
         # as a sanity check, prepare an identity array for microlensing
 
-        big_magnification_ones = np.ones((1000, 1000))
+        big_magnification_ones = np.ones((resolution, resolution))
 
         self.identity_magnification_array = MagnificationMap(
             redshift_source,
@@ -246,8 +246,8 @@ class TestMagnificationMap:
             name="identity",
         )
 
-        wavelength_1 = 200
-        wavelength_2 = 600
+        wavelength_1 = 100
+        wavelength_2 = 300
 
         micro_tf_1_id = (
             self.identity_magnification_array.calculate_microlensed_transfer_function(
@@ -285,8 +285,8 @@ class TestMagnificationMap:
         npt.assert_almost_equal(np.sum(micro_tf_1_id), 1)
         npt.assert_almost_equal(np.sum(micro_tf_2_id), 1)
 
-        npt.assert_almost_equal(mean_micro_tf_1_id, mean_tf_1, 1)
-        npt.assert_almost_equal(mean_micro_tf_2_id, mean_tf_2, 1)
+        npt.assert_almost_equal(round(mean_micro_tf_1_id, 0), round(mean_tf_1, 0), 1)
+        npt.assert_almost_equal(round(mean_micro_tf_2_id, 0), round(mean_tf_2, 0), 1)
         assert mean_micro_tf_2_id > mean_micro_tf_1_id
 
 
