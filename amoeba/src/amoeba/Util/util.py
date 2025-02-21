@@ -18,11 +18,11 @@ np.seterr(divide="ignore", invalid="ignore")
 
 
 def create_maps(
-    mass_exp,
-    redshift,
-    number_grav_radii,
-    inclination_angle,
-    resolution,
+    smbh_mass_exp,
+    redshift_source=0,
+    number_grav_radii=500,
+    inclination_angle=0,
+    resolution=500,
     spin=0,
     eddington_ratio=0.1,
     temp_beta=0,
@@ -41,8 +41,8 @@ def create_maps(
 ):
     """This function sets up maps required for the AccretionDisk class in Amoeba.
 
-    :param mass_exp: the mass exponent of the smbh. mass_bh = 10**mass_exp * M_sun
-    :param redshift: the redshift of the AGN
+    :param smbh_mass_exp: the mass exponent of the smbh. mass_bh = 10**smbh_mass_exp * M_sun
+    :param redshift_source: the redshift of the AGN
     :param number_grav_radii: the max radius of the accretion disk in gravitational
         radii
     :param inclination_angle: the inclination of the accretion disk w.r.t. the observer, in
@@ -69,7 +69,7 @@ def create_maps(
         c^2
     :param efficiency: efficiency of the conversion of gravitational potential energy to
         thermal energy.
-    :return: a list representing 6 values (mass_exp, redshift, number_grav_radii,
+    :return: a list representing 6 values (smbh_mass_exp, redshift, number_grav_radii,
         inclination_angle, corona_height, spin) and 4 arrays (temp_array, r_array, g_array,
         phi_array) These are all recorded for conveninence, as they all get put into the
         AccretionDisk constructor in order.
@@ -81,14 +81,14 @@ def create_maps(
     except ModuleNotFoundError:
         sim5_installed = False
 
-    assert redshift >= 0
+    assert redshift_source >= 0
     assert inclination_angle >= 0
     assert inclination_angle <= 90
     if inclination_angle == 90:
         inclination_angle -= 0.1
     assert abs(spin) <= 1
     assert temp_beta >= 0
-    bh_mass_in_solar_masses = 10**mass_exp
+    bh_mass_in_solar_masses = 10**smbh_mass_exp
     bh_mass_in_kg = bh_mass_in_solar_masses * const.M_sun.to(u.kg)
     grav_rad = calculate_gravitational_radius(bh_mass_in_solar_masses)
     temp_array = np.zeros((resolution, resolution))
@@ -148,8 +148,8 @@ def create_maps(
         visc_temp_prof=visc_temp_prof,
     )
     disk_params = {
-        "smbh_mass_exp": mass_exp,
-        "redshift_source": redshift,
+        "smbh_mass_exp": smbh_mass_exp,
+        "redshift_source": redshift_source,
         "inclination_angle": inclination_angle,
         "corona_height": corona_height,
         "temp_array": temp_array,
@@ -690,7 +690,7 @@ def perform_microlensing_convolution(
     flux_array,
     redshift_lens,
     redshift_source,
-    smbh_mass_exponent=8.0,
+    smbh_mass_exp=8.0,
     mean_microlens_mass_in_kg=1.0 * const.M_sun.to(u.kg),
     number_of_microlens_einstein_radii=25,
     number_of_smbh_gravitational_radii=1000,
@@ -710,7 +710,7 @@ def perform_microlensing_convolution(
         lens
     :param redshift_source: an int/float representing the cosmological redshift of the
         source
-    :param smbh_mass_exponent: a float representing log_{10} (M_{smbh} / M_{sun})
+    :param smbh_mass_exp: a float representing log_{10} (M_{smbh} / M_{sun})
     :param mean_microlens_mass_in_kg: the mean mass in kg of the microlenses (to
         determine R_{ein})
     :param number_of_microlens_einstein_radii: size of the magnification map in R_{ein}
@@ -735,9 +735,7 @@ def perform_microlensing_convolution(
     flux_array = rotate(flux_array, relative_orientation, axes=(0, 1), reshape=False)
     original_total_flux = np.sum(flux_array)
 
-    gravitational_radius_of_smbh = calculate_gravitational_radius(
-        10**smbh_mass_exponent
-    )
+    gravitational_radius_of_smbh = calculate_gravitational_radius(10**smbh_mass_exp)
     # determine physical pixel sizes in source plane
     pixel_size_flux_array = (
         2
@@ -960,9 +958,7 @@ def calculate_time_lag_array(
     inclination_angle *= np.pi / 180
     angle_offset_in_radians = angle_offset_in_degrees * np.pi / 180
 
-    x_axis_offset = -axis_offset_in_gravitational_radii * np.cos(
-        angle_offset_in_radians
-    )
+    x_axis_offset = axis_offset_in_gravitational_radii * np.cos(angle_offset_in_radians)
     y_axis_offset = axis_offset_in_gravitational_radii * np.sin(angle_offset_in_radians)
 
     if height_array is not None:
@@ -976,8 +972,8 @@ def calculate_time_lag_array(
 
     # convert to cartesian to allow non axi-symmetric systems
     x_array, y_array = convert_polar_to_cartesian(radii_array, phi_array)
-    x_array += x_axis_offset
-    y_array += y_axis_offset
+    x_array -= x_axis_offset
+    y_array -= y_axis_offset
 
     new_radii, new_azimuths = convert_cartesian_to_polar(x_array, y_array)
 
@@ -994,7 +990,7 @@ def calculate_geometric_disk_factor(
     temp_array,
     radii_array,
     phi_array,
-    smbh_mass_exponent,
+    smbh_mass_exp,
     corona_height,
     axis_offset_in_gravitational_radii=0,
     angle_offset_in_degrees=0,
@@ -1008,7 +1004,7 @@ def calculate_geometric_disk_factor(
 
     :param temp_array: a 2d array of effective temperatures in Kelvin
     :param radii_array: a 2d array of radii in gravitational radii
-    :param smbh_mass_exponent: the solution of log_{10} (M_{smbh} / M_{sun})
+    :param smbh_mass_exp: the solution of log_{10} (M_{smbh} / M_{sun})
     :param corona_height: the height of the lamppost in gravitational radii
     :param axis_offset_in_gravitational_radii: axis offset of the lamppost w.r.t. axis of symmetry
     :param angle_offset_in_degrees: azimuth position of the offset lamppost
@@ -1029,13 +1025,11 @@ def calculate_geometric_disk_factor(
 
     angle_offset_in_degrees *= np.pi / 180
 
-    x_axis_offset = -axis_offset_in_gravitational_radii * np.cos(
-        angle_offset_in_degrees
-    )
+    x_axis_offset = axis_offset_in_gravitational_radii * np.cos(angle_offset_in_degrees)
     y_axis_offset = axis_offset_in_gravitational_radii * np.sin(angle_offset_in_degrees)
     x_array, y_array = convert_polar_to_cartesian(radii_array, phi_array)
-    x_array += x_axis_offset
-    y_array += y_axis_offset
+    x_array -= x_axis_offset
+    y_array -= y_axis_offset
 
     new_radii, new_azimuths = convert_cartesian_to_polar(x_array, y_array)
 
@@ -1047,7 +1041,7 @@ def calculate_geometric_disk_factor(
     else:
         albedo_array = np.zeros(np.shape(new_radii))
 
-    gravitational_radius = calculate_gravitational_radius(10**smbh_mass_exponent)
+    gravitational_radius = calculate_gravitational_radius(10**smbh_mass_exp)
 
     # approximate the normal height vector to get angle of incidence
     # I really need dh/dr to do this.
@@ -1087,7 +1081,7 @@ def calculate_dt_dlx(
     temp_array,
     radii_array,
     phi_array,
-    smbh_mass_exponent,
+    smbh_mass_exp,
     corona_height,
     axis_offset_in_gravitational_radii=0,
     angle_offset_in_degrees=0,
@@ -1109,7 +1103,7 @@ def calculate_dt_dlx(
         radii
     :param phi_array: a 2d array representing the azimuths on the accretion disk in
         radians
-    :param smbh_mass_exponent: the solutkon of log_{10} (M_{smbh} / M_{sun})
+    :param smbh_mass_exp: the solutkon of log_{10} (M_{smbh} / M_{sun})
     :param corona_height: the lamppost height in gravitational radii
     :param axis_offset_in_gravitational_radii: the offset of the lamppost in
         gravitational radii
@@ -1126,7 +1120,7 @@ def calculate_dt_dlx(
         temp_array,
         radii_array,
         phi_array,
-        smbh_mass_exponent,
+        smbh_mass_exp,
         corona_height,
         axis_offset_in_gravitational_radii=axis_offset_in_gravitational_radii,
         angle_offset_in_degrees=angle_offset_in_degrees,
@@ -1147,7 +1141,7 @@ def construct_accretion_disk_transfer_function(
     phi_array,
     g_array,
     inclination_angle,
-    smbh_mass_exponent,
+    smbh_mass_exp,
     corona_height,
     axis_offset_in_gravitational_radii=0,
     angle_offset_in_degrees=0,
@@ -1167,7 +1161,7 @@ def construct_accretion_disk_transfer_function(
     :param phi_array: a 2d array of azimuths on the accretion disk in radians
     :param inclination_angle: the inclination of the accretin disk w.r.t. to the
         observer, in degrees
-    :param smbh_mass_exponent: the solution to log_{10} (M_{smbh} / M_{sun})
+    :param smbh_mass_exp: the solution to log_{10} (M_{smbh} / M_{sun})
     :param corona_height: height of the lamppost in gravitational radii
     :param axis_offset_in_gravitational_radii: radial distance from the agn axis of
         symmetry to be used as the lamppost position (R_{*} coord)
@@ -1202,7 +1196,7 @@ def construct_accretion_disk_transfer_function(
         temp_array,
         radii_array,
         phi_array,
-        smbh_mass_exponent,
+        smbh_mass_exp,
         corona_height,
         axis_offset_in_gravitational_radii=axis_offset_in_gravitational_radii,
         angle_offset_in_degrees=angle_offset_in_degrees,
@@ -1237,7 +1231,7 @@ def calculate_microlensed_transfer_function(
     phi_array,
     g_array,
     inclination_angle,
-    smbh_mass_exponent,
+    smbh_mass_exp,
     corona_height,
     mean_microlens_mass_in_kg=1.0 * const.M_sun.to(u.kg),
     number_of_microlens_einstein_radii=25,
@@ -1269,7 +1263,7 @@ def calculate_microlensed_transfer_function(
         plane in radians
     :param inclination_angle: inclination of the accretion disk w.r.t. the observer in
         degrees
-    :param smbh_mass_exponent: the solution of log_{10} ( M_{smbh} / M_{sun} )
+    :param smbh_mass_exp: the solution of log_{10} ( M_{smbh} / M_{sun} )
     :param corona_height: height of the lamppost in gravitational radii
     :param axis_offset_in_gravitational_radii: the offset of the lamppost in
         gravitational radii
@@ -1299,7 +1293,7 @@ def calculate_microlensed_transfer_function(
         phi_array,
         g_array,
         inclination_angle,
-        smbh_mass_exponent,
+        smbh_mass_exp,
         corona_height,
         axis_offset_in_gravitational_radii=axis_offset_in_gravitational_radii,
         angle_offset_in_degrees=angle_offset_in_degrees,
@@ -1313,7 +1307,7 @@ def calculate_microlensed_transfer_function(
         disk_response_array,
         redshift_lens,
         redshift_source,
-        smbh_mass_exponent=smbh_mass_exponent,
+        smbh_mass_exp=smbh_mass_exp,
         mean_microlens_mass_in_kg=mean_microlens_mass_in_kg,
         number_of_microlens_einstein_radii=number_of_microlens_einstein_radii,
         number_of_smbh_gravitational_radii=number_of_smbh_gravitational_radii,
@@ -1488,7 +1482,7 @@ def generate_snapshots_of_radiation_pattern(
     radii_array,
     phi_array,
     g_array,
-    smbh_mass_exponent,
+    smbh_mass_exp,
     driving_signal,
     driving_signal_fractional_strength,
     corona_height,
@@ -1506,7 +1500,7 @@ def generate_snapshots_of_radiation_pattern(
     :param radii_array: a 2d array of radii of the accretion disk, in gravitational
         radii
     :param phi_array: a 2d array of azimuth values on the accretion disk, in radians
-    :param smbh_mass_exponent: the solution to log_{10} (M_{bh} / M_{sun})
+    :param smbh_mass_exp: the solution to log_{10} (M_{bh} / M_{sun})
     :param driving_signal: a list representing the underlying driving signal which
         produces the radiation pattern on the accretion disk
     :param driving_signal_fractional_strength: relative strength of the total flux due
@@ -1537,7 +1531,7 @@ def generate_snapshots_of_radiation_pattern(
         phi_array,
         g_array,
         inclination_angle,
-        smbh_mass_exponent,
+        smbh_mass_exp,
         corona_height,
         axis_offset_in_gravitational_radii=axis_offset_in_gravitational_radii,
         angle_offset_in_degrees=angle_offset_in_degrees,
@@ -1546,7 +1540,7 @@ def generate_snapshots_of_radiation_pattern(
         return_response_array_and_lags=True,
     )
 
-    gravitational_radius = calculate_gravitational_radius(10**smbh_mass_exponent)
+    gravitational_radius = calculate_gravitational_radius(10**smbh_mass_exp)
     gr_per_day = gravitational_radius / const.c.to(u.m / u.day).value
 
     # convert time lags from R_g / c to units of days
@@ -1590,7 +1584,7 @@ def project_blr_to_source_plane(
     blr_vertical_velocity_grid,
     blr_radial_velocity_grid,
     inclination_angle,
-    smbh_mass_exponent,
+    smbh_mass_exp,
     velocity_range=[-1, 1],
     weighting_grid=None,
     radial_resolution=1,
@@ -1607,7 +1601,7 @@ def project_blr_to_source_plane(
     :param blr_radial_velocity_grid: a 2d array of v_{r} values, normalized by the speed
         of light
     :param inclination_angle: the inclination of the agn w.r.t. the observer in degrees.
-    :param smbh_mass_exponent: the solution of log_{10} (M_{bh} / M_{sun})
+    :param smbh_mass_exp: the solution of log_{10} (M_{bh} / M_{sun})
     :param velocity_range: the range of line-of-sight velocities which are accepted, in
         units of speed of light. We take the convention of positive values are aimed
         towards the observer, and are therefore blueshifted.
@@ -1631,7 +1625,7 @@ def project_blr_to_source_plane(
         weighting_grid = np.ones(np.shape(blr_density_rz_grid))
     assert np.shape(weighting_grid) == np.shape(blr_density_rz_grid)
 
-    gravitational_radius = calculate_gravitational_radius(10**smbh_mass_exponent)
+    gravitational_radius = calculate_gravitational_radius(10**smbh_mass_exp)
 
     # do not over-resolve in source plane or gaps will form
     source_plane_resolution = radial_resolution
@@ -1678,7 +1672,7 @@ def project_blr_to_source_plane(
 
         keplerian_velocities = calculate_keplerian_velocity(
             index_grid * radial_resolution * gravitational_radius,
-            10**smbh_mass_exponent,
+            10**smbh_mass_exp,
         )
 
         # mask out any radii not included in the blr_density_rz_grid
@@ -1687,6 +1681,9 @@ def project_blr_to_source_plane(
         )
 
         index_grid *= index_mask
+
+        if np.sum(index_grid) == 0:
+            continue
 
         # approximation by addition of components
         line_of_sight_velocities = (
@@ -1723,7 +1720,7 @@ def calculate_blr_transfer_function(
     blr_vertical_velocity_grid,
     blr_radial_velocity_grid,
     inclination_angle,
-    smbh_mass_exponent,
+    smbh_mass_exp,
     velocity_range=[-1, 1],
     weighting_grid=None,
     radial_resolution=1,
@@ -1739,7 +1736,7 @@ def calculate_blr_transfer_function(
     :param blr_radial_velocity_grid: a 2d array of v_{r} values, normalized by the speed
         of light
     :param inclination_angle: the inclination of the agn w.r.t. the observer in degrees.
-    :param smbh_mass_exponent: the solution of log_{10} (M_{bh} / M_{sun})
+    :param smbh_mass_exp: the solution of log_{10} (M_{bh} / M_{sun})
     :param velocity_range: the range of line-of-sight velocities which are accepted, in
         units of speed of light. We take the convention of positive values are aimed
         towards the observer, and are therefore blueshifted.
@@ -1796,10 +1793,10 @@ def calculate_blr_transfer_function(
     )
 
     # get Keplerian velocitites (no z dependence)
-    gravitational_radius = calculate_gravitational_radius(10**smbh_mass_exponent)
+    gravitational_radius = calculate_gravitational_radius(10**smbh_mass_exp)
 
     keplerian_velocities = calculate_keplerian_velocity(
-        index_grid * radial_resolution * gravitational_radius, 10**smbh_mass_exponent
+        index_grid * radial_resolution * gravitational_radius, 10**smbh_mass_exp
     )
 
     # mask those which extend beyond max radius AFTER calculating Kep. velocities
@@ -1919,29 +1916,29 @@ def determine_emission_line_velocities(
 
 
 def convolve_signal_with_transfer_function(
-    mass_exponent=None,
+    smbh_mass_exp=None,
     driving_signal=None,
     initial_time_axis=None,
     transfer_function=None,
-    redshift=0,
+    redshift_source=0,
     desired_cadence_in_days=1,
 ):
     """Helper function to convolve a signal with even daily cadence with a trasnfer
     function which has spacing in gravitational radii.
 
-    :param mass_exponent: solution to log_{10}(M_{bh} / M_{sun}).
+    :param smbh_mass_exp: solution to log_{10}(M_{bh} / M_{sun}).
     :param driving_signal: driving signal to convolve with the transfer function at
         daily cadence.
     :param initial_time_axis: time axis of the driving signal in days
     :param transfer_function: transfer function which represents the response of an AGN
         component to an impulse.
-    :param redshift: redshift of the system.
+    :param redshift_source: redshift of the system.
     :param desired_cadence_in_days: desired sampling of the output signal in units days
     :return: reprocessed signal at daily cadence
     """
 
     # this is the resolution of the transfer function
-    gravitational_radius = calculate_gravitational_radius(10**mass_exponent)
+    gravitational_radius = calculate_gravitational_radius(10**smbh_mass_exp)
 
     # this will be the rescaling factor
     light_travel_time_for_grav_rad = (
@@ -1949,7 +1946,7 @@ def convolve_signal_with_transfer_function(
     )
 
     # determine how many points per day need to be calculated
-    required_hyper_resolution = (1 + redshift) / min(desired_cadence_in_days, 1)
+    required_hyper_resolution = (1 + redshift_source) / min(desired_cadence_in_days, 1)
 
     # sample the signal at required cadence via interpolation
     if initial_time_axis is None:
@@ -1994,7 +1991,7 @@ def convolve_signal_with_transfer_function(
         print("warning: unresolvable transfer function")
         hypersample_times = np.linspace(
             0, max(initial_time_axis), len(hypersampled_signal)
-        ) * (1 + redshift)
+        ) * (1 + redshift_source)
         return hypersample_times, hypersampled_signal
 
     # convolve
@@ -2004,7 +2001,7 @@ def convolve_signal_with_transfer_function(
         : len(hypersampled_signal)
     ]
     hypersample_times = np.linspace(0, max(initial_time_axis), len(convolution)) * (
-        1 + redshift
+        1 + redshift_source
     )
 
     return hypersample_times, convolution

@@ -9,13 +9,14 @@ import numpy.testing as npt
 
 class TestBlr:
 
-    def setup(self):
+    def setup_method(self):
 
         smbh_mass_exp = 7.28384
         launch_radius = 500  # Rg
         launch_theta = 0  # degrees
         max_height = 1000  # Rg
         height_step = 200
+        radial_step = 50
         rest_frame_wavelength_in_nm = 600
         redshift_source = 1.1
         characteristic_distance = max_height // 5
@@ -49,6 +50,7 @@ class TestBlr:
             rest_frame_wavelength_in_nm,
             redshift_source,
             height_step=height_step,
+            radial_step=radial_step,
         )
 
         self.blr.add_streamline_bounded_region(
@@ -244,7 +246,7 @@ class TestBlr:
         inclination = 70
         velocity_range = [-0.4, 0.1]
 
-        blr_el_tf = self.blr.calculate_blr_emission_line_transfer_function(
+        weighting, blr_el_tf = self.blr.calculate_blr_emission_line_transfer_function(
             inclination,
             velocity_range=velocity_range,
             emission_efficiency_array=None,
@@ -258,11 +260,13 @@ class TestBlr:
 
         npt.assert_almost_equal(np.sum(blr_el_tf), 1)
 
-        new_velocity_range = [0.2, 0.5]
-        new_blr_el_tf = self.blr.calculate_blr_emission_line_transfer_function(
-            inclination,
-            velocity_range=new_velocity_range,
-            emission_efficiency_array=None,
+        new_velocity_range = [-0.1, 0.4]
+        new_weighting, new_blr_el_tf = (
+            self.blr.calculate_blr_emission_line_transfer_function(
+                inclination,
+                velocity_range=new_velocity_range,
+                emission_efficiency_array=None,
+            )
         )
 
         new_tau_ax = np.linspace(0, len(new_blr_el_tf) - 1, len(new_blr_el_tf))
@@ -270,7 +274,8 @@ class TestBlr:
 
         if np.sum(new_blr_el_tf) > 0:
             assert new_mean_tau > 100
-            npt.assert_almost_equal(new_blr_el_tf, 1)
+            npt.assert_almost_equal(np.sum(new_blr_el_tf), 1)
+        assert new_weighting > weighting
 
 
 if __name__ == "__main__":

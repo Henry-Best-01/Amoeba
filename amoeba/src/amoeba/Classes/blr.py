@@ -37,6 +37,9 @@ class BroadLineRegion:
         self.density_grid = np.zeros(
             (max_radius // radial_step + 1, max_height // height_step + 1)
         )
+        self.emission_efficiency_array = None
+        self.current_calculated_inclination = None
+        self.current_total_emission = None
         self.z_velocity_grid = np.zeros(np.shape(self.density_grid))
         self.r_velocity_grid = np.zeros(np.shape(self.density_grid))
         self.radii_values = np.linspace(0, max_radius, max_radius // radial_step + 1)
@@ -189,13 +192,16 @@ class BroadLineRegion:
         # essentially a weighted projection of the density
         # should be a FluxProjection object!
 
+        if emission_efficiency_array is not None:
+            self.emission_efficiency_array = emission_efficiency_array
+
         flux_map = project_blr_to_source_plane(
             self.density_grid,
             self.z_velocity_grid,
             self.r_velocity_grid,
             inclination_angle,
             self.smbh_mass_exp,
-            weighting_grid=emission_efficiency_array,
+            weighting_grid=self.emission_efficiency_array,
             radial_resolution=self.radial_step,
             vertical_resolution=self.height_step,
         )
@@ -216,6 +222,9 @@ class BroadLineRegion:
             OmM=self.OmM,
             H0=self.H0,
         )
+
+        self.current_calculated_inclination = inclination_angle
+        self.current_total_emission = flux_projection.total_flux
 
         return flux_projection
 
@@ -239,6 +248,9 @@ class BroadLineRegion:
                 self.redshift_source,
             )
 
+        if emission_efficiency_array is not None:
+            self.emission_efficiency_array = emission_efficiency_array
+
         # Similar to above's density calculation, but this time only includes voxels within a velocity range
         flux_map, _ = project_blr_to_source_plane(
             self.density_grid,
@@ -247,7 +259,7 @@ class BroadLineRegion:
             inclination_angle,
             self.smbh_mass_exp,
             velocity_range=velocity_range,
-            weighting_grid=emission_efficiency_array,
+            weighting_grid=self.emission_efficiency_array,
             radial_resolution=self.radial_step,
             vertical_resolution=self.height_step,
         )
@@ -315,15 +327,37 @@ class BroadLineRegion:
                 self.redshift_source,
             )
 
-        # similar to previous function, but selects a region based on line-of-sight velocity range
-        return calculate_blr_transfer_function(
+        if emission_efficiency_array is not None:
+            self.emission_efficiency_array = emission_efficiency_array
+
+        emission_line_tf = calculate_blr_transfer_function(
             self.density_grid,
             self.z_velocity_grid,
             self.r_velocity_grid,
             inclination_angle,
             self.smbh_mass_exp,
             velocity_range=velocity_range,
-            weighting_grid=emission_efficiency_array,
+            weighting_grid=self.emission_efficiency_array,
             radial_resolution=self.radial_step,
             vertical_resolution=self.height_step,
         )
+
+        if self.current_calculated_inclination is not inclination_angle:
+            self.current_calculated_inclination = inclination_angle
+            self.emission_efficiency_array = emission_efficiency_array
+            total_emission = self.project_blr_total_intensity(
+                self.current_calculated_inclination,
+                emission_efficiency_array=self.emission_efficiency_array,
+            )
+            self.current_total_emission = total_emission.total_flux
+
+        current_emission = self.project_blr_intensity_over_velocity_range(
+            inclination_angle,
+            velocity_range=velocity_range,
+            emission_efficiency_array=self.emission_efficiency_array,
+        )
+
+        tf_weighting_factor = current_emission.total_flux / self.current_total_emission
+
+        # similar to previous function, but selects a region based on line-of-sight velocity range
+        return tf_weighting_factor, emission_line_tf

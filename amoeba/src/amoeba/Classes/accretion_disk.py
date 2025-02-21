@@ -351,3 +351,14 @@ class AccretionDisk:
         )
 
         return radiation_patterns
+
+    def get_plotting_axes(self):
+
+        x_ax = np.linspace(
+            -self.r_out_in_gravitational_radii,
+            self.r_out_in_gravitational_radii,
+            np.size(self.radii_array, 0),
+        )
+        X, Y = np.meshgrid(x_ax, x_ax)
+
+        return X, Y
