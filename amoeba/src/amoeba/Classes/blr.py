@@ -5,6 +5,9 @@ from amoeba.Util.util import (
     project_blr_to_source_plane,
     calculate_blr_transfer_function,
     determine_emission_line_velocities,
+    calculate_keplerian_velocity,
+    calculate_gravitational_radius,
+    convert_speclite_filter_to_wavelength_range,
 )
 from amoeba.Classes.flux_projection import FluxProjection
 
@@ -26,6 +29,7 @@ class BroadLineRegion:
         # res holds the number of R_g each pixel is
 
         self.smbh_mass_exp = smbh_mass_exp
+        self.rg = calculate_gravitational_radius(10**self.smbh_mass_exp)
         self.rest_frame_wavelength_in_nm = rest_frame_wavelength_in_nm
         self.redshift_source = redshift_source
         self.OmM = OmM
@@ -233,13 +237,24 @@ class BroadLineRegion:
         inclination_angle,
         velocity_range=None,
         observed_wavelength_range_in_nm=None,
+        speclite_filter=None,
         emission_efficiency_array=None,
     ):
 
         if velocity_range is not None and observed_wavelength_range_in_nm is not None:
             print("Please only provide the velocities or wavelengths. Not both!")
-        if velocity_range is None and observed_wavelength_range_in_nm is None:
+        if (
+            velocity_range is None
+            and observed_wavelength_range_in_nm is None
+            and speclite_filter is None
+        ):
             print("Please provide the velocities or wavelengths.")
+        if speclite_filter is not None:
+            observed_wavelength_range_in_nm = (
+                convert_speclite_filter_to_wavelength_range(
+                    speclite_filter,
+                )
+            )
         if observed_wavelength_range_in_nm is not None:
             velocity_range = determine_emission_line_velocities(
                 self.rest_frame_wavelength_in_nm,
@@ -250,6 +265,56 @@ class BroadLineRegion:
 
         if emission_efficiency_array is not None:
             self.emission_efficiency_array = emission_efficiency_array
+
+        obs_plane_wavelength_in_nm = self.rest_frame_wavelength_in_nm * (
+            1 + self.redshift_source
+        )
+        min_obs_plane_wavelength_in_nm = (
+            obs_plane_wavelength_in_nm
+            * ((1 - np.max(velocity_range)) / (1 + np.max(velocity_range))) ** 0.5
+        )
+        max_obs_plane_wavelength_in_nm = (
+            obs_plane_wavelength_in_nm
+            * ((1 - np.min(velocity_range)) / (1 + np.min(velocity_range))) ** 0.5
+        )
+
+        expected_broadening = self.estimate_doppler_broadening(inclination_angle)
+
+        min_expected_wavelength_in_nm = (
+            obs_plane_wavelength_in_nm
+            * ((1 - np.max(expected_broadening)) / (1 + np.max(expected_broadening)))
+            ** 0.5
+        )
+        max_expected_wavelength_in_nm = (
+            obs_plane_wavelength_in_nm
+            * ((1 - np.min(expected_broadening)) / (1 + np.min(expected_broadening)))
+            ** 0.5
+        )
+
+        if min_expected_wavelength_in_nm > max_obs_plane_wavelength_in_nm:
+            return FluxProjection(
+                np.zeros((100, 100)),
+                [min_obs_plane_wavelength_in_nm, max_obs_plane_wavelength_in_nm],
+                self.smbh_mass_exp,
+                self.redshift_source,
+                100,
+                inclination_angle,
+                OmM=self.OmM,
+                H0=self.H0,
+            )
+        if max_expected_wavelength_in_nm < min_obs_plane_wavelength_in_nm:
+            print("returning case 2")
+            print(max_expected_wavelength_in_nm, min_obs_plane_wavelength_in_nm)
+            return FluxProjection(
+                np.zeros((100, 100)),
+                [min_obs_plane_wavelength_in_nm, max_obs_plane_wavelength_in_nm],
+                self.smbh_mass_exp,
+                self.redshift_source,
+                100,
+                inclination_angle,
+                OmM=self.OmM,
+                H0=self.H0,
+            )
 
         # Similar to above's density calculation, but this time only includes voxels within a velocity range
         flux_map, _ = project_blr_to_source_plane(
@@ -262,18 +327,6 @@ class BroadLineRegion:
             weighting_grid=self.emission_efficiency_array,
             radial_resolution=self.radial_step,
             vertical_resolution=self.height_step,
-        )
-
-        obs_plane_wavelength_in_nm = self.rest_frame_wavelength_in_nm * (
-            1 + self.redshift_source
-        )
-        min_obs_plane_wavelength_in_nm = (
-            obs_plane_wavelength_in_nm
-            * ((1 - np.max(velocity_range)) / (1 + np.max(velocity_range))) ** 0.5
-        )
-        max_obs_plane_wavelength_in_nm = (
-            obs_plane_wavelength_in_nm
-            * ((1 - np.min(velocity_range)) / (1 + np.min(velocity_range))) ** 0.5
         )
 
         max_radius = (
@@ -312,13 +365,24 @@ class BroadLineRegion:
         inclination_angle,
         velocity_range=None,
         observed_wavelength_range_in_nm=None,
+        speclite_filter=None,
         emission_efficiency_array=None,
     ):
 
         if velocity_range is not None and observed_wavelength_range_in_nm is not None:
             print("Please only provide the velocities or wavelengths. Not both!")
-        if velocity_range is None and observed_wavelength_range_in_nm is None:
+        if (
+            velocity_range is None
+            and observed_wavelength_range_in_nm is None
+            and speclite_filter is None
+        ):
             print("Please provide the velocities or wavelengths.")
+        if speclite_filter is not None:
+            observed_wavelength_range_in_nm = (
+                convert_speclite_filter_to_wavelength_range(
+                    speclite_filter,
+                )
+            )
         if observed_wavelength_range_in_nm is not None:
             velocity_range = determine_emission_line_velocities(
                 self.rest_frame_wavelength_in_nm,
@@ -326,6 +390,24 @@ class BroadLineRegion:
                 np.max(observed_wavelength_range_in_nm),
                 self.redshift_source,
             )
+
+        expected_broadening = self.estimate_doppler_broadening(inclination_angle)
+
+        min_expected_wavelength_in_nm = (
+            obs_plane_wavelength_in_nm
+            * ((1 - np.max(expected_broadening)) / (1 + np.max(expected_broadening)))
+            ** 0.5
+        )
+        max_expected_wavelength_in_nm = (
+            obs_plane_wavelength_in_nm
+            * ((1 - np.min(expected_broadening)) / (1 + np.min(expected_broadening)))
+            ** 0.5
+        )
+
+        if min_expected_wavelength_in_nm > max_obs_plane_wavelength_in_nm:
+            return 0, np.zeros(3)
+        if max_expected_wavelength_in_nm < min_obs_plane_wavelength_in_nm:
+            return 0, np.zeros(3)
 
         if emission_efficiency_array is not None:
             self.emission_efficiency_array = emission_efficiency_array
@@ -361,3 +443,36 @@ class BroadLineRegion:
 
         # similar to previous function, but selects a region based on line-of-sight velocity range
         return tf_weighting_factor, emission_line_tf
+
+    def estimate_doppler_broadening(self, inclination_angle):
+
+        assert inclination_angle < 90
+        assert inclination_angle >= 0
+
+        inclination_angle *= np.pi / 180
+        # radial velocities are symmetrically projected
+        max_range_v_r = np.max(
+            [abs(np.max(self.r_velocity_grid)), abs(np.min(self.r_velocity_grid))]
+        )
+        # z velocities are not symmetric
+        min_range_v_z = np.min(self.z_velocity_grid)
+        max_range_v_z = np.max(self.z_velocity_grid)
+        # phi velocities are symmetric, but max depends on min radius
+        densities_as_function_of_radius = np.sum(self.density_grid, axis=1)
+        min_radius_argument = np.argmax(
+            np.isfinite(1 / densities_as_function_of_radius)
+        )
+        min_radius_in_rg = self.radii_values[min_radius_argument]
+
+        max_phi_velocity = calculate_keplerian_velocity(
+            min_radius_in_rg * self.rg, 10**self.smbh_mass_exp
+        )
+
+        max_receeding_velocity = np.cos(inclination_angle) * min_range_v_z - np.sin(
+            inclination_angle
+        ) * np.sqrt(max_range_v_r**2 + max_phi_velocity**2)
+        max_approaching_velocity = np.cos(inclination_angle) * max_range_v_z + np.sin(
+            inclination_angle
+        ) * np.sqrt(max_range_v_r**2 + max_phi_velocity**2)
+
+        return np.asarray([max_receeding_velocity, max_approaching_velocity])

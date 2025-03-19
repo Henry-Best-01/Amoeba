@@ -4,10 +4,10 @@ Amoeba
 
 
 .. image:: https://img.shields.io/pypi/v/amoeba.svg
-        :target: https://pypi.python.org/pypi/amoeba
+        :target: https://pypi.python.org/pypi/amoeba-agn
 
 .. image:: https://img.shields.io/travis/Henry-Best-01/amoeba.svg
-        :target: https://travis-ci.com/Henry-Best-01/amoeba
+        :target: https://travis-ci.com/Henry-Best-01/amoeba-agn
 
 .. image:: https://readthedocs.org/projects/amoeba/badge/?version=latest
         :target: https://amoeba.readthedocs.io/en/latest/?version=latest

@@ -27,8 +27,7 @@ class DiffuseContinuum:
         name="",
         **kwargs
     ):
-        """
-        Object representing the diffuse continuum component of the AGN.
+        """Object representing the diffuse continuum component of the AGN.
 
         :param smbh_mass_exp: mass exponent of the sumpermassive black hole at the
             center of the disk expressed as log_10(M / M_sun). Typical ranges are 6-11
@@ -114,18 +113,15 @@ class DiffuseContinuum:
             self.set_responsivity_constant()
 
     def set_emissivity(self, rest_frame_wavelengths=None, emissivity_etas=None):
-        """
-        Hand me a representation of the diffuse continuum spectrum and I can then define
-        the 2d emissivity of the diffuse continuum
-        """
+        """Hand me a representation of the diffuse continuum spectrum and I can then
+        define the 2d emissivity of the diffuse continuum."""
 
         self.rest_frame_wavelengths = rest_frame_wavelengths
         self.emissivity_etas = emissivity_etas
 
     def set_responsivity_constant(self, responsivity_constant=1):
-        """
-        Hand me a responsivity constant which will go into the responsivity calculation
-        """
+        """Hand me a responsivity constant which will go into the responsivity
+        calculation."""
 
         assert responsivity_constant >= 0
         assert responsivity_constant <= 1
@@ -133,8 +129,9 @@ class DiffuseContinuum:
         self.responsivity_constant = responsivity_constant
 
     def interpolate_spectrum_to_wavelength(self, observer_frame_wavelength_in_nm):
-        """
-        Interpolates known spectra to a particular wavelength. Returns total emissivity.
+        """Interpolates known spectra to a particular wavelength.
+
+        Returns total emissivity.
         """
 
         if self.rest_frame_wavelengths is None:
@@ -155,10 +152,8 @@ class DiffuseContinuum:
     def get_diffuse_continuum_emission(
         self, observer_frame_wavelength_in_nm, incident_continuum_weighting=1
     ):
-        """
-        Give me a wavelength, and if I have the diffuse continuum spectrum I will produce
-        a FluxProjection object based on the interpolated spectrum
-        """
+        """Give me a wavelength, and if I have the diffuse continuum spectrum I will
+        produce a FluxProjection object based on the interpolated spectrum."""
         rest_frame_wavelength_in_nm = observer_frame_wavelength_in_nm / (
             1 + self.redshift_source
         )
@@ -185,9 +180,7 @@ class DiffuseContinuum:
         return projection
 
     def get_diffuse_continuum_mean_lag(self, observer_frame_wavelength_in_nm):
-        """
-        determine the diffuse continuum's mean time lag at some wavelength
-        """
+        """Determine the diffuse continuum's mean time lag at some wavelength."""
 
         if self.cloud_density_radial_dependence is not None:
 
@@ -271,11 +264,10 @@ class DiffuseContinuum:
         self,
         observer_frame_wavelength_in_nm,
     ):
-        """
-        Give me a wavelength, and if I have the diffuse continuum responsivity, I will
-        estimate the mean increase in time lag for an accretion disk due to the diffuse
-        continuum, which must be added by the mean lag of the continuum.
-        Follows equation 3 in Korista + Goad 2019
+        """Give me a wavelength, and if I have the diffuse continuum responsivity, I
+        will estimate the mean increase in time lag for an accretion disk due to the
+        diffuse continuum, which must be added by the mean lag of the continuum. Follows
+        equation 3 in Korista + Goad 2019.
 
         tau_lam(inc - DC) ~ tau_lam(DC) * (1 - const_a) * DC_percent_flux / ( 1 - const_a * DC_percent_flux )
         """

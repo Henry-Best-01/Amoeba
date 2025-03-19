@@ -12,6 +12,7 @@ from scipy.ndimage import rotate
 from skimage.transform import rescale
 from scipy.interpolate import interp1d
 from scipy.signal import convolve
+from speclite.filters import load_filter, load_filters, FilterResponse
 
 warnings.filterwarnings("ignore")
 np.seterr(divide="ignore", invalid="ignore")
@@ -41,12 +42,13 @@ def create_maps(
 ):
     """This function sets up maps required for the AccretionDisk class in Amoeba.
 
-    :param smbh_mass_exp: the mass exponent of the smbh. mass_bh = 10**smbh_mass_exp * M_sun
+    :param smbh_mass_exp: the mass exponent of the smbh. mass_bh = 10**smbh_mass_exp *
+        M_sun
     :param redshift_source: the redshift of the AGN
     :param number_grav_radii: the max radius of the accretion disk in gravitational
         radii
-    :param inclination_angle: the inclination of the accretion disk w.r.t. the observer, in
-        degrees
+    :param inclination_angle: the inclination of the accretion disk w.r.t. the observer,
+        in degrees
     :param resolution: the number of pixels along one axis the images are resolved to.
         All images are created square.
     :param spin: the dimensionless spin parameter of the black hole, ranging from [-1,
@@ -70,9 +72,9 @@ def create_maps(
     :param efficiency: efficiency of the conversion of gravitational potential energy to
         thermal energy.
     :return: a list representing 6 values (smbh_mass_exp, redshift, number_grav_radii,
-        inclination_angle, corona_height, spin) and 4 arrays (temp_array, r_array, g_array,
-        phi_array) These are all recorded for conveninence, as they all get put into the
-        AccretionDisk constructor in order.
+        inclination_angle, corona_height, spin) and 4 arrays (temp_array, r_array,
+        g_array, phi_array) These are all recorded for conveninence, as they all get put
+        into the AccretionDisk constructor in order.
     """
     try:
         import sim5
@@ -2005,3 +2007,55 @@ def convolve_signal_with_transfer_function(
     )
 
     return hypersample_times, convolution
+
+
+def convert_speclite_filter_to_wavelength_range(filter_string, min_threshold=0.01):
+    """This function takes a speclite filter object or a string associated with speclite
+    filters and outputs a wavelength range corresponding to the passband greater than
+    minimum threshold.
+
+    :param filter_string: speclite object or string associated with a speclite object.
+    :param min_threshold: value to use in order to define the minimum and maximum
+        wavelengths.
+    :return: list of wavelength ranges in nm
+    """
+
+    if isinstance(filter_string, FilterResponse):
+        working_filters = [filter_string]
+    elif isinstance(filter_string, str):
+        try:
+            working_filters = [load_filter(filter_string)]
+        except:
+            print("no found speclite filter")
+            return False
+    elif isinstance(filter_string, list):
+        try:
+            working_filters = load_filters(filter_string)
+        except:
+            print("no found speclite filters")
+            return False
+    else:
+        print("incompatible filter string")
+        return False
+
+    output_wavelength_ranges = []
+    for current_filter in working_filters:
+        current_wavelengths = current_filter.wavelength.copy()
+        unit_conversion = current_filter.effective_wavelength.unit.to(u.nm)
+        current_wavelengths = unit_conversion * current_wavelengths
+        passband = current_filter.response
+
+        peak_response_arg = np.argmax(passband)
+        min_wavelength_arg = np.argmin(
+            abs(passband[:peak_response_arg] - min_threshold)
+        )
+        max_wavelength_arg = peak_response_arg + np.argmin(
+            abs(passband[peak_response_arg:] - min_threshold)
+        )
+        output_wavelength_ranges.append(
+            [
+                current_wavelengths[min_wavelength_arg],
+                current_wavelengths[max_wavelength_arg],
+            ]
+        )
+    return output_wavelength_ranges

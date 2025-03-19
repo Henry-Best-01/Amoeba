@@ -14,7 +14,7 @@ class TestBlr:
         smbh_mass_exp = 7.28384
         launch_radius = 500  # Rg
         launch_theta = 0  # degrees
-        max_height = 1000  # Rg
+        max_height = 500  # Rg
         height_step = 200
         radial_step = 50
         rest_frame_wavelength_in_nm = 600
@@ -45,6 +45,15 @@ class TestBlr:
         )
 
         self.blr = BroadLineRegion(
+            smbh_mass_exp,
+            max_height,
+            rest_frame_wavelength_in_nm,
+            redshift_source,
+            height_step=height_step,
+            radial_step=radial_step,
+        )
+
+        self.empty_blr = BroadLineRegion(
             smbh_mass_exp,
             max_height,
             rest_frame_wavelength_in_nm,
@@ -163,6 +172,28 @@ class TestBlr:
         assert flux_projection_2.observer_frame_wavelength_in_nm[0] == 0
         assert flux_projection_2.observer_frame_wavelength_in_nm[1] == np.inf
 
+    def test_estimate_doppler_broadening(self):
+
+        inclination1 = 15
+        expectation1 = self.blr.estimate_doppler_broadening(inclination1)
+        assert isinstance(expectation1, np.ndarray)
+        inclination2 = 65
+        expectation2 = self.blr.estimate_doppler_broadening(inclination2)
+
+        assert np.max(expectation1) != np.max(expectation2)
+        assert np.min(expectation1) != np.min(expectation2)
+
+        empty_expectation = self.empty_blr.estimate_doppler_broadening(inclination2)
+
+        assert isinstance(empty_expectation, np.ndarray)
+        assert np.min(empty_expectation) == -np.inf
+        assert np.max(empty_expectation) == np.inf
+
+        inclination3 = float(90 - 1e-9)  # 90 deg returns AssertionError
+        expectation3 = self.blr.estimate_doppler_broadening(inclination3)
+
+        npt.assert_approx_equal(np.max(expectation3), -np.min(expectation3))
+
     def test_project_blr_intensity_over_velocity_range(self):
 
         inclination = 35
@@ -171,7 +202,7 @@ class TestBlr:
         approaching_velocity_range = [0, 1]
         total_velocity_range = [-1, 1]
         # velocity ranges are defined as the joint region defined by (v>=min, v<max)
-        no_velocity_range = [0, 0]
+        no_velocity_range = [-0.7, -0.6]
 
         receeding_projection = self.blr.project_blr_intensity_over_velocity_range(
             inclination,
@@ -210,7 +241,19 @@ class TestBlr:
         assert no_projection.total_flux == 0
         assert receeding_projection.total_flux > 0
 
+        another_no_velocity_range = [0.98, 0.99]
+        another_no_projection = self.blr.project_blr_intensity_over_velocity_range(
+            inclination,
+            velocity_range=another_no_velocity_range,
+            emission_efficiency_array=efficiency_array,
+        )
+
+        assert np.shape(no_projection.flux_array) == (100, 100)
+
+        assert np.shape(another_no_projection.flux_array) == (100, 100)
+
     def test_calculate_blr_scattering_transfer_function(self):
+
         inclination_face_on = 0
         inclination_inclined = 40
 
@@ -243,6 +286,7 @@ class TestBlr:
         npt.assert_almost_equal(np.sum(scattering_tf_inclined), 1)
 
     def test_calculate_blr_emission_line_transfer_function(self):
+
         inclination = 70
         velocity_range = [-0.4, 0.1]
 
@@ -276,6 +320,19 @@ class TestBlr:
             assert new_mean_tau > 100
             npt.assert_almost_equal(np.sum(new_blr_el_tf), 1)
         assert new_weighting > weighting
+
+        null_velocity_range = [-0.8, -0.7]
+        null_weighting, null_tf = (
+            self.blr.calculate_blr_emission_line_transfer_function(
+                inclination,
+                velocity_range=null_velocity_range,
+                emission_efficiency_array=None,
+            )
+        )
+
+        assert null_weighting == 0
+        for value in null_tf:
+            assert value == 0
 
 
 if __name__ == "__main__":

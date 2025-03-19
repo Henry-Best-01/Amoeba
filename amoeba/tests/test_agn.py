@@ -929,3 +929,114 @@ class TestAgn:
         assert len(my_other_only_signal) == 1
         assert len(my_other_only_signal[0]) == 2
         assert len(my_other_only_signal[0][0]) == len(my_other_only_signal[0][1])
+
+    def test_visualize_agn_pipeline(self):
+
+        observer_frame_wavelengths_in_nm = [[1000, 1400]]
+        # pick something very red which will have lower total flux
+        no_blr_wavelengths = [[100000, 120000]]
+
+        diffuse_continuum_wavelengths = [100, 10000]
+        diffuse_continuum_spectrum = [1, 1]
+
+        self.my_dc_kwargs["rest_frame_wavelengths"] = diffuse_continuum_wavelengths
+        self.my_dc_kwargs["emissivity_etas"] = diffuse_continuum_spectrum
+
+        self.my_populated_agn.add_diffuse_continuum(**self.my_dc_kwargs)
+
+        projection_effect_with_blr, components_with_blr = (
+            self.my_populated_agn.visualize_agn_pipeline(
+                inclination_angle=None,
+                observer_frame_wavelengths_in_nm=observer_frame_wavelengths_in_nm,
+                return_components=True,
+            )
+        )
+
+        projection_effect_no_blr, components_no_blr = (
+            self.my_populated_agn.visualize_agn_pipeline(
+                inclination_angle=None,
+                observer_frame_wavelengths_in_nm=no_blr_wavelengths,
+                return_components=True,
+            )
+        )
+
+        assert isinstance(projection_effect_with_blr[0], FluxProjection)
+        assert isinstance(projection_effect_no_blr[0], FluxProjection)
+        assert isinstance(components_with_blr[0], list)
+        assert isinstance(components_no_blr[0], list)
+        assert isinstance(components_with_blr[0][0], FluxProjection)
+        assert isinstance(components_no_blr[0][1], FluxProjection)
+
+        assert len(components_with_blr[0]) == len(components_no_blr[0])
+        assert np.shape(components_with_blr[0][-1].flux_array) > np.shape(
+            components_no_blr[0][-1].flux_array
+        )
+
+        assert (
+            projection_effect_with_blr[0].total_flux
+            > projection_effect_no_blr[0].total_flux
+        )
+
+        # show that the pipeline works identically with and without returning components
+        my_projection = self.my_populated_agn.visualize_agn_pipeline(
+            inclination_angle=None,
+            observer_frame_wavelengths_in_nm=observer_frame_wavelengths_in_nm,
+            return_components=False,
+        )
+        assert my_projection[0].total_flux == projection_effect_with_blr[0].total_flux
+
+        square_diff = np.sum(
+            (projection_effect_with_blr[0].flux_array - my_projection[0].flux_array)
+            ** 2
+        )
+        assert square_diff == 0
+
+        # test that an agn without components will not return a projection
+        my_null_projection = self.my_agn.visualize_agn_pipeline(
+            observer_frame_wavelengths_in_nm=observer_frame_wavelengths_in_nm
+        )
+        assert my_null_projection is False
+
+        # test that an agn with components but no wavelength will not return a projection
+        my_null_projection = self.my_populated_agn.visualize_agn_pipeline()
+        assert my_null_projection is False
+
+        # test that we can project an agn in multiple bands with one call
+        my_multitude_of_bands = ["lsst2023-u", "lsst2023-g", "lsst2023-z"]
+        my_multi_projection, my_multi_components = (
+            self.my_populated_agn.visualize_agn_pipeline(
+                speclite_filter=my_multitude_of_bands, return_components=True
+            )
+        )
+        assert len(my_multitude_of_bands) == len(my_multi_projection)
+        # test we have the right number of components (no torus emission yet)
+        assert len(self.my_populated_agn.components) == len(my_multi_components[0]) + 1
+        # test each flux distribution is different
+        assert my_multi_projection[0].total_flux != my_multi_projection[1].total_flux
+        assert my_multi_projection[0].total_flux != my_multi_projection[2].total_flux
+
+        # test that when inclination angle is updatable, you can update the agn object
+        # directly with the projection pipeline
+        new_inclination_angle = 40
+        my_inclined_projection = self.my_populated_agn.visualize_agn_pipeline(
+            inclination_angle=new_inclination_angle,
+            speclite_filter=my_multitude_of_bands,
+            return_components=False,
+        )
+        assert self.my_populated_agn.inclination_angle == new_inclination_angle
+
+        for jj in range(len(my_multitude_of_bands)):
+            assert (
+                my_inclined_projection[jj].total_flux
+                != my_multi_projection[jj].total_flux
+            )
+            assert (
+                np.sum(
+                    (
+                        my_multi_projection[jj].flux_array
+                        - my_inclined_projection[jj].flux_array
+                    )
+                    ** 2
+                )
+                != 0
+            )
