@@ -31,7 +31,7 @@ Further examples are provided in the example_scripts directory, with individual 
 
 Unit tests are included in the tests directory. 
 
-Thank you for taking notice of my code! I would be happy to answer any questions. I can be contacted directly at hbest@gradcenter.cuny.edu
+Thank you for taking notice of this code! Any questions may be directed towards Henry Best via e-mail at hbest@gradcenter.cuny.edu
 
 
 * Free software: MIT license
@@ -49,6 +49,15 @@ Microlensing simulations will require an external magnification map. In the exam
 Some precomputed ray tracings may be found [here](https://drive.google.com/drive/folders/1vx8HUBXw6SaDq5uS4jQCyWdg13XfCRCv?usp=share_link) which contains a zipped folder of .fits files for various inclination angles and black hole spins. Providing the path to one of these ray traces in the notebook will show you how to use these files with Amoeba. Beyond this zip file, a single file is included with Amoeba.
 
 
+Citing
+------
+
+If you use Amoeba in your work, please include the following ADS citation: https://ui.adsabs.harvard.edu/abs/2024arXiv241019630B/exportcitation
+
+If you install and use the Sim5 ray tracing component for accretion disk modeling, please cite the authors according to https://github.com/mbursa/sim5
+
+
+
 Credits
 -------
 
@@ -57,7 +66,7 @@ This package was created with Cookiecutter_ and the `audreyr/cookiecutter-pypack
 .. _Cookiecutter: https://github.com/audreyr/cookiecutter
 .. _`audreyr/cookiecutter-pypackage`: https://github.com/audreyr/cookiecutter-pypackage
 
-
+This package supports Sim5 ray tracing: https://ascl.net/1811.011
 
 [^1]: https://ui.adsabs.harvard.edu/abs/2014ApJS..211...16V/abstract
 [^2]: https://ui.adsabs.harvard.edu/abs/2018ascl.soft11011B/abstract

@@ -303,8 +303,6 @@ class BroadLineRegion:
                 H0=self.H0,
             )
         if max_expected_wavelength_in_nm < min_obs_plane_wavelength_in_nm:
-            print("returning case 2")
-            print(max_expected_wavelength_in_nm, min_obs_plane_wavelength_in_nm)
             return FluxProjection(
                 np.zeros((100, 100)),
                 [min_obs_plane_wavelength_in_nm, max_obs_plane_wavelength_in_nm],
@@ -392,6 +390,17 @@ class BroadLineRegion:
             )
 
         expected_broadening = self.estimate_doppler_broadening(inclination_angle)
+        obs_plane_wavelength_in_nm = self.rest_frame_wavelength_in_nm * (
+            1 + self.redshift_source
+        )
+        min_obs_plane_wavelength_in_nm = (
+            obs_plane_wavelength_in_nm
+            * ((1 - np.max(velocity_range)) / (1 + np.max(velocity_range))) ** 0.5
+        )
+        max_obs_plane_wavelength_in_nm = (
+            obs_plane_wavelength_in_nm
+            * ((1 - np.min(velocity_range)) / (1 + np.min(velocity_range))) ** 0.5
+        )
 
         min_expected_wavelength_in_nm = (
             obs_plane_wavelength_in_nm
