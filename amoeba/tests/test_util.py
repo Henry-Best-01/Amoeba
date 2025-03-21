@@ -1139,14 +1139,14 @@ def test_generate_signal_from_psd():
     psd_power_law = frequencies ** (-2)
     random_seed = 33
 
-    lc_flat_spectrum = generate_signal_from_psd(
+    time_ax, lc_flat_spectrum = generate_signal_from_psd(
         length_of_light_curve,
         psd_flat_spectrum,
         frequencies,
         random_seed=random_seed,
     )
 
-    lc_power_spectrum = generate_signal_from_psd(
+    time_ax, lc_power_spectrum = generate_signal_from_psd(
         length_of_light_curve,
         psd_power_law,
         frequencies,

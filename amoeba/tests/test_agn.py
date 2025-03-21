@@ -547,22 +547,28 @@ class TestAgn:
 
         assert self.my_agn.add_intrinsic_signal_parameters(**intrinsic_signal_kwargs)
 
-        my_signal = self.my_agn.generate_intrinsic_signal(length_of_light_curve)
+        time_axis, my_signal = self.my_agn.generate_intrinsic_signal(
+            length_of_light_curve
+        )
 
         assert len(my_signal) == length_of_light_curve
 
         npt.assert_almost_equal(np.mean(my_signal), 0, 5)
         npt.assert_almost_equal(np.std(my_signal), 1, 5)
 
-        my_second_signal = self.my_agn.generate_intrinsic_signal(length_of_light_curve)
+        time_axis, my_second_signal = self.my_agn.generate_intrinsic_signal(
+            length_of_light_curve
+        )
 
         assert np.sum((my_signal - my_second_signal) ** 2) != 0
 
         intrinsic_signal_kwargs["random_seed"] = 17
         self.my_agn.add_intrinsic_signal_parameters(**intrinsic_signal_kwargs)
 
-        my_seeded_signal = self.my_agn.generate_intrinsic_signal(length_of_light_curve)
-        my_second_seeded_signal = self.my_agn.generate_intrinsic_signal(
+        time_axis, my_seeded_signal = self.my_agn.generate_intrinsic_signal(
+            length_of_light_curve
+        )
+        time_axis, my_second_seeded_signal = self.my_agn.generate_intrinsic_signal(
             length_of_light_curve
         )
 
@@ -581,15 +587,36 @@ class TestAgn:
             "frequencies": new_frequencies,
         }
 
-        my_third_signal = self.my_agn.generate_intrinsic_signal(
+        time_axis, my_third_signal = self.my_agn.generate_intrinsic_signal(
             2 * length_of_light_curve, **new_intrinsic_signal_kwargs
         )
 
-        my_fourth_signal = self.my_agn.generate_intrinsic_signal(
+        time_axis, my_fourth_signal = self.my_agn.generate_intrinsic_signal(
             2 * length_of_light_curve
         )
 
         assert np.sum((my_third_signal - my_fourth_signal) ** 2) == 0
+
+        cadence = 0.2
+        n_frequencies = int(length_of_light_curve / cadence)
+        frequencies = np.linspace(
+            1 / (2 * length_of_light_curve), 1 / (2 * cadence), n_frequencies
+        )
+
+        power_spectrum = (1 / frequencies) ** 2
+
+        intrinsic_signal_kwargs = {
+            "power_spectrum": power_spectrum,
+            "frequencies": frequencies,
+        }
+
+        assert self.my_agn.add_intrinsic_signal_parameters(**intrinsic_signal_kwargs)
+
+        time_axis, my_fifth_signal = self.my_agn.generate_intrinsic_signal(
+            length_of_light_curve
+        )
+
+        assert len(my_fifth_signal) == length_of_light_curve / cadence
 
     def test_update_smbh_mass_exponent(self):
 
@@ -944,22 +971,32 @@ class TestAgn:
 
         self.my_populated_agn.add_diffuse_continuum(**self.my_dc_kwargs)
 
-        projection_effect_with_blr, components_with_blr = (
-            self.my_populated_agn.visualize_agn_pipeline(
-                inclination_angle=None,
-                observer_frame_wavelengths_in_nm=observer_frame_wavelengths_in_nm,
-                return_components=True,
-            )
+        components_with_blr = self.my_populated_agn.visualize_agn_pipeline(
+            inclination_angle=None,
+            observer_frame_wavelengths_in_nm=observer_frame_wavelengths_in_nm,
+            return_components=True,
         )
 
-        projection_effect_no_blr, components_no_blr = (
-            self.my_populated_agn.visualize_agn_pipeline(
-                inclination_angle=None,
-                observer_frame_wavelengths_in_nm=no_blr_wavelengths,
-                return_components=True,
-            )
+        components_no_blr = self.my_populated_agn.visualize_agn_pipeline(
+            inclination_angle=None,
+            observer_frame_wavelengths_in_nm=no_blr_wavelengths,
+            return_components=True,
         )
 
+        projection_effect_with_blr = self.my_populated_agn.visualize_agn_pipeline(
+            inclination_angle=None,
+            observer_frame_wavelengths_in_nm=observer_frame_wavelengths_in_nm,
+            return_components=False,
+        )
+
+        projection_effect_no_blr = self.my_populated_agn.visualize_agn_pipeline(
+            inclination_angle=None,
+            observer_frame_wavelengths_in_nm=no_blr_wavelengths,
+            return_components=False,
+        )
+
+        assert isinstance(components_with_blr, list)
+        assert isinstance(components_no_blr, list)
         assert isinstance(projection_effect_with_blr[0], FluxProjection)
         assert isinstance(projection_effect_no_blr[0], FluxProjection)
         assert isinstance(components_with_blr[0], list)
@@ -1003,10 +1040,11 @@ class TestAgn:
 
         # test that we can project an agn in multiple bands with one call
         my_multitude_of_bands = ["lsst2023-u", "lsst2023-g", "lsst2023-z"]
-        my_multi_projection, my_multi_components = (
-            self.my_populated_agn.visualize_agn_pipeline(
-                speclite_filter=my_multitude_of_bands, return_components=True
-            )
+        my_multi_components = self.my_populated_agn.visualize_agn_pipeline(
+            speclite_filter=my_multitude_of_bands, return_components=True
+        )
+        my_multi_projection = self.my_populated_agn.visualize_agn_pipeline(
+            speclite_filter=my_multitude_of_bands, return_components=False
         )
         assert len(my_multitude_of_bands) == len(my_multi_projection)
         # test we have the right number of components (no torus emission yet)

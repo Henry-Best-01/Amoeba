@@ -1456,6 +1456,9 @@ def generate_signal_from_psd(
     """
     rng = np.random.default_rng(seed=random_seed)
 
+    # total number of observations will be this times length_of_light_curve
+    observations_per_day = 2 * np.max(frequencies)
+
     random_phases = 2 * np.pi * rng.random(size=len(frequencies))
 
     positive_fourier_plus_phases = np.sqrt(power_spectrum) * np.exp(1j * random_phases)
@@ -1467,14 +1470,18 @@ def generate_signal_from_psd(
         )
     )
 
-    light_curve = np.fft.ifft(fourier_transform_of_output)[: int(length_of_light_curve)]
+    light_curve = np.fft.ifft(fourier_transform_of_output)[
+        : int(length_of_light_curve * observations_per_day)
+    ]
 
     light_curve -= np.mean(light_curve)
+
+    time_axis = np.linspace(0, length_of_light_curve - 1, len(light_curve))
 
     if np.std(light_curve) > 0:
         light_curve /= np.std(light_curve)
 
-    return light_curve.real
+    return time_axis, light_curve.real
 
 
 def generate_snapshots_of_radiation_pattern(

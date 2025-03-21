@@ -21,7 +21,23 @@ class Agn:
 
     def __init__(self, agn_name="", **kwargs):
         """This is the main class which connects each component of the AGN together and
-        allows for a consistent calculation of each component."""
+        allows for a consistent calculation of each component.
+
+        :param agn_name: name space for Agn object
+        :kwarg smbh_mass_exp: solution to log10(M_smbh / M_sun)
+        :kwarg redshift_source: redshift of the Agn object
+        :kwarg inclination_angle: inclination of the Agn with respect to our point of view
+        :kwarg OmM: Energy budget of matter in the universe
+        :kwarg H0: Hubble constant in units km/s/Mpc
+
+        ----- accretion disk kwargs -----
+
+        "number_grav_radii","inclination_angle","resolution","spin","eddington_ratio",
+        "temp_beta","corona_height","albedo","eta","generic_beta","disk_acc",
+        "height_array","albedo_array","efficiency","visc_temp_prof"
+
+        ----- broad line region kwargs -----
+        """
 
         self.kwargs = kwargs
         if "smbh_mass_exp" in self.kwargs.keys():
@@ -46,6 +62,7 @@ class Agn:
 
         self.disk_is_updatable = True
         self.intrinsic_light_curve = None
+        self.intrinsic_light_curve_time_axis = None
         self.blr_indicies = []
         self.line_strengths = {}
         self.line_widths = {}
@@ -342,13 +359,14 @@ class Agn:
             )
             return False
 
-        light_curve = generate_signal_from_psd(
+        time_axis, light_curve = generate_signal_from_psd(
             max_time_in_days, self.power_spectrum, self.frequencies, self.random_seed
         )
 
         self.intrinsic_light_curve = light_curve
+        self.intrinsic_light_curve_time_axis = time_axis
 
-        return light_curve
+        return time_axis, light_curve
 
     def update_smbh_mass_exponent(self, new_smbh_mass_exponent):
         """Update the black hole mass in all components."""
@@ -661,6 +679,7 @@ class Agn:
             # define it this way so a provided light curve overrides this propagation,
             # but does not override the stored light curve.
             intrinsic_light_curve = self.intrinsic_light_curve.copy()
+            time_axis = self.intrinsic_light_curve_time_axis.copy()
 
         # generate the continuum signals
         reprocessed_signals = []
