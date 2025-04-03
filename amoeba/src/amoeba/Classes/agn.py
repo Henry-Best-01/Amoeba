@@ -13,6 +13,11 @@ from amoeba.Util.util import (
     convolve_signal_with_transfer_function,
     convert_cartesian_to_polar,
 )
+from amoeba.Util.pipeline_util import (
+    intrinsic_signal_propagation_pipeline_for_agn,
+    visualization_pipeline,
+)
+
 from speclite.filters import load_filter, load_filters
 import speclite
 
@@ -32,11 +37,19 @@ class Agn:
 
         ----- accretion disk kwargs -----
 
-        "number_grav_radii","inclination_angle","resolution","spin","eddington_ratio",
-        "temp_beta","corona_height","albedo","eta","generic_beta","disk_acc",
-        "height_array","albedo_array","efficiency","visc_temp_prof"
+        "number_grav_radii", "inclination_angle", "resolution", "spin", "eddington_ratio",
+        "temp_beta", "corona_height", "albedo", "eta", "generic_beta", "disk_acc",
+        "height_array", "albedo", "efficiency", "visc_temp_prof"
 
         ----- broad line region kwargs -----
+
+        "smbh_mass_exp", "mass_height", "rest_frame_wavelength_in_nm",
+        "redshift_source", "radial_step", "height_step", "max_radius"
+
+        ----- torus kwargs -----
+
+        "smbh_mass_exp", "max_height", "redshift_source", "radial_step",
+        "height_step", "power_law_density_dependence"
         """
 
         self.kwargs = kwargs
@@ -65,16 +78,16 @@ class Agn:
         self.intrinsic_light_curve_time_axis = None
         self.blr_indicies = []
         self.line_strengths = {}
-        self.line_widths = {}
 
         self.generate_kwarg_dictionaries_for_individual_components()
 
         self.components = {}
 
     def add_default_accretion_disk(self, **kwargs):
-        """Use create_maps to generate an accretion disk.
+        """Store a basic accretion disk object which is generatable with the create_maps
+        function in Util. Expected input is a dictionary of accretion disk parameters.
 
-        then store it in AGN
+        :return: True if successful
         """
 
         all_kwargs = [
@@ -92,7 +105,7 @@ class Agn:
             "generic_beta",
             "disk_acc",
             "height_array",
-            "albedo_array",
+            "albedo",
             "OmM",
             "H0",
             "efficiency",
@@ -100,13 +113,11 @@ class Agn:
         ]
 
         for kwarg in all_kwargs:
-            # update if overridden
             if kwarg in kwargs:
                 self.default_accretion_disk_kwargs[kwarg] = kwargs[kwarg]
 
         agn_disk_dictionary = create_maps(**self.default_accretion_disk_kwargs)
 
-        # store dictionary in generic_acc_disk_kwargs to facilitate later updates
         for kwarg in agn_disk_dictionary.keys():
             self.generic_accretion_disk_kwargs[kwarg] = agn_disk_dictionary[kwarg]
 
@@ -119,7 +130,12 @@ class Agn:
         return True
 
     def add_generic_accretion_disk(self, **kwargs):
-        """Give me an AGN parameter dictionary to store a disk in the AGN."""
+        """Create an accretion disk from an AGN parameter dictionary. This may be used
+        to generate more specialized accretion disk objects. Expected input is a
+        dictionary of accretion disk parameters.
+
+        :return: True if successful
+        """
 
         all_kwargs = [
             "smbh_mass_exp",
@@ -131,7 +147,7 @@ class Agn:
             "g_array",
             "radii_array",
             "height_array",
-            "albedo_array",
+            "albedo",
             "spin",
             "OmM",
             "H0",
@@ -150,10 +166,14 @@ class Agn:
 
         return True
 
-    def add_blr(self, blr_index=0, line_strength=1, line_width=10, **kwargs):
-        """Give me a dictionary containing information about a BLR.
+    def add_blr(self, blr_index=0, line_strength=1, **kwargs):
+        """Add an initialization of a BroadLineRegion object which is defined with index
+        blr_index. Expects a dictionary of BLR parameters in kwargs input.
 
-        Append to a list of BLRs, with weighting factor of line_strength.
+        :param blr_index: int or float to specify which BLR we are using
+        :param line_strength: int or float representing how strong the emission line is
+            with respect to other BLR objects.
+        :return: True if successful
         """
 
         all_kwargs = [
@@ -176,15 +196,23 @@ class Agn:
 
         self.components["blr_" + str(blr_index)] = agn_blr
         self.line_strengths[str(blr_index)] = line_strength
-        self.line_widths[str(blr_index)] = line_width
         if blr_index not in self.blr_indicies:
             self.blr_indicies.append(blr_index)
 
         return True
 
     def add_streamline_bounded_region_to_blr(self, blr_index=0, **kwargs):
-        """For BLR with blr_index, add a region of particles using
-        add_streamline_bounded_region."""
+        """Add a region of particles using the add_streamline_bounded_region method of
+        the BroadLineRegion object with index blr_index. Expects two streamlines in
+        a dictionary for the kwargs argument.
+
+        :param blr_index: int or float representing which BLR to add to
+        :return: True if successful
+        """
+
+        if blr_index not in self.blr_indicies:
+            print("blr_index not found, please initialize a BLR with this index")
+            return False
 
         required_kwargs = [
             "InnerStreamline",
@@ -201,7 +229,13 @@ class Agn:
         return True
 
     def add_torus(self, **kwargs):
-        """Add an obscuring torus to the AGN model."""
+        """Initialize an obscuring torus in the AGN model. Note this is still an
+        experimental feature. After initialization, the torus must be defined by the
+        add_streamline_bounded_region_to_torus() method. Expects a dictionary of
+        torus parameters in the kwargs argument.
+
+        :return: True if successful
+        """
 
         all_kwargs = [
             "smbh_mass_exp",
@@ -225,7 +259,11 @@ class Agn:
         return True
 
     def add_streamline_bounded_region_to_torus(self, **kwargs):
-        """Define the torus with a streamline."""
+        """Define the torus with a Streamline object. Expects a streamline in a
+        dictionary for the kwargs argument.
+
+        :return: True if successful
+        """
 
         required_kwargs = ["Streamline"]
 
@@ -239,7 +277,11 @@ class Agn:
         return True
 
     def add_diffuse_continuum(self, **kwargs):
-        """Add a diffuse continuum to the AGN."""
+        """Add a diffuse continuum to the AGN. Expects a dictionary of diffuse
+        continuum parameters in the kwargs argument.
+
+        :return: True if successful
+        """
 
         all_kwargs = [
             "smbh_mass_exp",
@@ -286,14 +328,24 @@ class Agn:
         return True
 
     def add_intrinsic_signal_parameters(self, **kwargs):
-        """Define the parameters which will be used to generate the intrinsic signal."""
+        """Define the parameters which will be used to generate the intrinsic signal.
+        Expects a dictionary of intrinsic signal parameters to be passed into the
+        kwargs argument.
+
+        These may be:
+        :param power_spectrum: list or array representing the power spectral density (PSD)
+            of the intrinsic signal
+        :param frequencies: list or array representing the frequencies associated with
+            the PSD. Must be identical in size to power_spectrum.
+        :param random_seed: optional int to set a random seed.
+        :return: True if successful
+        """
 
         if "power_spectrum" in kwargs.keys():
             self.power_spectrum = kwargs["power_spectrum"]
         if "frequencies" in kwargs.keys():
             self.frequencies = kwargs["frequencies"]
 
-        # random seed is optional
         if "random_seed" in kwargs.keys():
             self.random_seed = kwargs["random_seed"]
         else:
@@ -301,8 +353,12 @@ class Agn:
 
         return True
 
-    def visualize_static_accretion_disk(self, observed_wavelength_in_nm):
-        """Create FluxProjection of accretion disk."""
+    def visualize_static_accretion_disk(self, observed_wavelength_in_nm, **kwargs):
+        """Create FluxProjection of the accretion disk component.
+
+        :param observed_wavelength_in_nm: observer frame wavelength in nm
+        :return: FluxProjection object of the accretion disk component
+        """
 
         accretion_disk_flux_projection = self.components[
             "accretion_disk"
@@ -311,7 +367,16 @@ class Agn:
         return accretion_disk_flux_projection
 
     def visualize_static_blr(self, blr_index=0, **kwargs):
-        """Create FluxProjection of BLR with index blr_index."""
+        """Create FluxProjection of BLR with index blr_index.
+
+        :param blr_index: index of the BroadLineRegion to project.
+        :param velocity_range: array or list representing the velocity range to project
+            in units v/c. If not given, will project all velocities. Note positive is
+            towards the observer.
+        :param speclite_filters: (list of) speclite filters to project the BLR into.
+            Cannot be used with velocity_range.
+        :return: FluxProjection object of the BLR in the AGN with index blr_index.
+        """
 
         if "velocity_range" not in kwargs and "speclite_filters" not in kwargs:
             kwargs["velocity_range"] = [-1, 1]
@@ -323,7 +388,13 @@ class Agn:
         return blr_flux_projection
 
     def visualize_torus_obscuration(self, observed_wavelength_in_nm, **kwargs):
-        """Create FluxProjection in magnitudes to use as extinction."""
+        """Create FluxProjection in magnitudes to use as extinction. Note this is in the
+        experimental phase.
+
+        :param observed_wavelength_in_nm: observer frame wavelength in nm
+        :return: FluxProjection object representing the column density projected to the
+            source plane. Can be used as a proxy for the attenuation by the dusty torus.
+        """
 
         torus_extinction_projection = self.components[
             "torus"
@@ -334,7 +405,13 @@ class Agn:
         return torus_extinction_projection
 
     def visualize_static_diffuse_continuum(self, observed_wavelength_in_nm, **kwargs):
-        """Create FluxProjection of diffuse continuum."""
+        """Create FluxProjection of diffuse continuum.
+
+        :param observed_wavelength_in_nm: observer frame wavelength in nm
+        :return: FluxProjection object representing the emission of the diffuse
+            continuum. Note that the diffuse continuum object is not assumed to be
+            inclination dependent, so this will always project into an annulus.
+        """
 
         diffuse_continuum_projection = self.components[
             "diffuse_continuum"
@@ -343,7 +420,20 @@ class Agn:
         return diffuse_continuum_projection
 
     def generate_intrinsic_signal(self, max_time_in_days, **kwargs):
-        """Generate a driving signal based on stored variability parameters."""
+        """Generate a driving signal based on stored variability parameters. This stores
+        the signal in the AGN, and also returns the driving light curve. If variability
+        parameters are not stored, they must be passed into kwargs.
+
+        :param max_time_in_days: duration of the light curve to produce in days.
+        :param power_spectrum: list or array representing the power spectral density to
+            use. Note that this may be predefined in the AGN with the
+            self.add_intrinsic_signal_parmeters() method.
+        :param frequencies: list or array representing the frequencies associated with
+            the PSD to use. Note that this may be predefined in the AGN with the
+            self.add_intrinsic_signal_parmeters() method.
+        :param random_seed: optional int to use as a random seed.
+        :return: time axis and light curve associated with the generated driving signal
+        """
 
         for kwarg in kwargs.keys():
             if kwarg == "power_spectrum":
@@ -369,7 +459,13 @@ class Agn:
         return time_axis, light_curve
 
     def update_smbh_mass_exponent(self, new_smbh_mass_exponent):
-        """Update the black hole mass in all components."""
+        """Update the black hole mass in all components. Note that the accretion disk
+        may not be updatable if a specialized disk was created, and a new AGN object
+        must be constructed.
+
+        :param new_smbh_mass_exponent: Updated solution to log10(m_smbh / m_sun)
+        :return: True if successful
+        """
 
         self.smbh_mass_exp = new_smbh_mass_exponent
         self.smbh_mass = 10**self.smbh_mass_exp * const.M_sun.to(u.kg)
@@ -412,7 +508,13 @@ class Agn:
         return True
 
     def update_inclination(self, new_inclination):
-        """Update inclination in all components."""
+        """Update inclination in all components. Note that the accretion disk may not be
+        updatable if a specialized disk was created, and a new AGN object must be
+        constructed.
+
+        :param new_inclination: Updated inclination in degrees
+        :return: True if successful
+        """
 
         if self.disk_is_updatable == False:
             print("accretion disk is not updatable, new maps must be calculated")
@@ -436,7 +538,11 @@ class Agn:
         return True
 
     def update_redshift(self, new_redshift):
-        """Update redshift in all components."""
+        """Update redshift in all components.
+
+        :param new_redshift: new redshift of the AGN
+        :return: True if successful
+        """
 
         self.redshift_source = new_redshift
 
@@ -454,14 +560,14 @@ class Agn:
         for component in self.components:
             self.components[component].redshift_source = self.redshift_source
 
-        # if len(blr_indicies) > 0:
-        #    for blr_index in blr_indicies:
-        #        self.components["blr_"+blr_index].redshift_source = self.redshift_source
-
         return True
 
     def update_h0(self, new_H0):
-        """Update H0 in all components."""
+        """Update H0 in all components. Gives you the power to change cosmology.
+
+        :param new_H0: updated Hubble constant in units km/s/Mpc
+        :return: True if successful
+        """
 
         self.H0 = new_H0
 
@@ -474,7 +580,11 @@ class Agn:
         return True
 
     def update_omega_m(self, new_omega_m):
-        """Update OmM in all components."""
+        """Update OmM in all components. Gives you the power to change cosmology.
+
+        :param new_omega_m: new mass component of the energy budget of the universe
+        :return: True if successful
+        """
 
         self.OmM = new_omega_m
 
@@ -487,26 +597,28 @@ class Agn:
         return True
 
     def update_line_strength(self, blr_index, new_line_strength):
-        """Update line strength (emitted flux w.r.t.
+        """Update line strength of a BLR emission line.
 
-        continuum) of a BLR emission line
+        :param blr_index: index associated with a particular BroadLineRegion object in
+            the AGN model
+        :param new_line_strength: int or float representing the new (relative) strength
+            of the emission line
+        :return: True if successful
         """
 
         self.line_strengths[str(blr_index)] = new_line_strength
 
         return True
 
-    def update_line_width(self, blr_index, new_line_width):
-        """Update line width (rest frame broadening) of a BLR emission line."""
-
-        self.line_widths[str(blr_index)] = new_line_width
-
-        return True
-
     def calculate_accretion_disk_transfer_function(
         self, observed_wavelength_in_nm, **kwargs
     ):
-        """Calculate the transfer function of the accretion disk in units Rg."""
+        """Calculate the transfer function of the accretion disk in units R_g / c.
+
+        :param observed_wavelength_in_nm: observer frame wavelength in nm.
+        :return: a list represneting the accretion disk's transfer function in time lag
+            units R_g / c
+        """
 
         if "accretion_disk" not in self.components.keys():
             print("please add an accretion disk component to the model")
@@ -521,7 +633,13 @@ class Agn:
         return accretion_disk_transfer_function
 
     def calculate_blr_transfer_function(self, observed_wavelengths_in_nm, **kwargs):
-        """Calculate the transfer function of the BLR in units Rg."""
+        """Calculate the transfer function of all BroadLineRegion components within the
+        AGN in units R_g / c.
+
+        :param observed_wavelengths_in_nm: observer frame wavelength in nm
+        :return: list of BroadLineRegion transfer functions, which are lists of
+            responses in units of R_g / c.
+        """
 
         if len(self.blr_indicies) == 0:
             print("please add a broad line region component to the model")
@@ -552,7 +670,11 @@ class Agn:
         self, observed_wavelength_in_nm, **kwargs
     ):
         """Calculate the diffuse continuum's mean time lag contribution to the time lags
-        in the continuum."""
+        in the continuum.
+
+        :param observed_wavelength_in_nm: observer frame wavelength in nm
+        :return: increase in mean time lag due to diffue continuum in units R_g / c
+        """
 
         if "diffuse_continuum" not in self.components.keys():
             print("please add a diffuse continuum component to the model")
@@ -572,239 +694,42 @@ class Agn:
         return_components=False,
         **kwargs,
     ):
-        """run the pipeline to generate the full AGN intrinsic signal
-        driving_signal: the signal to propogate though the AGN model. Must be in units of days.
-        time_axis: the time stamps of the driving signal to be specified if the driving signal is not
-            evenly sampled every day.
-        observer_frame_wavelengths_in_nm: a wavelength or list of wavelengths in nm.
-        speclite_filter: a speclite filter, list of speclite filters, or list of speclite filter names.
-        blr_weightings: a dictionary containing keys that are the blr_indicies, and values representing
-            a 2d grid of response efficiencies.
-        return_components: a bool which allows the return of each component light curve in addition to
-            the combined light curve."""
+        """Runs the intrinsic signal propagation pipeline by generating a light curve
+        based on intrinsic signal parameters if stored, propagating this through the
+        accretion disk, then increasing these transfer functions' tau axis by the
+        increase due to the diffuse continuum, using these light curves as the driving
+        signal for all broad line region components, and joining the light curves
+        together.
 
-        if observer_frame_wavelengths_in_nm is None and speclite_filter is None:
-            print("please provide a range of wavelengths or a speclite filter to use")
-            return False
-        if observer_frame_wavelengths_in_nm is not None and speclite_filter is not None:
-            print("only provide a range of wavelengths or a speclite filter to use")
-            return False
+        :param intrinsic_light_curve: None or list/array representing the driving light
+            curve to propagate through the system.
+        :param time_axis: None or list/array representing the time stamps of the driving
+            light curve if provided. If None, the intrinsic_light_curve will be assumed
+            to have daily cadence.
+        :param observer_frame_wavelengths_in_nm: list or int of observer frame
+            wavelength(s) in nm to propagate the driving signal to. Cannot be used with
+            speclite_filter.
+        :param speclite_filter: (list of) speclite filter(s) to propagate the driving
+            signal to. Cannot be used with observer_frame_wavelengths_in_nm.
+        :param blr_weightings: list of BroadLineRegion weightings to use with the local
+            optimally emitting cloud model. Each weighting must be a 2 dimensional array
+            of shape (R, Z).
+        :param return_components: boolean toggle to return individual light curves in
+            addition to the fully joined light curves.
+        :return: list of light curves in each wavelength/filter
+        """
 
-        if speclite_filter is not None:
-            if isinstance(speclite_filter, str):
-                # want a list of filters in either singular or multiple cases
-                try:
-                    current_filters = [load_filter(speclite_filter)]
-                except:
-                    current_filters = load_filters(speclite_filter)
-            elif isinstance(speclite_filter, speclite.filters.FilterResponse):
-                current_filters = [speclite_filter]
-            elif isinstance(speclite_filter, list):
-                successful_filters = []
-                for item in speclite_filter:
-                    if isinstance(item, str):
-                        try:
-                            cur_filter = load_filter(item)
-                            successful_filters.append(cur_filter)
-                        except:
-                            continue
-                    elif isinstance(item, speclite.filters.FilterResponse):
-                        successful_filters.append(item)
-                    else:
-                        print(f"{item} not recognized")
-                if len(successful_filters) == 0:
-                    print("no filters loaded, no propagation required")
-                    return False
-                current_filters = successful_filters
+        output_signals = intrinsic_signal_propagation_pipeline_for_agn(
+            self,
+            intrinsic_light_curve=intrinsic_light_curve,
+            time_axis=time_axis,
+            observer_frame_wavelengths_in_nm=observer_frame_wavelengths_in_nm,
+            speclite_filter=speclite_filter,
+            blr_weightings=blr_weightings,
+            return_components=return_components,
+            **kwargs,
+        )
 
-            mean_wavelengths = []
-            wavelength_ranges = []
-
-            for band in current_filters:
-                mean_wavelengths.append(band.effective_wavelength.to(u.nm).value)
-                min_wavelength = band.wavelength[np.argmax(band.response > 0.01)] / 10
-                total_wavelengths = np.sum(band.response > 0.01)
-                wavelength_ranges.append(
-                    [
-                        int(min_wavelength),
-                        int((min_wavelength + total_wavelengths / 10)),
-                    ]
-                )
-
-        else:
-            if isinstance(observer_frame_wavelengths_in_nm, (int, float)):
-                mean_wavelengths = [observer_frame_wavelengths_in_nm]
-                wavelength_ranges = [
-                    [
-                        observer_frame_wavelengths_in_nm - 20,
-                        observer_frame_wavelengths_in_nm + 20,
-                    ]
-                ]
-
-            elif isinstance(observer_frame_wavelengths_in_nm, (list, np.ndarray)):
-                mean_wavelengths = []
-                wavelength_ranges = []
-
-                for band in observer_frame_wavelengths_in_nm:
-                    if isinstance(band, (int, float)):
-                        mean_wavelengths.append(band)
-                        wavelength_ranges.append([band - 20, band + 20])
-                    elif isinstance(band, (list, np.ndarray)):
-                        mean_wavelengths.append(np.mean(band))
-                        wavelength_ranges.append([np.min(band), np.max(band)])
-
-        if len(mean_wavelengths) == 0:
-            print(
-                "please provide a speclite filter, wavelength, wavelength range, or list containing \n previously mentioned types"
-            )
-            return False
-
-        # check if there is an accretion disk to convert driving light curve to optical light curves
-        if "accretion_disk" not in self.components.keys():
-            print(
-                "please add an accretion disk model to this agn, other components require the variable continuum."
-            )
-            return False
-
-        # check if there's a signal to propagate
-        if intrinsic_light_curve is None:
-            if self.intrinsic_light_curve is None:
-                try:
-                    self.generate_intrinsic_signal(len(self.frequencies))
-                except:
-                    print(
-                        "please provide a psd and set of frequencies, or a driving light curve"
-                    )
-                    return False
-            # define it this way so a provided light curve overrides this propagation,
-            # but does not override the stored light curve.
-            intrinsic_light_curve = self.intrinsic_light_curve.copy()
-            time_axis = self.intrinsic_light_curve_time_axis.copy()
-
-        # generate the continuum signals
-        reprocessed_signals = []
-        for wavelength in mean_wavelengths:
-            cur_tf = self.components[
-                "accretion_disk"
-            ].construct_accretion_disk_transfer_function(wavelength)
-
-            if "diffuse_continuum" in self.components.keys():
-                cur_dc_mean_lag_increase = self.components[
-                    "diffuse_continuum"
-                ].get_diffuse_continuum_lag_contribution(wavelength)
-                lag_increase = np.zeros(int(cur_dc_mean_lag_increase))
-                cur_tf = np.concatenate((lag_increase, cur_tf))
-
-            t_ax, cur_signal = convolve_signal_with_transfer_function(
-                smbh_mass_exp=self.smbh_mass_exp,
-                driving_signal=intrinsic_light_curve,
-                initial_time_axis=time_axis,
-                transfer_function=cur_tf,
-                redshift_source=0,
-                desired_cadence_in_days=0.1,
-            )
-            reprocessed_signals.append([t_ax, cur_signal])
-        output_signals = reprocessed_signals.copy()
-
-        # generate the blr's response to the optical continuum, if any
-        blr_signals = {}
-
-        if len(self.blr_indicies) > 0:
-
-            for index in self.blr_indicies:
-                blr_signals[str(index)] = []
-                # cur_contamination_signals = []
-                observer_frame_emission_line_wavelength = self.components[
-                    "blr_" + str(index)
-                ].rest_frame_wavelength_in_nm * (1 + self.redshift_source)
-
-                for jj, wavelength_range in enumerate(wavelength_ranges):
-                    if (
-                        observer_frame_emission_line_wavelength
-                        < wavelength_range[0] - self.line_widths[str(index)]
-                    ):
-                        blr_signals[str(index)].append([0, 0, 0])
-                        continue
-                    if (
-                        observer_frame_emission_line_wavelength
-                        > wavelength_range[1] + self.line_widths[str(index)]
-                    ):
-                        blr_signals[str(index)].append([0, 0, 0])
-                        continue
-
-                    # note: the weighting_factor below is representative of how much of the broad line
-                    # falls within the filter. The line_strength associated with the broad line represents
-                    # the total relative strength of the emission line w.r.t. the continuum
-                    if blr_weightings is not None:
-                        weighting_factor, cur_blr_tf = self.components[
-                            "blr_" + str(index)
-                        ].calculate_blr_emission_line_transfer_function(
-                            self.inclination_angle,
-                            observed_wavelength_range_in_nm=wavelength_range,
-                            emission_efficiency_array=blr_weightings[str(index)],
-                        )
-                    else:
-                        weighting_factor, cur_blr_tf = self.components[
-                            "blr_" + str(index)
-                        ].calculate_blr_emission_line_transfer_function(
-                            self.inclination_angle,
-                            observed_wavelength_range_in_nm=wavelength_range,
-                        )
-
-                    t_ax, contaminated_signals = convolve_signal_with_transfer_function(
-                        smbh_mass_exp=self.smbh_mass_exp,
-                        driving_signal=reprocessed_signals[jj][1],
-                        initial_time_axis=reprocessed_signals[jj][0],
-                        transfer_function=cur_blr_tf,
-                        redshift_source=0,
-                        desired_cadence_in_days=0.1,
-                    )
-
-                    blr_signals[str(index)].append(
-                        [t_ax, contaminated_signals, weighting_factor]
-                    )
-
-        # add blr contamination, if any. Also redshift the time axis to the observer's frame of reference.
-        for jj, wavelength_range in enumerate(wavelength_ranges):
-
-            cur_weighting = 1
-            original_mean = np.mean(reprocessed_signals[jj][1])
-            original_std = np.std(reprocessed_signals[jj][1])
-
-            cur_signal = reprocessed_signals[jj][1] - original_mean
-            if original_std != 0:
-                cur_signal /= original_std
-
-            if len(self.blr_indicies) > 0:
-                for index in self.blr_indicies:
-                    if isinstance(blr_signals[str(index)], list):
-                        if not isinstance(blr_signals[str(index)][jj], list):
-                            continue
-                        cur_weighting += self.line_strengths[str(index)]
-
-                        cur_blr_signal = blr_signals[str(index)][jj][1]
-                        cur_blr_signal -= np.mean(cur_blr_signal)
-                        if np.std(cur_blr_signal) != 0:
-                            cur_blr_signal /= np.std(cur_blr_signal)
-
-                        cur_signal += (
-                            cur_blr_signal
-                            * self.line_strengths[str(index)]
-                            * blr_signals[str(index)][jj][2]
-                        )
-            if cur_weighting != 0:
-                cur_signal /= cur_weighting
-            if original_std != 0:
-                cur_signal *= original_std
-            cur_signal += original_mean
-
-            output_signals[jj] = [
-                reprocessed_signals[jj][0] * (1 + self.redshift_source),
-                cur_signal,
-            ]
-
-        if return_components is True:
-            return [reprocessed_signals, blr_signals, output_signals]
         return output_signals
 
     def visualize_agn_pipeline(
@@ -816,153 +741,44 @@ class Agn:
         return_components=False,
         **kwargs,
     ):
-        """This pipeline produces a flux projection object of the combined emission of
-        each agn component.
+        """Runs the pipeline to generate FluxProjection objects of all components in the
+        AGN model.
 
-        Note that depending on flux ratios between various components, one may easily
-        dominate the flux distribution
+        :param inclination_angle: None or int/float, defines the inclination of the AGN
+            to project with respect to, in degrees. If None, uses the AGN's stored
+            inclination angle. If int/float, the accretion disk must be defined as a
+            basic accretion disk.
+        :param observer_frame_wavelengths_in_nm: (list of) int(s)/float(s) of observer
+            frame wavelengths to project the AGN at. Cannot be used with
+            speclite_filter.
+        :param speclite_filter: (list of) speclite filter(s) to calculate the projected
+            components to.
+        :param blr_weightings: list of efficiency arrays to be used with each
+            BroadLineRegion component to simulate the local optimally emitting cloud
+            model. Each weighting must be a 2 dimensional array of shape (R, Z).
+        :param return_components: boolean toggle to return a list of all FluxProjection
+            objects
+        :return: FluxProjection representing the sum of all projectable components
         """
 
-        if inclination_angle is not None:
-            update_output = self.update_inclination(inclination_angle)
-            if update_output is False:
-                return False
-
-        if observer_frame_wavelengths_in_nm is None and speclite_filter is None:
-            print("please provide a range of wavelengths or a speclite filter to use")
-            return False
-        if observer_frame_wavelengths_in_nm is not None and speclite_filter is not None:
-            print("only provide a range of wavelengths or a speclite filter to use")
-            return False
-
-        if speclite_filter is not None:
-            if isinstance(speclite_filter, str):
-                # want a list of filters in either singular or multiple cases
-                try:
-                    current_filters = [load_filter(speclite_filter)]
-                except:
-                    current_filters = load_filters(speclite_filter)
-            elif isinstance(speclite_filter, speclite.filters.FilterResponse):
-                current_filters = [speclite_filter]
-            elif isinstance(speclite_filter, list):
-                successful_filters = []
-                for item in speclite_filter:
-                    if isinstance(item, str):
-                        try:
-                            cur_filter = load_filter(item)
-                            successful_filters.append(cur_filter)
-                        except:
-                            continue
-                    elif isinstance(item, speclite.filters.FilterResponse):
-                        successful_filters.append(item)
-                    else:
-                        print(f"{item} not recognized")
-                if len(successful_filters) == 0:
-                    print("no filters loaded, no propagation required")
-                    return False
-                current_filters = successful_filters
-
-            mean_wavelengths = []
-            wavelength_ranges = []
-
-            for band in current_filters:
-                mean_wavelengths.append(band.effective_wavelength.to(u.nm).value)
-                min_wavelength = band.wavelength[np.argmax(band.response > 0.01)] / 10
-                total_wavelengths = np.sum(band.response > 0.01)
-                wavelength_ranges.append(
-                    [
-                        int(min_wavelength),
-                        int((min_wavelength + total_wavelengths / 10)),
-                    ]
-                )
-
-        else:
-            if isinstance(observer_frame_wavelengths_in_nm, (int, float)):
-                mean_wavelengths = [observer_frame_wavelengths_in_nm]
-                wavelength_ranges = [
-                    [
-                        observer_frame_wavelengths_in_nm - 20,
-                        observer_frame_wavelengths_in_nm + 20,
-                    ]
-                ]
-
-            elif isinstance(observer_frame_wavelengths_in_nm, (list, np.ndarray)):
-                mean_wavelengths = []
-                wavelength_ranges = []
-
-                for band in observer_frame_wavelengths_in_nm:
-                    if isinstance(band, (int, float)):
-                        mean_wavelengths.append(band)
-                        wavelength_ranges.append([band - 20, band + 20])
-                    elif isinstance(band, (list, np.ndarray)):
-                        mean_wavelengths.append(np.mean(band))
-                        wavelength_ranges.append([np.min(band), np.max(band)])
-
-        if len(mean_wavelengths) == 0:
-            print(
-                "please provide a speclite filter, wavelength, wavelength range, or list containing \n previously mentioned types"
-            )
-            return False
-
-        # check if there is an accretion disk to convert driving light curve to optical light curves
-        if len(self.components.keys()) == 0:
-            print(
-                "please add at least one coponent model to this agn. You cannot project nothing!"
-            )
-            return False
-
-        list_of_wavelength_resolved_projections = []
-        for jj, wavelength in enumerate(mean_wavelengths):
-            list_of_projections = []
-            if "accretion_disk" in self.components.keys():
-                cur_img = self.components[
-                    "accretion_disk"
-                ].calculate_surface_intensity_map(wavelength)
-                list_of_projections.append(cur_img)
-
-            if "diffuse_continuum" in self.components.keys():
-                cur_img = self.components[
-                    "diffuse_continuum"
-                ].get_diffuse_continuum_emission(wavelength)
-                list_of_projections.append(cur_img)
-
-            if len(self.blr_indicies) > 0:
-
-                for kk, index in enumerate(self.blr_indicies):
-
-                    cur_projection = self.components[
-                        "blr_" + str(index)
-                    ].project_blr_intensity_over_velocity_range(
-                        self.inclination_angle,
-                        observed_wavelength_range_in_nm=[wavelength_ranges[jj]],
-                    )
-
-                    if blr_weightings is not None:
-                        cur_projection.flux_array *= blr_weightings
-                        cur_projection.total_flux *= blr_weightings
-
-                    if kk == 0:
-                        output_blr_projection = cur_projection
-                    else:
-                        output_blr_projection.add_flux_projection(cur_projection)
-
-                list_of_projections.append(output_blr_projection)
-            list_of_wavelength_resolved_projections.append(list_of_projections)
-        if return_components:
-            return list_of_wavelength_resolved_projections
-
-        output_projections = []
-        for list_of_projections in list_of_wavelength_resolved_projections:
-            output_projections.append(list_of_projections[0])
-            for jj in range(len(list_of_projections) - 1):
-                index = jj + 1
-                output_projections[-1].add_flux_projection(list_of_projections[index])
+        output_projections = visualization_pipeline(
+            self,
+            inclination_angle=inclination_angle,
+            observer_frame_wavelengths_in_nm=observer_frame_wavelengths_in_nm,
+            speclite_filter=speclite_filter,
+            blr_weightings=blr_weightings,
+            return_components=return_components,
+            **kwargs,
+        )
 
         return output_projections
 
     def generate_kwarg_dictionaries_for_individual_components(self):
         """Generates keyword dictionaries for each component based on the AGN dictionary
-        given."""
+        given.
+
+        Helper method for init, not designed to be called manually.
+        """
 
         default_accretion_disk_kwargs = [
             "number_grav_radii",
@@ -977,7 +793,7 @@ class Agn:
             "generic_beta",
             "disk_acc",
             "height_array",
-            "albedo_array",
+            "albedo",
             "efficiency",
             "visc_temp_prof",
         ]
@@ -988,7 +804,7 @@ class Agn:
             "g_array",
             "radii_array",
             "height_array",
-            "albedo_array",
+            "albedo",
             "r_out_in_gravitational_radii",
         ]
         blr_kwargs = [

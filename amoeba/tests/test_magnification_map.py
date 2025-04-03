@@ -43,7 +43,7 @@ class TestMagnificationMap:
         assert self.magnification_map.redshift_lens == redshift_lens
         assert self.magnification_map.shear == shear
         assert self.magnification_map.convergence == convergence
-        assert self.magnification_map.little_h == 0.7
+        assert self.magnification_map.H0 == 70
         assert self.magnification_map.einstein_radius_in_meters > 0
         assert self.magnification_map.resolution == 9
         assert self.magnification_map.macro_magnification == (
@@ -125,9 +125,11 @@ class TestMagnificationMap:
             phi_travel_direction=phi_travel_direction,
         )
 
+        print(light_curve_rise_fall)
+
         assert len(light_curve_rise_fall) >= 4
         assert light_curve_rise_fall[2] > light_curve_rise_fall[0]
-        assert light_curve_rise_fall[3] > light_curve_rise_fall[4]
+        assert light_curve_rise_fall[2] > light_curve_rise_fall[3]
 
     def test_convolve_with_flux_projection(self):
 

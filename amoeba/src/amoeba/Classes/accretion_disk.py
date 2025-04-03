@@ -35,13 +35,12 @@ class AccretionDisk:
         name="",
         **kwargs
     ):
-        """Object representing an accretion disk which is optically thick and
-        geometrically flat.
+        """Object representing an accretion disk which is assumed to be optically thick.
 
         :param smbh_mass_exp: mass exponent of the sumpermassive black hole at the
             center of the disk expressed as log_10(M / M_sun). Typical ranges are 6-11
             for AGN.
-        :param redshift: positive float repreaenting the redshift of the AGN.
+        :param redshift_source: positive float representing the redshift of the AGN.
         :param inclination_angle: inclination of the accretion disk with respect to the
             observer, in degrees
         :param corona_height: height of the corona in the lamppost model in units of R_g
@@ -67,7 +66,7 @@ class AccretionDisk:
         :param name: Name space
         """
 
-        self.name = name  # Label space
+        self.name = name
         self.smbh_mass_exp = smbh_mass_exp
         self.mass = 10**smbh_mass_exp * const.M_sun.to(u.kg)
         self.redshift_source = redshift_source
@@ -89,9 +88,8 @@ class AccretionDisk:
         self.g_array = g_array
         self.OmM = OmM
         self.H0 = H0
-        self.little_h = self.H0 / 100
         self.lum_dist = calculate_luminosity_distance(
-            self.redshift_source, OmM=self.OmM, little_h=self.little_h
+            self.redshift_source, OmM=self.OmM, H0=self.H0
         )
         self.rg = calculate_gravitational_radius(10**self.smbh_mass_exp)
         self.pixel_size = (
@@ -109,8 +107,8 @@ class AccretionDisk:
 
         :param observer_frame_wavelength_in_nm: Wavelength in nanometers used to
             determine black body flux
-        :param returnwavelength: Bool used to return the map of wavelengths used at each
-            pixel
+        :param return_wavelengths: Bool used to return the map of wavelengths used at
+            each pixel
         :return: A 2d array representing the surface flux density at desired wavelength.
             If returnwavelength is True, returns a tuple of 2d arrays.
         """
@@ -119,10 +117,9 @@ class AccretionDisk:
             dummy = observer_frame_wavelength_in_nm.to(u.nm)
             observer_frame_wavelength_in_nm = dummy.value
 
-        # invert redshifts to find locally emitted wavelengths
-        redshiftfactor = 1 / (1 + self.redshift_source)
-        totalshiftfactor = redshiftfactor * self.g_array
-        rest_frame_wavelength = totalshiftfactor * observer_frame_wavelength_in_nm
+        redshift_factor = 1 / (1 + self.redshift_source)
+        total_redshift_factor = redshift_factor * self.g_array
+        rest_frame_wavelength = total_redshift_factor * observer_frame_wavelength_in_nm
 
         output = (
             np.nan_to_num(
@@ -133,7 +130,7 @@ class AccretionDisk:
         )
         if return_wavelengths == True:
             return output, rest_frame_wavelength
-        FluxArray = FluxProjection(
+        flux_projection = FluxProjection(
             output,
             observer_frame_wavelength_in_nm,
             self.smbh_mass_exp,
@@ -143,21 +140,25 @@ class AccretionDisk:
             OmM=self.OmM,
             H0=self.H0,
         )
-        return FluxArray
+        return flux_projection
 
     def calculate_db_dt_array(self, observer_frame_wavelength_in_nm):
-        """Calculate the rate of change of surface flux density with respect to
-        temperature :param observer_frame_wavelength_in_nm: Wavelength in nanometers to
-        calculate at :return: 2d array representing the partial derivative of the Planck
-        function with respect to a small change in temperature at each pixel."""
+        """Calculate the rate of change of surface flux density with respect to a
+        fluctuation in temperature.
+
+        :param observer_frame_wavelength_in_nm: Wavelength in nanometers in the observer
+            frame
+        :return: 2d array representing the partial derivative of the Planck function
+            with respect to a small change in temperature at each pixel
+        """
 
         if isinstance(observer_frame_wavelength_in_nm, u.Quantity):
             dummy = observer_frame_wavelength_in_nm.to(u.nm)
             observer_frame_wavelength_in_nm = dummy.value
 
-        redshiftfactor = 1 / (1 + self.redshift_source)
-        totalshiftfactor = redshiftfactor * self.g_array
-        rest_frame_wavelength = totalshiftfactor * observer_frame_wavelength_in_nm
+        redshift_factor = 1 / (1 + self.redshift_source)
+        total_redshift_factor = redshift_factor * self.g_array
+        rest_frame_wavelength = total_redshift_factor * observer_frame_wavelength_in_nm
 
         output = (
             planck_law_derivative(self.temp_array, rest_frame_wavelength)
@@ -172,24 +173,18 @@ class AccretionDisk:
         axis_offset_in_gravitational_radii=0,
         angle_offset_in_degrees=0,
     ):
-        """Calculate the time delay between the corona in the lamppost model and the
-        response by the accretion disk.
+        """Calculate the time delay between a point source and the accretion disk.
 
-        :param corona_height: None or int / float. If None, use the corona height stored
-            in the disk object. Otherwise, value represents height of the flare in units
-            R_g = GM/c^2
+        :param corona_height: None or int / float. If None, use the corona height in the
+            accretion disk. Otherwise, value represents height of the flare in units R_g
+            = GM/c^2
         :param axis_offset_in_gravitational_radii: Radial offset of the flare with
             repsect to the axis of symmetry in units R_g = GM/c^2
         :param angle_offset_in_degrees: Angular rotation of the offset flare in degrees.
             Zero degrees represents a flare on the nearer side of the accretion disk,
             while 180 degrees represents the far side.
-        :param unit: string or astropy unit representing the time units of time delays.
-        :param jitters: Bool used to calculate the time lag to a random point in each
-            pixel as oppposed to the gridpoints.
-        :param source_plane: Bool used to determine if time delays are calculated in the
-            source frame or the observer's frame
         :return: A 2d array of time delays representing the extra path length from the
-            corona to the midplane of the accretion disk.
+            corona to the midplane of the accretion disk in units R_g / c.
         """
 
         if corona_height is None:
@@ -216,13 +211,13 @@ class AccretionDisk:
         angle_offset_in_degrees=0,
     ):
         """Calculate the change in temperature with respect to a change in the X-ray
-        luminosity :param wavelength: wavelength in nm to determine which pixels are
-        important to calculate at :param corona_height: None or int / float.
+        luminosity.
 
-        If None, the initialized corona height will     be used. Otherwise, represents
-        the height of the flare in units R_g = GM/c^2
+        :param corona_height: None or int / float. If None, the initialized corona
+            height will be used. Otherwise, represents the height of the flare in units
+            R_g = GM/c^2.
         :param axis_offset_in_gravitational_radii: Axis offset of the flaring event in
-            units R_g = GM/c^2
+            units R_g.
         :param angle_offset_in_gravitational_radii: Degree rotation around the axis of
             symmetry of the flaring event. Zero degrees represents the flare nearer to
             the observer for inclined disks, while 180 degrees represnts the far side of
@@ -257,9 +252,10 @@ class AccretionDisk:
         return_response_array_and_lags=False,
     ):
         """Calculate the transfer function of the accretion disk within the lamppost
-        model :param observer_frame_wavelength_in_nm: Wavelength in nanometers to
-        calculate with respect to.
+        model.
 
+        :param observer_frame_wavelength_in_nm: Wavelength in nm with respect to the
+            observer to calculate the transfer function at
         :param corona_height: None or int / float. If None, the initialized corona
             height will be used. Otherwise, represents the height of the flare in units
             R_g = GM/c^2
@@ -268,25 +264,11 @@ class AccretionDisk:
         :param angle_offset_in_gravitational_radii: Degree rotation around the axis of
             symmetry of the flaring event. Zero degrees represents the flare nearer to
             the observer for inclined disks, while 180 degrees represnts the far side of
-            the accretion disk.
-        :param maxlengthoverride: Maximum value along the time lag axis to calculate at.
-            This is especially useful for very massive SMBHs with inclined disks, where
-            maximum time lags can be much longer than necessary.
-        :param units: string or astropy quantity representing the time lag scale
-        :param albedo: Reflectivity of the accretion disk on a scale of 0 to 1. Zero
-            means all energy is absorbed, while one means all energy is reflected.
-        :param smooth: Bool used to apply a smoothing kernel to the resulting transfer
-            function. Note that this can impact the transfer function.
-        :param scaleratio: Rescaling factor used to smooth the transfer function without
-            adjusting properties encoded within.
-        :param fixedwindowlength: Override to determine how many data points represent
-            the transfer function
-        :param jitters: Bool used to calculate values at random points within each pixel
-            instead of only on the gridpoints.
-        :param source_plane: Bool used to calculate the transfer function in the
-            reference frame of the source or the observer.
+            the accretion disk
+        :param return_response_array_and_lags: Boolean flag to return the accretion disk
+            response and time delay arrays instead of the computed transfer function
         :return: 1d array representing the transfer function of the accretion disk with
-            respect to some change in flux.
+            respect to some change in flux at a particular wavelength
         """
         if corona_height is None:
             corona_height = self.corona_height
@@ -295,7 +277,6 @@ class AccretionDisk:
             1 + self.redshift_source
         )
 
-        # Try to incorporate the g_array to include wavelength shifting in this calculation!
         rest_frame_transfer_function = construct_accretion_disk_transfer_function(
             rest_frame_wavelength_in_nm,
             self.temp_array,
@@ -324,6 +305,27 @@ class AccretionDisk:
         axis_offset_in_gravitational_radii=0,
         angle_offset_in_degrees=0,
     ):
+        """Method to generate snapshots of the accretion disk's surface brightness under
+        the assumption that a driving signal is actively being reprocessed.
+
+        :param observer_frame_wavelength_in_nm: Wavelength in nm in the observer's frame
+            which we are observing the source at
+        :param time_stamps: 1d array or list of times associated with the driving signal
+        :param driving_signal: 1d array or list representing the driving light curve
+        :param driving_signal_fractional_strength: float representing how strong the
+            reprocessed signal is with respect to the continuum emission
+        :param corona_height: None or int/float. If None, the initialized corona height
+            will be used. Otherwise, represents the height of the flare in units R_g =
+            GM/c^2
+        :param axis_offset_in_gravitational_radii: Axis offset of the flaring event in
+            units R_g = GM/c^2
+        :param angle_offset_in_gravitational_radii: Degree rotation around the axis of
+            symmetry of the flaring event. Zero degrees represents the flare nearer to
+            the observer for inclined disks, while 180 degrees represnts the far side of
+            the accretion disk
+        :return: a list of snapshots of the accretion disk at each time step. Note that
+            this is an experimental method.
+        """
 
         rest_frame_wavelength_in_nm = (
             observer_frame_wavelength_in_nm / (1 + self.redshift_source) / self.g_array
@@ -353,6 +355,14 @@ class AccretionDisk:
         return radiation_patterns
 
     def get_plotting_axes(self):
+        """Method to get plotting axes for the accretion disk. Useful for plotting any
+        of the generated arrays i.e. from calculate_time_lag_array,
+        construct_accretion_disk_transfer_function( ...,
+
+        return_response_array_and_lags=True ), self.temp_array, etc.
+
+        :return: X, Y arrays to be used with plt.contourf()
+        """
 
         x_ax = np.linspace(
             -self.r_out_in_gravitational_radii,

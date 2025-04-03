@@ -273,12 +273,9 @@ def test_calculate_gravitational_radius():
 def test_calculate_angular_diameter_distance():
     redshift = 0.1
     OmM = 0.3
-    little_h = 0.7
-    H0 = 100 * little_h
+    H0 = 70
 
-    ang_diam_dist = calculate_angular_diameter_distance(
-        redshift, OmM=OmM, little_h=little_h
-    )
+    ang_diam_dist = calculate_angular_diameter_distance(redshift, OmM=OmM, H0=H0)
     astropy_cosmo = FlatLambdaCDM(H0, OmM)
     ang_diam_dist_astropy = astropy_cosmo.angular_diameter_distance(redshift).to(u.m)
 
@@ -293,22 +290,21 @@ def test_calculate_angular_diameter_distance():
     redshift_lens = 0.1
     redshift_source = 0.5
     OmM = 0.3
-    little_h = 0.7
-    H0 = 100 * little_h
+    H0 = 70
 
     ang_diam_dist_lens = calculate_angular_diameter_distance(
-        redshift_lens, OmM=OmM, little_h=little_h
+        redshift_lens, OmM=OmM, H0=H0
     )
     ang_diam_dist_source = calculate_angular_diameter_distance(
-        redshift_source, OmM=OmM, little_h=little_h
+        redshift_source, OmM=OmM, H0=H0
     )
 
     ang_diam_dist_diff = calculate_angular_diameter_distance_difference(
-        redshift_lens, redshift_source, OmM=OmM, little_h=little_h
+        redshift_lens, redshift_source, OmM=OmM, H0=H0
     )
 
     ang_diam_dist_diff_reversed = calculate_angular_diameter_distance_difference(
-        redshift_source, redshift_lens, OmM=OmM, little_h=little_h
+        redshift_source, redshift_lens, OmM=OmM, H0=H0
     )
 
     # Check that redshift misordering doesn't cause issues
@@ -323,12 +319,12 @@ def test_calculate_angular_diameter_distance():
     redshift_source = 0.5
 
     ang_diam_dist_diff_tiny = calculate_angular_diameter_distance_difference(
-        redshift_lens_tiny, redshift_source, OmM=OmM, little_h=little_h
+        redshift_lens_tiny, redshift_source, OmM=OmM, H0=H0
     )
     ang_diam_dist_tiny = calculate_angular_diameter_distance(
-        redshift_lens_tiny, OmM=OmM, little_h=little_h
+        redshift_lens_tiny, OmM=OmM, H0=H0
     )
-    # define a relatively small tolerance
+    # define a small tolerance
     tolerance = ang_diam_dist_source / 10**8
     assert (
         abs(ang_diam_dist_source - (ang_diam_dist_diff_tiny + ang_diam_dist_tiny))
@@ -339,10 +335,9 @@ def test_calculate_angular_diameter_distance():
 def test_calculate_luminosity_distance():
     redshift = 0.1
     OmM = 0.3
-    little_h = 0.7
-    H0 = 100 * little_h
+    H0 = 70
 
-    lum_dist = calculate_luminosity_distance(redshift, OmM=OmM, little_h=little_h)
+    lum_dist = calculate_luminosity_distance(redshift, OmM=OmM, H0=H0)
 
     astropy_cosmo = FlatLambdaCDM(H0, OmM)
     lum_dist_astropy = astropy_cosmo.luminosity_distance(redshift).to(u.m).value
@@ -357,14 +352,14 @@ def test_calculate_angular_einstein_radius():
     redshift_source = 2.0
     avg_microlens_mass = 0.3 * const.M_sun.to(u.kg)
     OmM = 0.3
-    little_h = 0.7
+    H0 = 70
 
     star_ang_ein_rad = calculate_angular_einstein_radius(
         redshift_lens,
         redshift_source,
         mean_microlens_mass_in_kg=avg_microlens_mass,
         OmM=OmM,
-        little_h=little_h,
+        H0=H0,
     )
 
     human_mass = 75 * u.kg
@@ -373,7 +368,7 @@ def test_calculate_angular_einstein_radius():
         redshift_source,
         mean_microlens_mass_in_kg=human_mass,
         OmM=OmM,
-        little_h=little_h,
+        H0=H0,
     )
 
     assert star_ang_ein_rad > human_ang_ein_rad
@@ -385,14 +380,14 @@ def test_calculate_einstein_radius_in_meters():
     redshift_source = 2.0
     avg_microlens_mass = 0.3 * const.M_sun.to(u.kg)
     OmM = 0.3
-    little_h = 0.7
+    H0 = 70
 
     star_ein_rad = calculate_einstein_radius_in_meters(
         redshift_lens,
         redshift_source,
         mean_microlens_mass_in_kg=avg_microlens_mass,
         OmM=OmM,
-        little_h=little_h,
+        H0=H0,
     )
 
     human_mass = 75 * u.kg
@@ -401,7 +396,7 @@ def test_calculate_einstein_radius_in_meters():
         redshift_source,
         mean_microlens_mass_in_kg=human_mass,
         OmM=OmM,
-        little_h=little_h,
+        H0=H0,
     )
 
     assert star_ein_rad > human_ein_rad
@@ -574,7 +569,7 @@ def test_extract_light_curve():
         redshift_source=2.0,
         mean_microlens_mass_in_kg=0.3 * const.M_sun.to(u.kg),
         OmM=0.3,
-        little_h=0.7,
+        H0=70,
     )
 
     convolution_1, px_shift_1 = perform_microlensing_convolution(

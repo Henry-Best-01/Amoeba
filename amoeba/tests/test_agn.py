@@ -173,7 +173,6 @@ class TestAgn:
         assert self.my_agn.disk_is_updatable == True
         assert self.my_agn.blr_indicies == []
         assert self.my_agn.line_strengths == {}
-        assert self.my_agn.line_widths == {}
         assert self.my_agn.default_accretion_disk_kwargs is not None
         assert self.my_agn.generic_accretion_disk_kwargs is not None
         assert self.my_agn.blr_kwargs is not None
@@ -230,31 +229,24 @@ class TestAgn:
 
         assert "blr_0" in self.my_agn.components.keys()
         assert "0" in self.my_agn.line_strengths.keys()
-        assert "0" in self.my_agn.line_widths.keys()
         assert 0 in self.my_agn.blr_indicies
 
         assert isinstance(self.my_agn.components["blr_0"], BroadLineRegion)
 
-        self.my_agn.add_blr(
-            blr_index=1, line_strength=2, line_width=20, **self.my_blr_kwargs
-        )
+        self.my_agn.add_blr(blr_index=1, line_strength=2, **self.my_blr_kwargs)
 
         assert "blr_1" in self.my_agn.components.keys()
         assert "1" in self.my_agn.line_strengths.keys()
-        assert "1" in self.my_agn.line_widths.keys()
         assert 1 in self.my_agn.blr_indicies
 
         assert isinstance(self.my_agn.components["blr_1"], BroadLineRegion)
 
         assert self.my_agn.line_strengths["0"] < self.my_agn.line_strengths["1"]
-        assert self.my_agn.line_widths["0"] < self.my_agn.line_widths["1"]
 
     def test_add_streamline_bounded_region_to_blr(self):
 
         self.my_agn.add_blr(**self.my_blr_kwargs)
-        self.my_agn.add_blr(
-            blr_index=1, line_strength=2, line_width=20, **self.my_blr_kwargs
-        )
+        self.my_agn.add_blr(blr_index=1, line_strength=2, **self.my_blr_kwargs)
 
         self.one_blr_streamline = {"InnerStreamline": self.test_blr_streamline_angled}
 
@@ -735,22 +727,6 @@ class TestAgn:
 
         for index in self.my_populated_agn.line_strengths.keys():
             assert self.my_populated_agn.line_strengths[index] == new_line_strength
-
-    def test_update_line_width(self):
-
-        new_line_width = 0.2
-
-        self.my_blr_kwargs["line_width"] = 4
-        self.my_populated_agn.add_blr(blr_index=40000, **self.my_blr_kwargs)
-
-        for index in self.my_populated_agn.line_widths.keys():
-            assert self.my_populated_agn.line_widths[index] != new_line_width
-
-        for index in self.my_populated_agn.blr_indicies:
-            assert self.my_populated_agn.update_line_width(index, new_line_width)
-
-        for index in self.my_populated_agn.line_widths.keys():
-            assert self.my_populated_agn.line_widths[index] == new_line_width
 
     def test_calculate_accretion_disk_transfer_function(self):
 

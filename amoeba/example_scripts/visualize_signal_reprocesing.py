@@ -100,19 +100,19 @@ sample_frequencies, regenerated_drw_pwd = welch(signal_drw)
 ax.plot(sample_frequencies, regenerated_drw_pwd, label="regenerated psd")
 
 
-bpl_signal = generate_signal_from_psd(
+time_bpl, bpl_signal = generate_signal_from_psd(
     length_light_curve, my_bpl_psd, frequency_axis, random_seed=random_seed
 )
 
-drw_signal = generate_signal_from_psd(
+time_drw, drw_signal = generate_signal_from_psd(
     length_light_curve, my_drw_psd, frequency_axis, random_seed=random_seed
 )
 
 
 fig2, ax2 = plt.subplots()
 time_axis = np.linspace(0, (length_light_curve) - 1, (length_light_curve))
-ax2.plot(time_axis, bpl_signal, alpha=0.7, label="broken power law")
-ax2.plot(time_axis, drw_signal, alpha=0.7, label="damped random walk")
+ax2.plot(time_bpl, bpl_signal, alpha=0.7, label="broken power law")
+ax2.plot(time_drw, drw_signal, alpha=0.7, label="damped random walk")
 ax2.plot(time_axis, signal_drw[: len(time_axis)], alpha=0.7, label="convenience drw")
 
 ax2.legend()

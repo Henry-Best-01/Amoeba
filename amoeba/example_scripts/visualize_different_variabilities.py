@@ -16,7 +16,7 @@ frequencies = np.linspace(1 / (2 * signal_length), 1 / 2, signal_length)
 power_spectrum = frequencies ** (-3.0)
 random_seed = None
 
-driving_signal = generate_signal_from_psd(
+time_axis, driving_signal = generate_signal_from_psd(
     signal_length,
     power_spectrum,
     frequencies,

@@ -20,6 +20,38 @@ class Torus:
         H0=70,
         **kwargs
     ):
+        """Generate a model torus designed to be projected into the plane of the
+        accretion disk. Using this column density can be used as an estimate for how
+        much light is absorbed by the dust. This is an experimental class.
+
+        Assumes that there is absorption such that:
+            flux_abs = flux_emit * (1 - e^{-\rho_{col} / abs_strength})
+
+        where:
+            flux_abs is the absorbed flux (an array)
+            flux_emit is the emitted flux (an array)
+            e is Euler's number
+            \rho_{col} is the column density (an array)
+            abs_strength is the absorption strength (int/float)
+
+        Note that this can only absorb if there is source flux to absorb. Therefore, the
+        FluxProjection of project_extinction_to_source_plane() is cast to an approximate
+        magnitude change via -2.5 * np.log10(flux_abs)
+
+        :param smbh_mass_exp: solution to log10(m_smbh / m_sun), which sets
+            the size scales of all components in the torus.
+        :param max_height: maximum height of the torus in the Z direction, in
+            units R_g
+        :param redshift_source: redshift of the torus
+        :param radial_step: radial resolution in units R_g
+        :param height_step: resolution in the Z-axis in units R_g
+        :param power_law_density_dependence: defines the density profile as a function
+            of radius such that \rho \propto r^{power_law_density_dependence}. Zero means
+            the density is assumed to be constant throughout the torus. Positive values
+            represent increasing densities as you go further out.
+        :param OmM: mass component of the universe's energy budget
+        :param H0: Hubble constant in units km/s/Mpc
+        """
         self.smbh_mass_exp = smbh_mass_exp
         self.redshift_source = redshift_source
         self.OmM = OmM
@@ -53,14 +85,16 @@ class Torus:
         else:
             self.define_extinction_coefficients()
 
-    # unlike the blr, we only need one boundary
     def add_streamline_bounded_region(self, Streamline):
+        """Add a streamline representing the boundary of the dust to the torus.
 
-        # assure vertical coordinates are equal, otherwise interpolation is not well defined
+        :param Streamline: Streamline object to use as the inner boundary condition
+        :return: True if successful
+        """
+
         assert Streamline.height_step == self.height_step
         assert Streamline.max_height == self.max_height
 
-        # Allow adaptive max radius to relevant radii (due to power law dependence, use limit of (r**2+z**2)**0.5
         new_max_radius = np.sqrt(
             np.max(Streamline.radii_values) ** 2 + np.max(Streamline.height_values) ** 2
         )
@@ -86,7 +120,6 @@ class Torus:
             mask = self.radii_values >= Streamline.radii_values[hh]
             self.density_grid[np.argmax(mask) :, hh] = 1
 
-        # all density_grid values are 0 or 1, so give them weighting based on desired power law dependence
         R, Z = np.asarray(
             np.meshgrid(self.radii_values, self.height_values, indexing="ij")
         )
@@ -95,14 +128,32 @@ class Torus:
 
         self.torus_array_shape = np.shape(self.density_grid)
 
+        return True
+
     def define_extinction_coefficients(
         self, rest_frame_wavelengths=None, extinction_coefficients=None
     ):
+        """Define the extinction coefficients for a list of wavelengths.
 
+        :param rest_frame_wavelengths: list/array of wavelengths with representative
+            extinction coefficients.
+        :param extinction_coefficients: list/array of extinction coefficients. Must be
+            the same shape as rest_frame_wavelengths.
+        :return: True if successful
+        """
         self.rest_frame_wavelengths = rest_frame_wavelengths
         self.extinction_coefficients = extinction_coefficients
 
+        return True
+
     def interpolate_to_extinction_at_wavelength(self, observer_frame_wavelength):
+        """Use linear interpolation of the extinction curve to determine the extinction
+        at a particular wavelength.
+
+        :param observer_frame_wavelength: observer frame wavelength in nm
+        :return: int representing the extinction coefficient at the given wavelength
+        """
+
         rest_frame_wavelength = observer_frame_wavelength / (1 + self.redshift_source)
 
         if self.rest_frame_wavelengths is None:
@@ -120,6 +171,15 @@ class Torus:
         return extinction_interpolation
 
     def project_density_to_source_plane(self, inclination_angle):
+        """Project the torus' density into a FluxProjection object.
+
+        :param inclination_angle: inclination of the torus w.r.t. the observer in
+            degrees
+        :return: a 2 dimensional array representing the projected column density of the
+            torus. Note that this is not representative of an emission or absorption, so
+            a FluxProjection object is not returned.
+        """
+
         projection = project_blr_to_source_plane(
             self.density_grid,
             np.zeros(np.shape(self.density_grid)),
@@ -136,6 +196,14 @@ class Torus:
     def project_extinction_to_source_plane(
         self, inclination_angle, observer_frame_wavelength
     ):
+        """Project the torus' modelled extinction to the source plane.
+
+        :param inclination_angle: inclination of the torus w.r.t. the observer in
+            degrees
+        :param observer_frame_wavelength: observer frame wavelength in nm
+        :return: FluxProjection object representing the amount of flux absorbed by the
+            torus
+        """
 
         extinction_strength = self.interpolate_to_extinction_at_wavelength(
             observer_frame_wavelength

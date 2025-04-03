@@ -19,6 +19,48 @@ class Streamline:
         velocity_vector=None,
         radial_vector=None,
     ):
+        """Object that carries information about the position and velocity of
+        (in)outflowing material. These get added to the BLR or Torus object to define
+        boundaries of line emitting or obscuring material, respectively.
+
+        velocity model follows Yong et al. 2017, such that in the poloidal direction:
+
+        v = v_0 + (v_asy - v_0) (r^alpha / (r^alpha + 1))
+        with:
+        v = outflowing velocity
+        v_0 = initial (launch_velocity)
+        v_asy = asymptotic velocity
+        r = l / R_v
+            l = poloidal distance
+            R_v = characteristic distance
+        alpha = power law index that determines acceleraton of wind
+
+        :param launch_radius: position radius of the streamline in R_g
+        :param launch_theta: launch angle of the streamline in degrees.
+            Note that zero degrees is normal to the accretion disk.
+            Also, must be positive and less than 90 degrees.
+        :param max_height: maximum height of the BLR in units R_g
+        :param characteristic_distance: a measure of how quickly the asymptotic
+            velocity is reached, in R_g. This is the value of R_v in above equation
+        :param asymptotic_poloidal_velocity: maximum velocity attained by
+            the streamline when l -> inf. This is v_asy in the equation.
+            Must be normalized units w.r.t. the speed of light
+        :param height_step: resolution of the BLR in the Z direction, in R_g
+        :param launch_height: Z coordinate of the origin in R_g. Should be
+            greater than zero to avoid divide by zero errors.
+        :param poloidal_launch_velocity: speed at which material at the base
+            of the streamline starts at. This is parameter v_0 in the above equation.
+            Must be normalized units w.r.t. the speed of light
+        :param alpha_acceleration_value: Power law index which determines acceleration.
+            This is alpha in the equation, and must be positive.
+        :param velocity_vector: an optional list which may be used to input
+            any user defined velocities, as opposed to using the equation above.
+            Must be 1 dimensional of length (max_height // height_step)
+        :param radial_vector: an optional list which may be used to input any
+            user defined radial coordinates, as opposed to assuming a straight
+            line in R-Z coordinates. Must be the same length of velocity_vector,
+            and must be in units R_g.
+        """
 
         self.launch_radius = launch_radius
         self.launch_height = launch_height
@@ -80,7 +122,6 @@ class Streamline:
                     )
             self.poloidal_velocity = vector
 
-        # should be a separate loop in case user has a list of velocities / different acceleration model
         vector = np.zeros(length)
         for jj in range(length):
             if jj > 0:
