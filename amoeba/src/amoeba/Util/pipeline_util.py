@@ -15,20 +15,24 @@ def intrinsic_signal_propagation_pipeline_for_agn(
     time_axis=None,
     observer_frame_wavelengths_in_nm=None,
     speclite_filter=None,
-    blr_weightings=None,
     return_components=False,
     **kwargs,
 ):
     """run the pipeline to generate the full AGN intrinsic signal
-    driving_signal: the signal to propogate though the AGN model. Must be in units of days.
-    time_axis: the time stamps of the driving signal to be specified if the driving signal is not
+
+    :param AGN: The AGN object to propagate the signal through.
+    :param intrinsic_light_curve: the signal to propogate though the AGN model. Must be in units of days and
+        sampled daily if time_axis is not given.
+    :param time_axis: the time stamps of the driving signal to be specified if the driving signal is not
         evenly sampled every day.
-    observer_frame_wavelengths_in_nm: a wavelength or list of wavelengths in nm.
-    speclite_filter: a speclite filter, list of speclite filters, or list of speclite filter names.
-    blr_weightings: a dictionary containing keys that are the blr_indicies, and values representing
-        a 2d grid of response efficiencies.
-    return_components: a bool which allows the return of each component light curve in addition to
-        the combined light curve."""
+    :param observer_frame_wavelengths_in_nm: a wavelength or list of wavelengths in nm.
+    :param speclite_filter: a speclite filter, list of speclite filters, or list of speclite filter names.
+    :param return_components: a bool which allows the return of each component light curve in addition to
+        the combined light curve.
+    :return: a list with the length of wavelengths/filters of light curves represented by lists of time
+        axes and amplitudes. If return_components, then the BLR light curves are returned as a dictionary
+        with the key being the BLR index. 
+    """
 
     if observer_frame_wavelengths_in_nm is None and speclite_filter is None:
         print("please provide a range of wavelengths or a speclite filter to use")
@@ -105,14 +109,12 @@ def intrinsic_signal_propagation_pipeline_for_agn(
         )
         return False
 
-    # check if there is an accretion disk to convert driving light curve to optical light curves
     if "accretion_disk" not in AGN.components.keys():
         print(
             "please add an accretion disk model to this agn, other components require the variable continuum."
         )
         return False
 
-    # check if there's a signal to propagate
     if intrinsic_light_curve is None:
         if AGN.intrinsic_light_curve is None:
             try:
@@ -122,12 +124,9 @@ def intrinsic_signal_propagation_pipeline_for_agn(
                     "please provide a psd and set of frequencies, or a driving light curve"
                 )
                 return False
-        # define it this way so a provided light curve overrides this propagation,
-        # but does not override the stored light curve.
         intrinsic_light_curve = AGN.intrinsic_light_curve.copy()
         time_axis = AGN.intrinsic_light_curve_time_axis.copy()
 
-    # generate the continuum signals
     reprocessed_signals = []
     for wavelength in mean_wavelengths:
         cur_tf = AGN.components[
@@ -152,35 +151,17 @@ def intrinsic_signal_propagation_pipeline_for_agn(
         reprocessed_signals.append([t_ax, cur_signal])
     output_signals = reprocessed_signals.copy()
 
-    # generate the blr's response to the optical continuum, if any
     blr_signals = {}
 
     if len(AGN.blr_indicies) > 0:
 
         for index in AGN.blr_indicies:
             blr_signals[str(index)] = []
-            # cur_contamination_signals = []
             observer_frame_emission_line_wavelength = AGN.components[
                 "blr_" + str(index)
             ].rest_frame_wavelength_in_nm * (1 + AGN.redshift_source)
 
             for jj, wavelength_range in enumerate(wavelength_ranges):
-                # if (
-                #    observer_frame_emission_line_wavelength
-                #    < wavelength_range[0] - AGN.line_widths[str(index)]
-                # ):
-                #    blr_signals[str(index)].append([0, 0, 0])
-                #    continue
-                # if (
-                #    observer_frame_emission_line_wavelength
-                #    > wavelength_range[1] + AGN.line_widths[str(index)]
-                # ):
-                #    blr_signals[str(index)].append([0, 0, 0])
-                #   continue
-
-                # note: the weighting_factor below is representative of how much of the broad line
-                # falls within the filter. The line_strength associated with the broad line represents
-                # the total relative strength of the emission line w.r.t. the continuum
                 if blr_weightings is not None:
                     weighting_factor, cur_blr_tf = AGN.components[
                         "blr_" + str(index)
@@ -210,7 +191,6 @@ def intrinsic_signal_propagation_pipeline_for_agn(
                     [t_ax, contaminated_signals, weighting_factor]
                 )
 
-    # add blr contamination, if any. Also redshift the time axis to the observer's frame of reference.
     for jj, wavelength_range in enumerate(wavelength_ranges):
 
         cur_weighting = 1
@@ -259,15 +239,22 @@ def visualization_pipeline(
     inclination_angle=None,
     observer_frame_wavelengths_in_nm=None,
     speclite_filter=None,
-    blr_weightings=None,
     return_components=None,
     **kwargs,
 ):
     """This pipeline produces a flux projection object of the combined emission of each
-    agn component.
+    agn component. Note that depending on flux ratios between various components, one may easily
+    dominate the flux distribution.
 
-    Note that depending on flux ratios between various components, one may easily
-    dominate the flux distribution
+    :param AGN: The AGN object to project into the source plane
+    :param inclination_angle: the inclination of the source w.r.t. the observer
+    :param observer_frame_wavelengths_in_nm: a [list of] wavelength[s] to project the AGN into.
+        Cannot be used with speclite_filter
+    :param speclite_filter: a [list of] speclite filter[s] to project the AGN into. Cannot be
+        used with observer_frame_wavelengths_in_nm.
+    :param return_components: a boolean toggle to return each component as individual FluxProjection
+        objects before adding them together.
+    :return: A list of FluxProjection objects for each wavelength range or speclite filter given.
     """
 
     if inclination_angle is not None:
@@ -350,7 +337,6 @@ def visualization_pipeline(
         )
         return False
 
-    # check if there is an accretion disk to convert driving light curve to optical light curves
     if len(AGN.components.keys()) == 0:
         print(
             "please add at least one coponent model to this agn. You cannot project nothing!"
@@ -366,11 +352,21 @@ def visualization_pipeline(
             )
             list_of_projections.append(cur_img)
 
+            reference_flux = cur_img.total_flux
+
         if "diffuse_continuum" in AGN.components.keys():
             cur_img = AGN.components[
                 "diffuse_continuum"
             ].get_diffuse_continuum_emission(wavelength)
             list_of_projections.append(cur_img)
+
+            cur_flux = cur_img.total_flux
+
+            if AGN.components['diffuse_continuum'].emissivity_etas is not None:
+                emissivity = AGN.components['diffuse_continuum'].interpolate_spectrum_to_wavelength(
+                    wavelength
+                )
+                cur_img.flux_array *= emissivity * reference_flux / cur_flux
 
         if len(AGN.blr_indicies) > 0:
 
@@ -383,10 +379,10 @@ def visualization_pipeline(
                     observed_wavelength_range_in_nm=[wavelength_ranges[jj]],
                 )
 
-                if blr_weightings is not None:
-                    cur_projection.flux_array *= blr_weightings
-                    cur_projection.total_flux *= blr_weightings
-
+                if cur_projection.total_flux > 0:
+                    cur_projection.flux_array *= AGN.line_strengths[str(index)] * reference_flux / cur_projection.total_flux
+                    cur_projection.total_flux *= AGN.line_strengths[str(index)] * reference_flux / cur_projection.total_flux
+                    
                 if kk == 0:
                     output_blr_projection = cur_projection
                 else:
@@ -403,5 +399,6 @@ def visualization_pipeline(
         for jj in range(len(list_of_projections) - 1):
             index = jj + 1
             output_projections[-1].add_flux_projection(list_of_projections[index])
+            print(output_projections[-1].total_flux)
 
     return output_projections

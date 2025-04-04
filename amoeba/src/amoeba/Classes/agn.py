@@ -166,13 +166,13 @@ class Agn:
 
         return True
 
-    def add_blr(self, blr_index=0, line_strength=1, **kwargs):
+    def add_blr(self, blr_index=0, line_strength=0.1, **kwargs):
         """Add an initialization of a BroadLineRegion object which is defined with index
         blr_index. Expects a dictionary of BLR parameters in kwargs input.
 
         :param blr_index: int or float to specify which BLR we are using
         :param line_strength: int or float representing how strong the emission line is
-            with respect to other BLR objects.
+            with respect to the accretion disk.
         :return: True if successful
         """
 
