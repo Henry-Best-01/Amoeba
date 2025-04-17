@@ -29,6 +29,8 @@ from amoeba.Util.util import (
     project_blr_to_source_plane,
     calculate_blr_transfer_function,
     determine_emission_line_velocities,
+    convolve_signal_with_transfer_function,
+    convert_speclite_filter_to_wavelength_range
 )
 import pytest
 import numpy as np
@@ -36,6 +38,10 @@ import numpy.testing as npt
 from astropy import units as u
 from astropy import constants as const
 from astropy.cosmology import FlatLambdaCDM
+from speclite.filters import (
+    FilterResponse,
+    load_filters
+)
 
 
 def test_create_maps():
@@ -45,30 +51,45 @@ def test_create_maps():
     inc_ang = 45
     resolution = 100
 
+    neg_redshift = -1.0
+    bad_spin = 1.5
+    bad_beta = -42
+    bad_inc_ang = 175
     with pytest.raises(AssertionError):
-        neg_redshift = -1.0
-        bad_spin = 1.5
-        bad_beta = -42
-        bad_inc_ang = 175
         create_maps(mass_exp, neg_redshift, number_grav_radii, inc_ang, resolution)
+    with pytest.raises(AssertionError):
         create_maps(
             mass_exp, redshift, number_grav_radii, inc_ang, resolution, spin=bad_spin
         )
+    with pytest.raises(AssertionError):
         create_maps(mass_exp, redshift, number_grav_radii, bad_inc_ang, resolution)
+    with pytest.raises(AssertionError):
         create_maps(
             mass_exp,
             neg_redshift,
             number_grav_radii,
             inc_ang,
             resolution,
-            beta=bad_beta,
+            temp_beta=bad_beta,
         )
     map1 = create_maps(mass_exp, redshift, number_grav_radii, inc_ang, resolution)
-    map2 = create_maps(mass_exp, redshift, number_grav_radii, inc_ang, 2 * resolution)
+    map2 = create_maps(mass_exp, redshift, number_grav_radii, inc_ang, 2 * resolution, albedo=0.4)
     # There should be 10 objects
     assert type(map1) == dict
     # The 4 array objects should be of resolution of the image
     assert np.size(map2["radii_array"]) == np.size(map1["radii_array"]) * 4
+
+    edge_on_inc = 90
+    albedo_array = np.zeros((resolution, resolution))
+    map_testing = create_maps(
+        mass_exp,
+        redshift,
+        number_grav_radii,
+        edge_on_inc,
+        resolution,
+        albedo = albedo_array
+    )
+
 
 
 def test_calculate_keplerian_velocity():
@@ -108,6 +129,7 @@ def test_convert_spin_to_isco_radius():
     # test out of bounds
     with pytest.raises(ValueError):
         convert_spin_to_isco_radius(4)
+    with pytest.raises(ValueError):
         convert_spin_to_isco_radius(-20)
 
 
@@ -143,7 +165,7 @@ def test_convert_eddington_ratio_to_accreted_mass():
 
 def test_accretion_disk_temperature():
     mass_in_m_sun = 10**8
-    grav_rad = calculate_gravitational_radius(mass_in_m_sun * const.M_sun.to(u.kg))
+    grav_rad = calculate_gravitational_radius(mass_in_m_sun)
     radii_in_meters = np.linspace(10, 100, 90) * grav_rad
     min_radius_in_meters = 6 * grav_rad
     eddington_ratio = 0.1
@@ -159,11 +181,12 @@ def test_accretion_disk_temperature():
         eta_x_rays=0.1,
         generic_beta=False,
         disk_acc=None,
-        efficiency=1.0,
+        efficiency=0.1,
         spin=0,
         visc_temp_prof="SS",
     )
 
+    print("next: NT")
     temp_profile_NT = accretion_disk_temperature(
         radii_in_meters,
         min_radius_in_meters,
@@ -174,31 +197,79 @@ def test_accretion_disk_temperature():
         albedo=1,
         eta_x_rays=0.1,
         generic_beta=False,
-        disk_acc=1,
-        efficiency=0.4,
+        disk_acc=None,
+        efficiency=0.1,
         spin=0,
         visc_temp_prof="NT",
     )
 
+    print("next: SS + wind") 
     temp_profile_SS_wind = accretion_disk_temperature(
         radii_in_meters,
         min_radius_in_meters,
-        mass_in_m_sun,
+        mass_in_m_sun * const.M_sun.to(u.kg),
         eddington_ratio,
-        beta=0.5,
+        beta=0.72,
         corona_height=6,
         albedo=0,
         eta_x_rays=0.1,
         generic_beta=True,
         disk_acc=None,
-        efficiency=1.0,
+        efficiency=0.1,
         spin=0,
         visc_temp_prof="SS",
     )
 
+    print("next: rejected, so SS + wind")
+    temp_profile_rejected_profile = accretion_disk_temperature(
+        radii_in_meters * u.m,
+        min_radius_in_meters / 1000 * u.km,
+        mass_in_m_sun * const.M_sun.to(u.kg),
+        eddington_ratio,
+        beta=0.72,
+        corona_height=6,
+        albedo=0,
+        eta_x_rays=0.1,
+        generic_beta=True,
+        disk_acc=None,
+        efficiency=0.1,
+        spin=0,
+        visc_temp_prof="Not_a_profile",
+    )
+    print("this one below")
+
+    temp_profile_little_accreted_mass = accretion_disk_temperature(
+        radii_in_meters * u.m,
+        min_radius_in_meters / 1000 * u.km,
+        mass_in_m_sun * const.M_sun.to(u.g),
+        eddington_ratio,
+        disk_acc=0.001 * const.M_sun.to(u.kg) / u.yr,
+        efficiency=0.1,
+        spin=0,
+        visc_temp_prof="SS",
+    )
+    
+    temp_profile_another_little_accreted_mass = accretion_disk_temperature(
+        radii_in_meters * u.m,
+        min_radius_in_meters / 1000 * u.km,
+        mass_in_m_sun * const.M_sun.to(u.g),
+        eddington_ratio,
+        disk_acc=0.001 * (const.M_sun.to(u.kg) / u.yr).to(u.kg / u.s).value,
+        efficiency=0.1,
+        spin=0,
+        visc_temp_prof="SS",
+    )
+    
+
     # check that they're all different
     assert abs(sum(temp_profile_SS - temp_profile_NT)) != 0
     assert abs(sum(temp_profile_SS - temp_profile_SS_wind)) != 0
+
+    # check that the rejected profile defaulted to a SS profile
+    assert abs(sum(temp_profile_SS_wind - temp_profile_rejected_profile)) == 0
+
+    assert np.sum(temp_profile_little_accreted_mass) < np.sum(temp_profile_SS)
+    assert np.sum(temp_profile_little_accreted_mass) != 0
 
     # check that at large radii, SS and NT profiles converge
     large_radius = 10**5 * grav_rad
@@ -226,7 +297,7 @@ def test_planck_law():
     wavelength_2 = 500
 
     radiance_1_1 = planck_law(temp_1, wavelength_1)
-    radiance_1_2 = planck_law(temp_1, wavelength_2)
+    radiance_1_2 = planck_law(temp_1, wavelength_2 * u.nm)
     radiance_2_1 = planck_law(temp_2, wavelength_2)
 
     # increasing wavelength and temperature should increase the radiance
@@ -277,7 +348,7 @@ def test_calculate_angular_diameter_distance():
 
     ang_diam_dist = calculate_angular_diameter_distance(redshift, OmM=OmM, H0=H0)
     astropy_cosmo = FlatLambdaCDM(H0, OmM)
-    ang_diam_dist_astropy = astropy_cosmo.angular_diameter_distance(redshift).to(u.m)
+    ang_diam_dist_astropy = astropy_cosmo.angular_diameter_distance(redshift).to(u.m).value
 
     # set tolerance to 0.5% due to quadrature integration and
     # rounding of constants
@@ -286,7 +357,7 @@ def test_calculate_angular_diameter_distance():
     assert abs(ang_diam_dist - ang_diam_dist_astropy) < tolerance
 
 
-def test_calculate_angular_diameter_distance():
+def test_calculate_angular_diameter_distance_difference():
     redshift_lens = 0.1
     redshift_source = 0.5
     OmM = 0.3
@@ -353,6 +424,8 @@ def test_calculate_angular_einstein_radius():
     avg_microlens_mass = 0.3 * const.M_sun.to(u.kg)
     OmM = 0.3
     H0 = 70
+    test_distance_source = 300 * u.Mpc
+    test_distance_lens = 100 * u.Mpc
 
     star_ang_ein_rad = calculate_angular_einstein_radius(
         redshift_lens,
@@ -374,6 +447,24 @@ def test_calculate_angular_einstein_radius():
     assert star_ang_ein_rad > human_ang_ein_rad
     assert isinstance(star_ang_ein_rad, float)
 
+    # make sure the code switches the distances in case they are input backwards
+    nearby_einstein_radius = calculate_angular_einstein_radius(
+        mean_microlens_mass_in_kg=human_mass,
+        OmM=OmM,
+        H0=H0,
+        D_lens = test_distance_source,
+        D_source = test_distance_lens
+    )
+    nearby_einstein_radius_2 = calculate_angular_einstein_radius(
+        mean_microlens_mass_in_kg=human_mass,
+        OmM=OmM,
+        H0=H0,
+        D_lens = test_distance_lens,
+        D_source = test_distance_source
+    )
+    assert nearby_einstein_radius == nearby_einstein_radius_2
+    
+
 
 def test_calculate_einstein_radius_in_meters():
     redshift_lens = 1.0
@@ -381,6 +472,8 @@ def test_calculate_einstein_radius_in_meters():
     avg_microlens_mass = 0.3 * const.M_sun.to(u.kg)
     OmM = 0.3
     H0 = 70
+    test_distance_source = 300 * u.Mpc
+    test_distance_lens = 100 * u.Mpc
 
     star_ein_rad = calculate_einstein_radius_in_meters(
         redshift_lens,
@@ -402,6 +495,31 @@ def test_calculate_einstein_radius_in_meters():
     assert star_ein_rad > human_ein_rad
     # Test that we removed the astropy units
     assert isinstance(star_ein_rad, (float, int))
+
+    nearby_einstein_radius = calculate_einstein_radius_in_meters(
+        mean_microlens_mass_in_kg=human_mass,
+        OmM=OmM,
+        H0=H0,
+        D_lens = test_distance_source,
+        D_source = test_distance_lens
+    )
+    nearby_einstein_radius_2 = calculate_einstein_radius_in_meters(
+        mean_microlens_mass_in_kg=human_mass,
+        OmM=OmM,
+        H0=H0,
+        D_lens = test_distance_lens,
+        D_source = test_distance_source
+    )
+    assert nearby_einstein_radius == nearby_einstein_radius_2
+
+    backwards_einstein_radius = calculate_einstein_radius_in_meters(
+        redshift_lens = redshift_source,
+        redshift_source = redshift_lens,
+        mean_microlens_mass_in_kg=human_mass,
+        OmM=OmM,
+        H0=H0,
+    )
+    assert backwards_einstein_radius == human_ein_rad
 
 
 def test_pull_value_from_grid():
@@ -519,7 +637,15 @@ def test_perform_microlensing_convolution():
         redshift_s,
         relative_orientation=relative_orientation_2,
     )
-
+    convolution_2b, px_shift_2b = perform_microlensing_convolution(
+        magnification_array_identity,
+        sample_flux_map,
+        redshift_l,
+        redshift_s,
+        relative_orientation=None,
+    )
+    assert px_shift_2 == px_shift_2b
+    
     # test that we conserve flux after accounting for rescaling of pixels
     value = convolution_1[3, 2]
     npt.assert_almost_equal(value, np.sum(sample_flux_map))
@@ -587,6 +713,14 @@ def test_extract_light_curve():
         pixel_size,
         effective_vel,
         light_curve_length,
+        px_shift_1,
+    )
+
+    light_curve2 = extract_light_curve(
+        convolution_1,
+        pixel_size,
+        effective_vel * u.km / u.s,
+        light_curve_length * u.yr,
         px_shift_1,
     )
 
@@ -669,17 +803,51 @@ def test_extract_light_curve():
     light_curve_avg_3 = extract_light_curve(
         convolution_1,
         pixel_size,
-        effective_vel_too_fast,
+        effective_vel,
         light_curve_length,
         px_shift_1,
         x_start_position=90,
         y_start_position=90,
         phi_travel_direction=0,
     )
+    light_curve_avg_4 = extract_light_curve(
+        convolution_1,
+        pixel_size,
+        effective_vel,
+        light_curve_length,
+        px_shift_1,
+        x_start_position=90,
+        y_start_position=-90,
+        phi_travel_direction=0,
+    )
+    light_curve_avg_5 = extract_light_curve(
+        convolution_1,
+        pixel_size,
+        effective_vel,
+        light_curve_length,
+        px_shift_1,
+        x_start_position=-90,
+        y_start_position=90,
+        phi_travel_direction=0,
+    )
+    light_curve_avg_6 = extract_light_curve(
+        convolution_1,
+        pixel_size,
+        effective_vel,
+        light_curve_length,
+        px_shift_1,
+        x_start_position=99,
+        y_start_position=99,
+        phi_travel_direction=27,
+    )
+    
 
     assert light_curve_avg_1 == light_curve_avg_2
     assert light_curve_avg_3 == light_curve_avg_2
-
+    assert light_curve_avg_1 == light_curve_avg_4
+    assert light_curve_avg_1 == light_curve_avg_5
+    assert light_curve_avg_1 == light_curve_avg_6
+    
 
 def test_calculate_time_lag_array():
     # point source tests
@@ -857,6 +1025,15 @@ def test_calculate_geometric_disk_factor():
         height_array=height_array,
         albedo_array=albedo_array,
     )
+    geo_disk_factor_array_const_albedos = calculate_geometric_disk_factor(
+        temp_array,
+        radii_map,
+        phi_map,
+        smbh_mass_exponent,
+        corona_height,
+        height_array=height_array,
+        albedo_array=0.75,
+    )
 
     # since higher albedo means less absorption, every position (except [50, 50])
     # will be less than before
@@ -986,7 +1163,6 @@ def test_construct_accretion_disk_transfer_function():
     mean_lag_2 = np.sum(tau_axis * transfer_function_test_2)
     assert mean_lag_1 < mean_lag_2
 
-
 def test_calculate_microlensed_transfer_function():
 
     test_wavelength = 300  # nm
@@ -1072,6 +1248,43 @@ def test_calculate_microlensed_transfer_function():
         relative_orientation=orientation_2,
     )
 
+    data_to_construct_transfer_function = calculate_microlensed_transfer_function(
+        magnification_array_identity,
+        redshift_l,
+        redshift_s,
+        test_wavelength,
+        temp_array,
+        radii_array,
+        phi_array,
+        g_array,
+        inclination_angle,
+        smbh_mass_exponent,
+        corona_height,
+        mean_microlens_mass_in_kg=mean_microlens_mass_in_kg,
+        number_of_microlens_einstein_radii=number_of_microlens_einstein_radii,
+        number_of_smbh_gravitational_radii=1000,
+        relative_orientation=orientation_2,
+        return_response_array_and_lags=True
+    )
+    descaled_data = calculate_microlensed_transfer_function(
+        magnification_array_identity,
+        redshift_l,
+        redshift_s,
+        test_wavelength,
+        temp_array,
+        radii_array,
+        phi_array,
+        g_array,
+        inclination_angle,
+        smbh_mass_exponent,
+        corona_height,
+        mean_microlens_mass_in_kg=mean_microlens_mass_in_kg,
+        number_of_microlens_einstein_radii=number_of_microlens_einstein_radii,
+        number_of_smbh_gravitational_radii=1000,
+        relative_orientation=orientation_2,
+        return_descaled_response_array_and_lags=True
+    )
+
     tau_axis_ml = np.linspace(
         0, len(transfer_function_test_id_ml) - 1, len(transfer_function_test_id_ml)
     )
@@ -1092,10 +1305,22 @@ def test_calculate_microlensed_transfer_function():
     # note there is some rounding when rescale and rotate are used and inverted
     tolerance = mean_tau_no_ml / 20
     assert abs(mean_tau_no_ml - mean_tau_id_ml) <= tolerance
-    cur_diff = mean_tau_no_ml - mean_tau_id_ml_rotated
-    assert abs(cur_diff) <= tolerance
+    current_diff = mean_tau_no_ml - mean_tau_id_ml_rotated
+    assert abs(current_diff) <= tolerance
 
-
+    assert len(data_to_construct_transfer_function) == 4
+    assert np.size(
+        data_to_construct_transfer_function[0]
+    ) == np.size(
+        data_to_construct_transfer_function[1]
+    )
+    assert len(descaled_data) == 4
+    assert np.size(
+        descaled_data[0]
+    ) == np.size(
+        descaled_data[1]
+    )
+    
 def test_generate_drw_signal():
     maximum_time = 2000
     time_step = 2
@@ -1119,8 +1344,9 @@ def test_generate_drw_signal():
     random_point_1 = np.random.randint(500)
     random_point_2 = np.random.randint(500)
 
-    if random_point_1 == random_point_2:
-        random_point_2 = random_point_1 + 1
+    if random_point_1 == random_point_2: # pragma: no cover
+        random_point_2 -= 1
+
     assert drw_1[random_point_1] != drw_1[random_point_2]
     assert drw_2[random_point_1] != drw_2[random_point_2]
 
@@ -1228,6 +1454,20 @@ def test_generate_snapshots_of_radiation_pattern():
         corona_height,
         inclination_angle,
     )
+    snapshots_short_driving_signal = generate_snapshots_of_radiation_pattern(
+        test_wavelength,
+        snapshot_list,
+        temp_array,
+        radii_array,
+        phi_array,
+        g_array,
+        smbh_mass_exponent,
+        drw_signal[:5],
+        driving_signal_fractional_strength_all,
+        corona_height,
+        inclination_angle,
+    )
+    
 
     assert np.shape(snapshots_half) == np.shape(snapshots_zero)
     assert np.shape(snapshots_half) == np.shape(snapshots_all)
@@ -1303,6 +1543,7 @@ def test_project_blr_to_source_plane():
             radial_resolution=r_step,
             vertical_resolution=z_step,
         )
+    with pytest.raises(AssertionError):
         project_blr_to_source_plane(
             test_density,
             vertical_vel_grid,
@@ -1314,6 +1555,7 @@ def test_project_blr_to_source_plane():
             radial_resolution=r_step,
             vertical_resolution=z_step,
         )
+    with pytest.raises(AssertionError):
         project_blr_to_source_plane(
             test_density,
             vertical_vel_grid.T,
@@ -1325,6 +1567,7 @@ def test_project_blr_to_source_plane():
             radial_resolution=r_step,
             vertical_resolution=z_step,
         )
+    with pytest.raises(AssertionError):
         project_blr_to_source_plane(
             test_density,
             vertical_vel_grid,
@@ -1336,6 +1579,7 @@ def test_project_blr_to_source_plane():
             radial_resolution=r_step,
             vertical_resolution=z_step,
         )
+    with pytest.raises(AssertionError):
         project_blr_to_source_plane(
             test_density,
             vertical_vel_grid,
@@ -1508,6 +1752,7 @@ def test_calculate_blr_transfer_function():
             radial_resolution=r_step,
             vertical_resolution=z_step,
         )
+    with pytest.raises(AssertionError):
         calculate_blr_transfer_function(
             test_density,
             vertical_vel_grid,
@@ -1519,6 +1764,7 @@ def test_calculate_blr_transfer_function():
             radial_resolution=r_step,
             vertical_resolution=z_step,
         )
+    with pytest.raises(AssertionError):
         calculate_blr_transfer_function(
             test_density,
             vertical_vel_grid.T,
@@ -1530,6 +1776,7 @@ def test_calculate_blr_transfer_function():
             radial_resolution=r_step,
             vertical_resolution=z_step,
         )
+    with pytest.raises(AssertionError):
         calculate_blr_transfer_function(
             test_density,
             vertical_vel_grid,
@@ -1541,6 +1788,7 @@ def test_calculate_blr_transfer_function():
             radial_resolution=r_step,
             vertical_resolution=z_step,
         )
+    with pytest.raises(AssertionError):
         calculate_blr_transfer_function(
             test_density,
             vertical_vel_grid,
@@ -1662,3 +1910,61 @@ def test_required_velocity_maximum():
 
     npt.assert_almost_equal(vel_range_all[1], 1)
     npt.assert_almost_equal(vel_range_all[0], -1)
+
+
+def test_convolve_signal_with_transfer_function():
+    sample_transfer_function = [0, 0, 0, 20, 100, 80, 60, 40, 10, 0]
+    smbh_mass_exp = 9.8
+    driving_signal = np.sin(
+        np.linspace(1, 1000, 1000)
+    )
+    times, convolved_signal = convolve_signal_with_transfer_function(
+        smbh_mass_exp = smbh_mass_exp,
+        driving_signal = driving_signal,
+        transfer_function = sample_transfer_function,
+    )
+    daily_signal = np.interp(np.linspace(1, 1000, 1000), times, convolved_signal)
+    assert np.sum(abs(driving_signal - daily_signal)) != 0
+
+def test_convert_speclite_filter_to_wavelength_range():
+    # collect FilterResponse objects
+    my_filters = load_filters('lsst2023-*')
+    # try one FilterResponse
+    one_filter = my_filters[0]
+    # try one string
+    one_string = 'lsst2023-r'
+    # try a list of strings
+    string_list = ['lsst2023-g', 'lsst2023-y']
+
+    output_one = convert_speclite_filter_to_wavelength_range(one_filter)
+    output_str = convert_speclite_filter_to_wavelength_range(one_string)
+    output_list = convert_speclite_filter_to_wavelength_range(string_list)
+
+    # try an invalid string
+    assert not convert_speclite_filter_to_wavelength_range(
+        'not_a_filter'
+    )
+    # try something that's not a string, list, or FilterResponse
+    assert not convert_speclite_filter_to_wavelength_range(
+        {'not_a_filter': 4}
+    )
+    string_list_bad_names = ['one_filter', 'two_filter', 'red_filter', 'blue']
+    assert not convert_speclite_filter_to_wavelength_range(
+        string_list_bad_names
+    )
+
+    assert isinstance(output_one, list)
+    assert isinstance(output_str, list)
+    assert isinstance(output_list, list)
+    assert isinstance(output_one[0], list)
+    assert isinstance(output_str[0], list)
+    assert isinstance(output_list[0], list)
+
+    assert output_one[0][0] < output_one[0][1]
+    assert output_str[0][0] < output_str[0][1]
+
+    for item in output_list:
+        assert item[0] < item[1]
+
+        
+    

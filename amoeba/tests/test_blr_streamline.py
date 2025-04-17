@@ -1,5 +1,6 @@
 import pytest
 import numpy as np
+import numpy.testing as npt
 from amoeba.Classes.blr_streamline import Streamline
 
 
@@ -17,7 +18,7 @@ def test_init():
     bad_radial_vector = np.linspace(0, 100, 100)
     bad_velocity_vector = np.linspace(0, 0.4, 20)
 
-    with pytest.raises(AssertionError):
+    with npt.assert_raises(AssertionError):
         Streamline(
             launch_radius,
             launch_theta,
@@ -26,7 +27,7 @@ def test_init():
             too_fast,
         )
 
-    with pytest.raises(AssertionError):
+    with npt.assert_raises(AssertionError):
         Streamline(
             too_close,
             launch_theta,
@@ -35,7 +36,7 @@ def test_init():
             asymptotic_poloidal_velocity,
         )
 
-    with pytest.raises(AssertionError):
+    with npt.assert_raises(AssertionError):
         Streamline(
             launch_radius,
             too_wide,
@@ -44,7 +45,7 @@ def test_init():
             asymptotic_poloidal_velocity,
         )
 
-    with pytest.raises(AssertionError):
+    with npt.assert_raises(AssertionError):
         Streamline(
             launch_radius,
             launch_theta,
@@ -54,7 +55,7 @@ def test_init():
             poloidal_launch_velocity=too_fast,
         )
 
-    with pytest.raises(AssertionError):
+    with npt.assert_raises(AssertionError):
         Streamline(
             launch_radius,
             launch_theta,
@@ -64,7 +65,7 @@ def test_init():
             poloidal_launch_velocity=too_fast,
         )
 
-    with pytest.raises(AssertionError):
+    with npt.assert_raises(AssertionError):
         Streamline(
             launch_radius,
             launch_theta,
@@ -83,6 +84,50 @@ def test_init():
         asymptotic_poloidal_velocity,
         poloidal_launch_velocity=poloidal_launch_velocity,
     )
+
+    manual_radii = np.linspace(20, 100, 101)
+    manual_velocities = 0.1 + 0.05 * np.sin(np.linspace(0, 10, 101)/np.pi)
+
+    strange_but_okay_streamline = Streamline(
+        launch_radius,
+        launch_theta,
+        max_height,
+        characteristic_distance,
+        asymptotic_poloidal_velocity,
+        velocity_vector=manual_velocities,
+        radial_vector=manual_radii
+    )
+
+    with npt.assert_raises(AssertionError):
+        Streamline(
+            launch_radius,
+            launch_theta,
+            max_height,
+            characteristic_distance,
+            asymptotic_poloidal_velocity,
+            velocity_vector=manual_velocities,
+            radial_vector=bad_radial_vector
+        )
+
+    strange_but_differently_overridden_streamline = Streamline(
+        launch_radius,
+        launch_theta,
+        max_height,
+        characteristic_distance,
+        asymptotic_poloidal_velocity,
+        radial_vector=manual_radii
+    )
+
+    automatic_radii_streamline = Streamline(
+        launch_radius,
+        launch_theta,
+        max_height,
+        characteristic_distance,
+        asymptotic_poloidal_velocity,
+        velocity_vector=manual_velocities
+    )
+        
+
 
     assert test_blr_streamline.launch_radius == launch_radius
     assert test_blr_streamline.launch_theta == launch_theta * np.pi / 180

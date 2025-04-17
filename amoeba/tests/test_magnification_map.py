@@ -20,6 +20,8 @@ class TestMagnificationMap:
             [5, 2, 7, 20, 7, 2, 3, 5, 3],
             [4, 2, 12, 15, 12, 2, 3, 4, 3],
         ]
+        flat_array = np.asarray(magnification_array.copy()).flatten()
+        assert np.ndim(flat_array) == 1
 
         redshift_source = 2.0
         redshift_lens = 1.0
@@ -32,6 +34,29 @@ class TestMagnificationMap:
             redshift_source,
             redshift_lens,
             magnification_array,
+            convergence,
+            shear,
+            total_microlens_einstein_radii=total_microlens_einstein_radii,
+            name=name,
+        )
+
+        alt_magnification_map = MagnificationMap(
+            redshift_source,
+            redshift_lens,
+            flat_array,
+            convergence,
+            shear,
+            total_microlens_einstein_radii=total_microlens_einstein_radii,
+            name=name,
+        )
+        # Note I am not including tests for the lines which open magnification
+        # map files. To do so, I would have to include some test files or
+        # design the test function to first write these files then delete them.
+
+        MagnificationMap(
+            redshift_source,
+            redshift_lens,
+            "definitely_not_a_file_path.invalid_type",
             convergence,
             shear,
             total_microlens_einstein_radii=total_microlens_einstein_radii,
@@ -63,7 +88,8 @@ class TestMagnificationMap:
         y_value = 5
 
         magnification_value = self.magnification_map.pull_value_from_grid(
-            x_value, y_value
+            x_value,
+            y_value
         )
 
         assert magnification_value > 0
@@ -72,10 +98,21 @@ class TestMagnificationMap:
         y_value = 6.8
 
         magnification_value_decimal = self.magnification_map.pull_value_from_grid(
-            x_value, y_value
+            x_value,
+            y_value
         )
 
         assert magnification_value_decimal > 0
+
+        magnification_value_decimal_macromag = self.magnification_map.pull_value_from_grid(
+            x_value,
+            y_value,
+            weight_by_macromag=True
+        )
+
+        assert magnification_value_decimal_macromag > 0
+
+        assert magnification_value_decimal_macromag != magnification_value_decimal
 
     def test_pull_light_curve(self):
 
@@ -130,6 +167,29 @@ class TestMagnificationMap:
         assert len(light_curve_rise_fall) >= 4
         assert light_curve_rise_fall[2] > light_curve_rise_fall[0]
         assert light_curve_rise_fall[2] > light_curve_rise_fall[3]
+
+        light_curve_macromag = self.magnification_map.pull_light_curve(
+            effective_transverse_velocity,
+            light_curve_duration_in_years,
+            x_start_position=x_start_position,
+            y_start_position=y_start_position,
+            random_seed=random_seed,
+            weight_by_macromag=True
+        )
+        light_curve_macromag_components = self.magnification_map.pull_light_curve(
+            effective_transverse_velocity,
+            light_curve_duration_in_years,
+            x_start_position=x_start_position,
+            y_start_position=y_start_position,
+            random_seed=random_seed,
+            return_track_coords=True,
+            weight_by_macromag=True
+        )
+
+        assert np.sum(
+            abs(light_curve_macromag - light_curve_macromag_components[0])
+        ) == 0
+        
 
     def test_convolve_with_flux_projection(self):
 
@@ -290,7 +350,3 @@ class TestMagnificationMap:
         npt.assert_almost_equal(round(mean_micro_tf_1_id, 0), round(mean_tf_1, 0), 1)
         npt.assert_almost_equal(round(mean_micro_tf_2_id, 0), round(mean_tf_2, 0), 1)
         assert mean_micro_tf_2_id > mean_micro_tf_1_id
-
-
-if __name__ == "__main__":
-    pytest.main()

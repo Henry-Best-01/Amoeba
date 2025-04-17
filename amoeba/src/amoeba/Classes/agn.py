@@ -45,7 +45,8 @@ class Agn:
 
         "smbh_mass_exp", "mass_height", "rest_frame_wavelength_in_nm",
         "redshift_source", "radial_step", "height_step", "max_radius"
-
+        "line_strength"
+        
         ----- torus kwargs -----
 
         "smbh_mass_exp", "max_height", "redshift_source", "radial_step",
@@ -77,7 +78,6 @@ class Agn:
         self.intrinsic_light_curve = None
         self.intrinsic_light_curve_time_axis = None
         self.blr_indicies = []
-        self.line_strengths = {}
 
         self.generate_kwarg_dictionaries_for_individual_components()
 
@@ -166,7 +166,7 @@ class Agn:
 
         return True
 
-    def add_blr(self, blr_index=0, line_strength=0.1, **kwargs):
+    def add_blr(self, blr_index=0, **kwargs):
         """Add an initialization of a BroadLineRegion object which is defined with index
         blr_index. Expects a dictionary of BLR parameters in kwargs input.
 
@@ -186,6 +186,7 @@ class Agn:
             "max_radius",
             "OmM",
             "H0",
+            "line_strength"
         ]
 
         for kwarg in all_kwargs:
@@ -195,7 +196,6 @@ class Agn:
         agn_blr = BroadLineRegion(**self.blr_kwargs)
 
         self.components["blr_" + str(blr_index)] = agn_blr
-        self.line_strengths[str(blr_index)] = line_strength
         if blr_index not in self.blr_indicies:
             self.blr_indicies.append(blr_index)
 
@@ -226,6 +226,65 @@ class Agn:
 
         self.components["blr_" + str(blr_index)].add_streamline_bounded_region(**kwargs)
 
+        return True
+
+    def get_blr_density_axes(self, blr_index=None):
+        """Get the meshgrid representations of the R-Z coordinates of the
+        BroadLineRegion object(s).
+
+        :param blr_index: None or specific index / list of indicies to
+            return the axis(axes) of. If None, a list of axes will be
+            returned. If specified, only the requrested axes will be returned.
+        :return: list of lists containing the R, Z meshgrid coordinates of
+            each BLR object.
+        """
+        if blr_index is None:
+            blr_index = self.blr_indicies
+        elif isinstance(blr_index, (int, float, str)):
+            blr_index = [blr_index]
+        
+        output_axes = []
+        for index in blr_index:
+            current_R, current_Z = self.components['blr_'+str(index)].get_density_axis()
+            output_axes.append([current_R, current_Z])
+        return output_axes
+
+    def set_blr_efficiency_array(self, efficiency_array=None, blr_index=None):
+        """Set the emission efficiency array of the BroadLineRegion object
+        with index blr_index. If no arguments are passed, this will check
+        which BroadLineRegion components do not have efficiency arrays
+        associated with them.
+
+        :param efficiency_array: Array representing the weighted emission
+            efficiency at each position in R, Z coordinates.
+        :param blr_index: index representing which BLR to update
+        :return: True if successful
+        """
+        if efficiency_array is None and blr_index is None:
+            for index in self.blr_indicies:
+                if self.components[
+                    'blr_'+str(index)
+                ].emission_efficiency_array is None:
+                    print(index)
+            return False
+        if blr_index is None:
+            print("Please give the index to associate this efficiency array with.")
+            print("Note that the default blr index is '0'")
+            return False
+        if efficiency_array is None:
+            if self.components[
+                'blr_'+str(blr_index)
+            ].emission_efficiency_array is None:
+                print("this index does not have an efficiency array associated with it")
+            else:
+                print("this index has an efficiency array associated with it")
+            return False
+
+        self.components[
+            'blr_'+str(blr_index)
+        ].set_emission_efficiency_array(
+            emission_efficiency_array = efficiency_array
+        )
         return True
 
     def add_torus(self, **kwargs):
@@ -606,7 +665,7 @@ class Agn:
         :return: True if successful
         """
 
-        self.line_strengths[str(blr_index)] = new_line_strength
+        self.components['blr_'+str(blr_index)].update_line_strength(new_line_strength)
 
         return True
 
@@ -659,7 +718,7 @@ class Agn:
                 observed_wavelength_range_in_nm=observed_wavelengths_in_nm,
                 **kwargs,
             )
-            fractional_weight *= self.line_strengths[key[4:]]
+
             blr_transfer_function_list.append(
                 [fractional_weight, current_transfer_function]
             )
@@ -813,6 +872,7 @@ class Agn:
             "radial_step",
             "height_step",
             "max_radius",
+            "line_strength"
         ]
         diffuse_continuum_kwargs = [
             "radii_array",

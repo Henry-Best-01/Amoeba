@@ -44,6 +44,17 @@ class TestBlr:
             height_step=height_step,
         )
 
+        launch_theta_big_wide_boi = 75
+        self.test_blr_streamline_wide = Streamline(
+            launch_radius,
+            launch_theta_big_wide_boi,
+            max_height,
+            characteristic_distance,
+            asymptotic_poloidal_velocity,
+            poloidal_launch_velocity=poloidal_launch_velocity,
+            height_step=height_step,
+        )
+
         self.blr = BroadLineRegion(
             smbh_mass_exp,
             max_height,
@@ -172,6 +183,10 @@ class TestBlr:
         assert flux_projection_2.observer_frame_wavelength_in_nm[0] == 0
         assert flux_projection_2.observer_frame_wavelength_in_nm[1] == np.inf
 
+        prev_total_emission = self.blr.current_total_emission
+        self.blr.update_line_strength(4)
+        assert self.blr.current_total_emission > prev_total_emission
+
     def test_estimate_doppler_broadening(self):
 
         inclination1 = 15
@@ -203,6 +218,22 @@ class TestBlr:
         total_velocity_range = [-1, 1]
         # velocity ranges are defined as the joint region defined by (v>=min, v<max)
         no_velocity_range = [-0.7, -0.6]
+        wavelength_range = [500, 1000]
+        speclite_filter = 'lsst2023-z'
+
+        assert not self.blr.project_blr_intensity_over_velocity_range(
+            inclination,
+            velocity_range=receeding_velocity_range,
+            observed_wavelength_range_in_nm=wavelength_range,
+            emission_efficiency_array=efficiency_array,
+        )
+
+        speclite_projection = self.blr.project_blr_intensity_over_velocity_range(
+            inclination,
+            speclite_filter=speclite_filter,
+            emission_efficiency_array=efficiency_array,
+        )
+
 
         receeding_projection = self.blr.project_blr_intensity_over_velocity_range(
             inclination,
@@ -287,8 +318,31 @@ class TestBlr:
 
     def test_calculate_blr_emission_line_transfer_function(self):
 
-        inclination = 70
+        inclination = 60
         velocity_range = [-0.4, 0.1]
+        wavelength_range = [500, 1000]
+        speclite_filter = 'lsst2023-z'
+        efficiency_array = np.ones(self.blr.blr_array_shape)
+
+        assert not self.blr.calculate_blr_emission_line_transfer_function(
+            inclination,
+            velocity_range=velocity_range,
+            observed_wavelength_range_in_nm=wavelength_range,
+            emission_efficiency_array=efficiency_array,
+        )
+
+        assert not self.blr.calculate_blr_emission_line_transfer_function(
+            inclination
+        )
+
+        speclite_response = self.blr.calculate_blr_emission_line_transfer_function(
+            inclination,
+            speclite_filter=speclite_filter,
+            emission_efficiency_array=efficiency_array,
+        )
+        assert len(speclite_response) == 2
+        assert isinstance(speclite_response[0], (int, float))
+        assert isinstance(speclite_response[1], (list, np.ndarray))
 
         weighting, blr_el_tf = self.blr.calculate_blr_emission_line_transfer_function(
             inclination,
@@ -334,6 +388,50 @@ class TestBlr:
         for value in null_tf:
             assert value == 0
 
+    def test_update_line_strength(self):
+        inclination = 20
+        new_line_strength = 3
+        assert self.blr.line_strength == 1
+        assert self.blr.update_line_strength(new_line_strength)
+        assert self.blr.update_line_strength(1)
+        
 
-if __name__ == "__main__":
-    pytest.main()
+        original_projection = self.blr.project_blr_intensity_over_velocity_range(
+            inclination,
+        )
+
+        assert self.blr.update_line_strength(new_line_strength)
+        assert self.blr.line_strength == new_line_strength
+
+        new_projection = self.blr.project_blr_intensity_over_velocity_range(
+            inclination,
+        )
+
+        flux_ratio = new_projection.total_flux / original_projection.total_flux
+
+        npt.assert_almost_equal(flux_ratio, 3)
+
+    def test_get_density_axis(self):
+        expected_size = (np.size(self.blr.radii_values), np.size(self.blr.height_values))
+        R, Z = self.blr.get_density_axis()
+        assert np.shape(R) == expected_size
+        assert np.shape(Z) == expected_size
+        r_spherical = np.sqrt(R**2 * Z**2)
+        assert np.max(r_spherical) == np.sqrt(self.blr.max_height**2 * self.blr.max_radius**2)
+
+    def test_set_emission_efficiency_array(self):
+        assert self.blr.set_emission_efficiency_array()
+        R, _ = self.blr.get_density_axis()
+        expected_shape = np.shape(R)
+        assert np.shape(self.blr.emission_efficiency_array) == expected_shape
+
+        # test that the efficiency array is preserved when a new streamline is added
+        self.blr.add_streamline_bounded_region(
+            self.test_blr_streamline_angled,
+            self.test_blr_streamline_wide,
+        )
+        new_shape = np.shape(self.blr.emission_efficiency_array)
+
+        assert new_shape[0] > expected_shape[0]
+        assert new_shape[1] == expected_shape[1]
+        

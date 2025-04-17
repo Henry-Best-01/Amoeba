@@ -218,15 +218,10 @@ def test_intrinsic_signal_propogation_pipeline():
                 )
             else:
                 for key in all_my_signals[jj].keys():
-                    if isinstance(all_my_signals[jj][key][0], list):
-                        assert len(all_my_signals[jj][key][0]) == len(
-                            all_my_signals[jj][key][1]
-                        )
-                    else:
-                        assert (
-                            all_my_signals[jj][key][0][0]
-                            == all_my_signals[jj][key][1][0]
-                        )
+                    assert len(all_my_signals[jj][key][0]) == len(
+                        all_my_signals[jj][key][1]
+                    )
+                    
     all_my_signals_2 = intrinsic_signal_propagation_pipeline_for_agn(
         my_populated_agn,
         observer_frame_wavelengths_in_nm=[[100, 500], [500, 10000]],
@@ -250,16 +245,10 @@ def test_intrinsic_signal_propogation_pipeline():
                 )
             else:
                 for key in all_my_signals_2[jj].keys():
-                    if isinstance(all_my_signals_2[jj][key][0], list):
-                        assert len(all_my_signals_2[jj][key][0]) == len(
-                            all_my_signals_2[jj][key][1]
-                        )
-                    else:
-                        assert (
-                            all_my_signals_2[jj][key][0][0]
-                            == all_my_signals_2[jj][key][1][-1]
-                        )
-
+                    assert len(all_my_signals_2[jj][key][0]) == len(
+                        all_my_signals_2[jj][key][1]
+                    )
+                    
     all_my_signals_3 = intrinsic_signal_propagation_pipeline_for_agn(
         my_populated_agn,
         observer_frame_wavelengths_in_nm=[100, 500, 10000, 750, 850],
@@ -268,28 +257,11 @@ def test_intrinsic_signal_propogation_pipeline():
 
     assert len(all_my_signals_3) == 5
     for jj in range(len(all_my_signals_3)):
-        if isinstance(all_my_signals_3[jj], list):
-            assert len(all_my_signals_3[jj]) == 2
-        else:
-            for key in all_my_signals_3[jj].keys():
-                for band in range(len(all_my_signals_3[jj][key])):
-                    assert len(all_my_signals_3[jj][key][band]) == 3
+        assert len(all_my_signals_3[jj]) == 2
     for jj in range(len(all_my_signals_3)):
         for kk in range(len(all_my_signals_3[jj])):
-            if isinstance(all_my_signals_3[jj], list):
-                assert len(all_my_signals_3[jj][0]) == len(all_my_signals_3[jj][1])
-            else:
-                for key in all_my_signals_3[jj].keys():
-                    if isinstance(all_my_signals_3[jj][key][0], list):
-                        assert len(all_my_signals_3[jj][key][0]) == len(
-                            all_my_signals_3[jj][key][1]
-                        )
-                    else:
-                        assert (
-                            all_my_signals_3[jj][key][0][-1]
-                            == all_my_signals_3[jj][key][1][0]
-                        )
-
+            assert len(all_my_signals_3[jj][0]) == len(all_my_signals_3[jj][1])
+            
     my_only_signal = intrinsic_signal_propagation_pipeline_for_agn(
         my_populated_agn,
         observer_frame_wavelengths_in_nm=[[300, 700]]
@@ -451,6 +423,7 @@ def test_visualization_pipeline():
     my_populated_agn.add_streamline_bounded_region_to_blr(
         **my_blr_streamline_kwargs
     )
+    my_populated_agn.update_line_strength(0, 0.1)
 
 
     first_wavelength = [[100, 1000]]
@@ -460,30 +433,30 @@ def test_visualization_pipeline():
         inclination_angle=inclination,
     )
     return_components = False
-    cur_output = visualization_pipeline(
+    current_output = visualization_pipeline(
         my_populated_agn,
         inclination,
         observer_frame_wavelengths_in_nm=first_wavelength,
         return_components=return_components,
     )
-    assert isinstance(cur_output, list)
-    assert isinstance(cur_output[0], FluxProjection)
+    assert isinstance(current_output, list)
+    assert isinstance(current_output[0], FluxProjection)
 
-    my_flux = cur_output[0].flux_array.copy()
-    my_total = cur_output[0].total_flux.copy()
+    my_flux = current_output[0].flux_array.copy()
+    my_total = current_output[0].total_flux.copy()
 
     inclination = 30
-    cur_output = visualization_pipeline(
+    current_output = visualization_pipeline(
         my_populated_agn,
         inclination_angle=inclination,
         observer_frame_wavelengths_in_nm=first_wavelength,
         return_components=return_components,
     )
     
-    assert isinstance(cur_output, list)
-    assert isinstance(cur_output[0], FluxProjection)
+    assert isinstance(current_output, list)
+    assert isinstance(current_output[0], FluxProjection)
 
-    assert abs(np.sum(my_flux) - np.sum(cur_output[0].flux_array)) > 0
+    assert abs(np.sum(my_flux) - np.sum(current_output[0].flux_array)) > 0
     
     return_components = True
 
@@ -508,7 +481,7 @@ def test_visualization_pipeline():
         return_components=return_components,
     )
 
-    # check the blr weighted by a factor of 33 is brighter than the one weighted by 10
+    # check the blr weighted by a factor of 0.2 is brighter than the one weighted by 0.1
     assert weighted_blr_total_output[0][2].total_flux < weighted_blr_total_output_2[0][2].total_flux
 
     return_components = False
@@ -520,7 +493,7 @@ def test_visualization_pipeline():
     )
 
     # check that weighting the blr increases the total flux when all joined together
-    assert cur_output[0].total_flux < weighted_blr_total_output[0].total_flux
+    assert current_output[0].total_flux < weighted_blr_total_output[0].total_flux
     
 
 

@@ -284,6 +284,8 @@ def test_add_flux_projection():
     assert min_lam == np.min(my_gaussian_projection_1.observer_frame_wavelength_in_nm)
     assert max_lam == np.max(my_gaussian_projection_1.observer_frame_wavelength_in_nm)
 
+    assert my_big_gaussian_projection.add_flux_projection(my_gaussian_projection_1)
+
 
 def test_get_plotting_axes():
     x_vals = np.linspace(-100, 100, 201)

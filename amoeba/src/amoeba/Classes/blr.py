@@ -25,6 +25,7 @@ class BroadLineRegion:
         max_radius=0,
         OmM=0.3,
         H0=70,
+        line_strength=1,
         **kwargs
     ):
         """Generate a broad line region object. This object contains the R-Z
@@ -42,6 +43,8 @@ class BroadLineRegion:
         :param max_radius: maximum radius of the BLR in R_g
         :param OmM: mass component of the energy budget of the universe
         :param H0: Hubble constant in units of km/s/Mpc
+        :param line_strength: float/int representing how strong the total emission line
+            is w.r.t. the continuum emission.
         """
 
         self.smbh_mass_exp = smbh_mass_exp
@@ -50,6 +53,7 @@ class BroadLineRegion:
         self.redshift_source = redshift_source
         self.OmM = OmM
         self.H0 = H0
+        self.line_strength = line_strength
         self.max_height = max_height
         self.radial_step = radial_step
         self.height_step = height_step
@@ -180,6 +184,18 @@ class BroadLineRegion:
             )
         self.blr_array_shape = np.shape(self.density_grid)
 
+        if self.emission_efficiency_array is not None:
+            old_efficiency_array = self.emission_efficiency_array
+            new_efficiency_array = np.zeros(self.blr_array_shape)
+            new_efficiency_array[
+                :np.size(old_efficiency_array, 0),
+                :np.size(old_efficiency_array, 1)
+            ] = old_efficiency_array
+            
+            self.set_emission_efficiency_array(
+                new_efficiency_array
+            )
+
         return True
 
     def project_blr_density_to_source_plane(self, inclination_angle):
@@ -229,10 +245,9 @@ class BroadLineRegion:
         :return: FluxProjection containing metadata from the BLR and the emission array
         """
 
-        if emission_efficiency_array is not None:
-            self.emission_efficiency_array = emission_efficiency_array
+        self.set_emission_efficiency_array(emission_efficiency_array)
 
-        flux_map = project_blr_to_source_plane(
+        flux_map, _ = project_blr_to_source_plane(
             self.density_grid,
             self.z_velocity_grid,
             self.r_velocity_grid,
@@ -243,12 +258,14 @@ class BroadLineRegion:
             vertical_resolution=self.height_step,
         )
 
+        flux_map *= self.line_strength
+
         max_radius = (
             self.max_height * np.tan(inclination_angle * np.pi / 180) + self.max_radius
         )
 
         flux_projection = FluxProjection(
-            flux_map[0],
+            flux_map,
             np.array([0, np.inf]),
             self.smbh_mass_exp,
             self.redshift_source,
@@ -293,12 +310,14 @@ class BroadLineRegion:
 
         if velocity_range is not None and observed_wavelength_range_in_nm is not None:
             print("Please only provide the velocities or wavelengths. Not both!")
+            return False
         if (
             velocity_range is None
             and observed_wavelength_range_in_nm is None
             and speclite_filter is None
         ):
             print("Please provide the velocities or wavelengths.")
+            velocity_range = [-1, 1]
         if speclite_filter is not None:
             observed_wavelength_range_in_nm = (
                 convert_speclite_filter_to_wavelength_range(
@@ -313,8 +332,7 @@ class BroadLineRegion:
                 self.redshift_source,
             )
 
-        if emission_efficiency_array is not None:
-            self.emission_efficiency_array = emission_efficiency_array
+        self.set_emission_efficiency_array(emission_efficiency_array)
 
         obs_plane_wavelength_in_nm = self.rest_frame_wavelength_in_nm * (
             1 + self.redshift_source
@@ -375,6 +393,8 @@ class BroadLineRegion:
             radial_resolution=self.radial_step,
             vertical_resolution=self.height_step,
         )
+
+        flux_map *= self.line_strength
 
         max_radius = (
             self.max_height * np.tan(inclination_angle * np.pi / 180) + self.max_radius
@@ -450,12 +470,14 @@ class BroadLineRegion:
 
         if velocity_range is not None and observed_wavelength_range_in_nm is not None:
             print("Please only provide the velocities or wavelengths. Not both!")
+            return False
         if (
             velocity_range is None
             and observed_wavelength_range_in_nm is None
             and speclite_filter is None
         ):
             print("Please provide the velocities or wavelengths.")
+            return False
         if speclite_filter is not None:
             observed_wavelength_range_in_nm = (
                 convert_speclite_filter_to_wavelength_range(
@@ -499,8 +521,7 @@ class BroadLineRegion:
         if max_expected_wavelength_in_nm < min_obs_plane_wavelength_in_nm:
             return 0, np.zeros(3)
 
-        if emission_efficiency_array is not None:
-            self.emission_efficiency_array = emission_efficiency_array
+        self.set_emission_efficiency_array(emission_efficiency_array)
 
         emission_line_tf = calculate_blr_transfer_function(
             self.density_grid,
@@ -530,6 +551,7 @@ class BroadLineRegion:
         )
 
         tf_weighting_factor = current_emission.total_flux / self.current_total_emission
+        tf_weighting_factor *= self.line_strength
 
         return tf_weighting_factor, emission_line_tf
 
@@ -571,3 +593,63 @@ class BroadLineRegion:
         ) * np.sqrt(max_range_v_r**2 + max_phi_velocity**2)
 
         return np.asarray([max_receeding_velocity, max_approaching_velocity])
+
+    def update_line_strength(self, line_strength):
+        """Update the emission line strength stored in the BLR
+
+        :param line_strength: updated strength of the emisison line w.r.t. the
+            continuum emission
+        :return: True if successful
+        """
+        prev_line_strength = self.line_strength
+        assert isinstance(line_strength, (int, float))
+        self.line_strength = line_strength
+        if self.current_total_emission is not None and prev_line_strength != 0:
+            self.current_total_emission *= self.line_strength / prev_line_strength
+        return True
+
+    def get_density_axis(self):
+        """Get a meshgrid representation of the R-Z coordinates to get an
+        array to apply local optimally emitting cloud region weighting. The spherical
+        distance may be computed as:
+
+        r_spherical = np.sqrt(R**2 * Z**2)
+
+        :return: R and Z coordinates in a numpy meshgrid
+        """
+
+        R, Z = np.meshgrid(
+            self.radii_values,
+            self.height_values,
+            indexing='ij'
+        )
+        return R, Z
+
+    def set_emission_efficiency_array(self, emission_efficiency_array=None):
+        """Set the weighting of each (R, Z) coordinate. This is used to compute the
+        emission and response of the BLR for spatially distinct regions.
+
+        :param emission_efficiency_array: Array of int/float values representing
+            how efficient the BLR responds at coordinate (R, Z)
+        :return: True if successful
+        """
+        R, Z = self.get_density_axis()
+        if emission_efficiency_array is None:
+            self.emission_efficiency_array = np.ones(
+                np.shape(R)
+            )
+        else:
+            assert np.shape(emission_efficiency_array) == np.shape(R)
+            self.emission_efficiency_array = emission_efficiency_array
+        return True
+                    
+
+
+
+
+
+
+
+
+
+    

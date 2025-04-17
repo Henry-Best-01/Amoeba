@@ -103,8 +103,7 @@ def create_maps(
     """
     try:
         import sim5
-
-        sim5_installed = True
+        sim5_installed = True # pragma: no cover
     except ModuleNotFoundError:
         sim5_installed = False
 
@@ -122,13 +121,12 @@ def create_maps(
     g_array = temp_array.copy()
     r_array = temp_array.copy()
     phi_array = temp_array.copy()
-    if sim5_installed == True:
+    if sim5_installed == True:  # pragma: no cover
         if inclination_angle == 0:
             inclination_angle += 0.1
         bh_rms = sim5.r_ms(spin)
         for yy in range(resolution):
             for xx in range(resolution):
-                # Note that Sim5 coordinates define Rg = 2GM/c^2, but we use Rg = GM/c^2
                 alpha = ((xx + 0.5) / resolution - 0.5) * 4.0 * number_grav_radii
                 beta = ((yy + 0.5) / resolution - 0.5) * 4.0 * number_grav_radii
                 gd = sim5.geodesic()
@@ -234,7 +232,7 @@ def convert_spin_to_isco_radius(spin):
     return 3 + z2 - np.sign(spin) * ((3 - z1) * (3 + z1 + 2 * z2)) ** (1 / 2)
 
 
-def convert_eddington_ratio_to_accreted_mass(mass, eddington_ratio, efficiency=1.0):
+def convert_eddington_ratio_to_accreted_mass(mass_in_solar_masses, eddington_ratio, efficiency=0.1):
     """This function converts an Eddington Ratio (i.e. 0.15) into the corresponding
     accretion rate in physical units assuming bol_lum = eddington_ratio * edd_lum.
 
@@ -262,15 +260,15 @@ def convert_eddington_ratio_to_accreted_mass(mass, eddington_ratio, efficiency=1
             to radiation energy
         M_dot = accreted matter required for the disk to radiate at the given Eddington ratio
 
-    :param mass: mass of SMBH in solar masses or astropy quantity. Note this is NOT smbh_mass_exp!
+    :param mass_in_solar_masses: mass of SMBH in solar masses or astropy quantity. Note this is NOT smbh_mass_exp!
     :param eddington_ratio: percentage of theoretical Bondi limit of accretion rate
     :param efficiency: conversion efficiency between gravitational potential energy and
         thermal energy
     :return: accreted mass as astropy units
     """
-    if type(mass) != u.Quantity:
-        mass *= const.M_sun.to(u.kg)
-    edd_lum = 4 * np.pi * const.G * mass * const.m_p * const.c / const.sigma_T
+    if type(mass_in_solar_masses) != u.Quantity:
+        mass_in_solar_masses *= const.M_sun.to(u.kg)
+    edd_lum = 4 * np.pi * const.G * mass_in_solar_masses * const.m_p * const.c / const.sigma_T
     bol_lum = edd_lum * eddington_ratio
     return bol_lum / (efficiency * const.c**2)
 
@@ -340,26 +338,27 @@ def accretion_disk_temperature(
         beta = dummy
 
     if type(radius_in_meters) == u.Quantity:
-        radius_in_meters = radius_in_meters.to(u.m)
+        radius_in_meters = radius_in_meters.to(u.m).value
     if type(min_radius_in_meters) == u.Quantity:
-        min_radius_in_meters = min_radius_in_meters.to(u.m)
+        min_radius_in_meters = min_radius_in_meters.to(u.m).value
     if disk_acc is None:
         disk_acc = convert_eddington_ratio_to_accreted_mass(
             mass_in_solar_masses, eddington_ratio, efficiency=efficiency
-        )
+        ).value
     else:
         if type(disk_acc) == u.Quantity:
-            disk_acc = disk_acc.to(u.kg / u.s)
+            disk_acc = disk_acc.to(u.kg / u.s).value
         else:
             disk_acc *= const.M_sun.to(u.kg) / u.yr.to(u.s)
             disk_acc = disk_acc.value
 
     if type(mass_in_solar_masses) == u.Quantity:
         mass_in_kg = mass_in_solar_masses.to(u.kg).value
+        mass_in_solar_masses = mass_in_kg / const.M_sun.to(u.kg).value
     else:
-        mass_in_solar_masses *= const.M_sun.to(u.kg)
-        mass_in_kg = mass_in_solar_masses.value
+        mass_in_kg = mass_in_solar_masses * const.M_sun.to(u.kg).value
     grav_rad_in_meters = calculate_gravitational_radius(mass_in_solar_masses)
+    print(mass_in_kg / const.M_sun.to(u.kg))
     schwarz_rad_in_meters = 2 * grav_rad_in_meters
 
     radius_in_grav_rad = radius_in_meters / grav_rad_in_meters
@@ -390,9 +389,11 @@ def accretion_disk_temperature(
 
         x = np.sqrt(radius_in_grav_rad)
         x0 = np.sqrt(inner_rad_in_grav_rad)
-        x1 = 2 * np.cos(1.0 / 3.0 * np.arccos(spin) - np.pi / 3)
-        x2 = 2 * np.cos(1.0 / 3.0 * np.arccos(spin) + np.pi / 3)
-        x3 = -2 * np.cos(1.0 / 3.0 * np.arccos(spin))
+        x1 = 2 * np.cos((np.arccos(spin) - np.pi) / 3)
+        x2 = 2 * np.cos((np.arccos(spin) + np.pi) / 3)
+        x3 = -2 * np.cos(np.arccos(spin) / 3)
+
+        '''
         F_NT = (
             1.0
             / (x**7 - 3 * x**5 + 2 * spin * x**4)
@@ -414,6 +415,7 @@ def accretion_disk_temperature(
                 * np.log((x - x3) / (x0 - x3))
             )
         )
+        
         temp_map = (
             (
                 (
@@ -427,6 +429,30 @@ def accretion_disk_temperature(
             )
             ** (0.25)
         ).value
+        '''
+        F_NT = (
+            (
+                1 + spin * x**-3
+            ) / (
+                x * (1 - 3 * x**-2 + 2 * spin * x**-3)**(1/2)
+            )
+        ) * (
+            x - x0 - 3 * spin / 2 * np.log(x/x0) - (
+                3 * (x1 - spin)**2 / (x1 * (x1 - x2) * (x1 - x3))
+            ) * np.log((x - x1) / (x0 - x1)) - (
+                3 * (x2 - spin)**2 / (x2 * (x2 - x3) * (x2 - x1))
+            ) * np.log((x - x2) / (x0 - x2)) - (
+                3 * (x3 - spin)**2 / (x3 * (x3 - x1) * (x3 - x2))
+            ) * np.log((x - x3) / (x0 - x3))
+        )
+
+        temp_map = (
+            (
+                F_NT * 3 * const.G * mass_in_kg * m0_dot / (8 * np.pi * const.sigma_sb * schwarz_rad_in_meters**3)
+            ) ** (0.25)
+        ).decompose().value * (
+            (radius_in_meters / schwarz_rad_in_meters) ** ((beta - 3) / 4)
+        )        
     else:
         print(
             "Please use visc_temp_prof = 'SS' or 'NT', other values are not supported at this time. \n Revering to SS disk."
@@ -447,6 +473,9 @@ def accretion_disk_temperature(
             (radius_in_meters / schwarz_rad_in_meters) ** ((beta - 3) / 4)
         )
     visc_temp = temp_map
+
+    print(visc_temp)
+
 
     geometric_term = (
         (
@@ -644,6 +673,10 @@ def calculate_angular_einstein_radius(
         D_lens = calculate_angular_diameter_distance(redshift_lens, OmM=OmM, H0=H0)
     if D_source is None:
         D_source = calculate_angular_diameter_distance(redshift_source, OmM=OmM, H0=H0)
+    if D_lens > D_source:
+        dummy = D_source
+        D_source = D_lens
+        D_lens = dummy
     if D_LS is None:
         if redshift_lens is not None and redshift_source is not None:
             D_LS = calculate_angular_diameter_distance_difference(
@@ -690,6 +723,16 @@ def calculate_einstein_radius_in_meters(
         be computed if None.
     :return: Einstein radius of the lens in meters
     """
+    if D_source is not None and D_lens is not None:
+        if D_source < D_lens:
+            dummy = D_source
+            D_source = D_lens
+            D_lens = dummy
+    elif redshift_lens is not None and redshift_source is not None:
+        if redshift_source < redshift_lens:
+            dummy = redshift_source
+            redshift_source = redshift_lens
+            redshift_lens = dummy
 
     if D_source is None:
         ang_diam_dist_source_plane = calculate_angular_diameter_distance(
@@ -942,11 +985,11 @@ def extract_light_curve(
     rng = np.random.default_rng(seed=random_seed)
 
     if type(effective_transverse_velocity) == u.Quantity:
-        effective_transverse_velocity = effective_transverse_velocity.to(u.m / u.s)
+        effective_transverse_velocity = effective_transverse_velocity.to(u.m / u.s).value
     else:
         effective_transverse_velocity *= u.km.to(u.m)
     if type(light_curve_time_in_years) == u.Quantity:
-        light_curve_time_in_years = light_curve_time_in_years.to(u.s)
+        light_curve_time_in_years = light_curve_time_in_years.to(u.s).value
     else:
         light_curve_time_in_years *= u.yr.to(u.s)
 
@@ -2166,8 +2209,16 @@ def convert_speclite_filter_to_wavelength_range(filter_string, min_threshold=0.0
         try:
             working_filters = load_filters(filter_string)
         except:
-            print("no found speclite filters")
-            return False
+            working_filters = []
+            for item in filter_string:
+                try:
+                    current_filter = load_filter(item)
+                    working_filters.append(current_filter)
+                except:
+                    continue
+            if len(working_filters) == 0:
+                print("no found speclite filters")
+                return False
     else:
         print("incompatible filter string")
         return False

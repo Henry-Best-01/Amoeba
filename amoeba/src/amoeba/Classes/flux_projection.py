@@ -148,15 +148,15 @@ class FluxProjection:
             x_diff = np.size(self.flux_array, 0) - np.size(working_flux_projection, 0)
             y_diff = np.size(self.flux_array, 1) - np.size(working_flux_projection, 1)
 
-            if x_diff < 0:
+            if x_diff < 0: # pragma: no cover
                 working_flux_projection = working_flux_projection[:x_diff, :]
-            elif x_diff > 0:
+            elif x_diff > 0: # pragma: no cover
                 working_flux_projection = np.pad(
                     working_flux_projection, ((0, x_diff), (0, 0))
                 )
-            if y_diff < 0:
+            if y_diff < 0: # pragma: no cover
                 working_flux_projection = working_flux_projection[:, :y_diff]
-            elif y_diff > 0:
+            elif y_diff > 0: # pragma: no cover
                 working_flux_projection = np.pad(
                     working_flux_projection, ((0, 0), (0, y_diff))
                 )

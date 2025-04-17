@@ -54,6 +54,9 @@ class TestAgn:
         cloud_density_array = None
         r_in_in_gravitational_radii = 800
         r_out_in_gravitational_radii = 1000
+        line_strength = 0.3
+        frequencies = np.linspace(1/2000, 1/2, 100)
+        power_law_density_dependence = -0.1
         name = "my diffuse continuum"
 
         self.my_dc_kwargs = {
@@ -69,6 +72,9 @@ class TestAgn:
             "r_in_in_gravitational_radii": r_in_in_gravitational_radii,
             "r_out_in_gravitational_radii": r_out_in_gravitational_radii,
             "name": name,
+            "line_strength": line_strength,
+            "frequencies": frequencies,
+            "power_law_density_dependence": power_law_density_dependence
         }
 
         self.my_continuum = DiffuseContinuum(**self.my_dc_kwargs)
@@ -77,6 +83,7 @@ class TestAgn:
         self.init_launch_theta = 0  # degrees
         self.init_max_height = 1000  # Rg
         self.init_height_step = 200
+        self.init_line_strength = 0.3
         self.init_rest_frame_wavelength_in_nm = 600
         self.init_characteristic_distance = self.init_max_height // 5
         self.init_asymptotic_poloidal_velocity = 0.2
@@ -119,6 +126,7 @@ class TestAgn:
             "rest_frame_wavelength_in_nm": self.init_rest_frame_wavelength_in_nm,
             "redshift_source": self.init_redshift_source,
             "height_step": self.init_height_step,
+            "line_strength": self.init_line_strength
         }
 
         self.blr = BroadLineRegion(**self.my_blr_kwargs)
@@ -145,6 +153,9 @@ class TestAgn:
             "OuterStreamline": self.test_blr_streamline_angled,
         }
 
+        self.my_accretion_disk_kwargs['max_height'] = self.init_max_height
+        self.my_accretion_disk_kwargs['power_spectrum'] = None
+
         self.my_populated_agn = Agn(
             agn_name="Amazing AGN",
             **self.my_accretion_disk_kwargs,
@@ -157,6 +168,22 @@ class TestAgn:
         )
 
         self.my_populated_agn.add_torus(**self.my_torus_kwargs)
+
+        self.extra_agn_kwargs = self.my_accretion_disk_kwargs.copy()
+        del self.extra_agn_kwargs['H0']
+        del self.extra_agn_kwargs['OmM']
+
+        self.what_a_basic_agn = Agn(
+            agn_name="Not so amazing AGN",
+            **self.extra_agn_kwargs
+        )
+
+        min_kwargs = {
+            "smbh_mass_exp": self.init_smbh_mass_exp,
+            "redshift_source": self.init_redshift_source,
+            "inclination_angle": self.init_inclination_angle
+        }
+        self.no_kwarg_agn = Agn(agn_name="It's like a box", **min_kwargs)
 
     def test_initialization(self):
 
@@ -172,7 +199,6 @@ class TestAgn:
         assert self.my_agn.name == "Wow, what an AGN."
         assert self.my_agn.disk_is_updatable == True
         assert self.my_agn.blr_indicies == []
-        assert self.my_agn.line_strengths == {}
         assert self.my_agn.default_accretion_disk_kwargs is not None
         assert self.my_agn.generic_accretion_disk_kwargs is not None
         assert self.my_agn.blr_kwargs is not None
@@ -185,6 +211,7 @@ class TestAgn:
         assert "accretion_disk" not in self.my_agn.components.keys()
 
         self.my_agn.add_default_accretion_disk()
+        self.my_agn.add_default_accretion_disk(visc_temp_prof='NT')
 
         assert "accretion_disk" in self.my_agn.components.keys()
         assert self.my_agn.disk_is_updatable == True
@@ -225,28 +252,31 @@ class TestAgn:
 
     def test_add_blr(self):
 
-        self.my_agn.add_blr(**self.my_blr_kwargs)
+        assert self.my_agn.add_blr(**self.my_blr_kwargs)
 
         assert "blr_0" in self.my_agn.components.keys()
-        assert "0" in self.my_agn.line_strengths.keys()
-        assert 0 in self.my_agn.blr_indicies
 
         assert isinstance(self.my_agn.components["blr_0"], BroadLineRegion)
 
-        self.my_agn.add_blr(blr_index=1, line_strength=2, **self.my_blr_kwargs)
+        self.my_blr_kwargs['line_strength'] = 2
+        
+        assert self.my_agn.add_blr(blr_index=1, **self.my_blr_kwargs)
 
         assert "blr_1" in self.my_agn.components.keys()
-        assert "1" in self.my_agn.line_strengths.keys()
         assert 1 in self.my_agn.blr_indicies
 
         assert isinstance(self.my_agn.components["blr_1"], BroadLineRegion)
 
-        assert self.my_agn.line_strengths["0"] < self.my_agn.line_strengths["1"]
+        assert self.my_agn.components[
+            "blr_0"
+        ].line_strength < self.my_agn.components[
+            "blr_1"
+        ].line_strength
 
     def test_add_streamline_bounded_region_to_blr(self):
 
         self.my_agn.add_blr(**self.my_blr_kwargs)
-        self.my_agn.add_blr(blr_index=1, line_strength=2, **self.my_blr_kwargs)
+        self.my_agn.add_blr(blr_index=1, **self.my_blr_kwargs)
 
         self.one_blr_streamline = {"InnerStreamline": self.test_blr_streamline_angled}
 
@@ -271,6 +301,78 @@ class TestAgn:
 
         assert np.size(self.my_agn.components["blr_" + str(0)].density_grid) > np.size(
             self.my_agn.components["blr_" + str(1)].density_grid
+        )
+
+        bad_blr_index = 33
+        assert not self.my_agn.add_streamline_bounded_region_to_blr(
+            blr_index = bad_blr_index,
+            **self.two_blr_streamlines
+        )
+
+    def test_get_blr_density_axes(self):
+        # we want to reliably get the axes for any type of input
+        desired_index = 0
+        list_of_axes = self.my_populated_agn.get_blr_density_axes(
+            blr_index=desired_index
+        )
+        expected_shape = np.shape(self.my_populated_agn.components[
+            'blr_'+str(desired_index)
+        ].get_density_axis())
+        assert isinstance(list_of_axes, list)
+        assert isinstance(list_of_axes[0], list)
+        assert np.shape(list_of_axes[0]) == expected_shape
+        all_axes = self.my_populated_agn.get_blr_density_axes()
+        assert len(all_axes) == len(list_of_axes)
+        assert isinstance(all_axes, list)
+        assert isinstance(all_axes[0], list)
+        assert np.shape(all_axes[0]) == expected_shape
+        desired_index = "0"
+        list_of_axes = self.my_populated_agn.get_blr_density_axes(
+            blr_index=desired_index
+        )
+        assert isinstance(list_of_axes, list)
+        assert isinstance(list_of_axes[0], list)
+        assert np.shape(list_of_axes[0]) == expected_shape
+        desired_index = [0]
+        list_of_axes = self.my_populated_agn.get_blr_density_axes(
+            blr_index=desired_index
+        )
+        assert isinstance(list_of_axes, list)
+        assert isinstance(list_of_axes[0], list)
+        assert np.shape(list_of_axes[0]) == expected_shape
+
+        self.my_populated_agn.add_blr(
+            blr_index=44.2,
+            **self.my_blr_kwargs
+        )
+
+        all_axes = self.my_populated_agn.get_blr_density_axes()
+        assert len(all_axes) > len(list_of_axes)
+
+    def test_set_blr_efficiency_array(self):
+
+        R = self.my_populated_agn.get_blr_density_axes()[0][0]
+        test_efficiency = 1 / (1 + abs(R - 200))
+        blr_index = 0
+        assert np.shape(R) == np.shape(self.my_populated_agn.components['blr_0'].density_grid)
+        assert not self.my_populated_agn.set_blr_efficiency_array()
+        assert not self.my_populated_agn.set_blr_efficiency_array(
+            efficiency_array = test_efficiency
+        )
+        assert not self.my_populated_agn.set_blr_efficiency_array(
+            blr_index = blr_index
+        )
+        new_index = 22
+        self.my_populated_agn.add_blr(blr_index = new_index)
+        assert not self.my_populated_agn.set_blr_efficiency_array(
+            blr_index = new_index
+        )
+        assert self.my_populated_agn.set_blr_efficiency_array(
+            blr_index = blr_index,
+            efficiency_array = test_efficiency,
+        )
+        assert not self.my_populated_agn.set_blr_efficiency_array(
+            blr_index = blr_index
         )
 
     def test_add_torus(self):
@@ -359,6 +461,44 @@ class TestAgn:
         d_lam = (0.4 - 0.1) / (500 - 100)
 
         npt.assert_almost_equal(test_emissivity_at_300_nm, 0.1 + d_lam * 200)
+
+        not_enough_kwargs = {
+            "cloud_density_radial_dependence": -0.5
+        }
+        closer_kwargs = {
+            "cloud_density_radial_dependence": -0.5,
+            "radii_array": np.ones((100, 100))
+        }
+
+        del self.my_agn.diffuse_continuum_kwargs['radii_array']
+        del self.my_agn.diffuse_continuum_kwargs['phi_array']
+        del self.my_agn.diffuse_continuum_kwargs[
+            'r_out_in_gravitational_radii'
+        ] 
+        
+        with npt.assert_raises(AssertionError):
+            self.my_agn.add_diffuse_continuum(**not_enough_kwargs)
+        with npt.assert_raises(AssertionError):
+            self.my_agn.add_diffuse_continuum(**closer_kwargs)
+
+        extra_kwargs = self.my_dc_kwargs.copy()
+        del extra_kwargs['radii_array']
+        assert self.my_agn.add_diffuse_continuum(**extra_kwargs)
+        extra_kwargs = self.my_dc_kwargs.copy()
+        del extra_kwargs['phi_array']
+        del self.my_agn.diffuse_continuum_kwargs[
+            'r_in_in_gravitational_radii'
+        ]
+        assert 'r_out_in_gravitational_radii' in extra_kwargs.keys()
+        assert self.what_a_basic_agn.add_diffuse_continuum(**extra_kwargs)
+
+        tiny_kwargs = {
+            'r_out_in_gravitational_radii': 400
+        }
+
+        self.no_kwarg_agn.add_diffuse_continuum(**tiny_kwargs)
+        
+
 
     def test_add_intrinsic_signal_parameters(self):
 
@@ -561,7 +701,8 @@ class TestAgn:
             length_of_light_curve
         )
         time_axis, my_second_seeded_signal = self.my_agn.generate_intrinsic_signal(
-            length_of_light_curve
+            length_of_light_curve,
+            **intrinsic_signal_kwargs
         )
 
         assert np.sum((my_seeded_signal - my_second_seeded_signal) ** 2) == 0
@@ -610,6 +751,17 @@ class TestAgn:
 
         assert len(my_fifth_signal) == length_of_light_curve / cadence
 
+        # reset kwargs for testing purposes
+        empty_dict_of_kwargs = {
+            "power_spectrum": None,
+            "frequencies": None,
+            "random_seed": None,
+        }
+
+        self.my_agn.add_intrinsic_signal_parameters(**empty_dict_of_kwargs)
+
+        assert not self.my_agn.generate_intrinsic_signal(length_of_light_curve)
+
     def test_update_smbh_mass_exponent(self):
 
         new_mass_exp = 3.3
@@ -633,6 +785,19 @@ class TestAgn:
                 self.my_populated_agn.components[component].smbh_mass_exp
                 == new_mass_exp
             )
+
+        agn_kwargs = self.my_accretion_disk_kwargs.copy()
+
+        agn_kwargs["radii_array"] = self.radii_array
+        agn_kwargs["phi_array"] = self.phi_array
+        agn_kwargs["temp_array"] = 10 * self.radii_array
+        agn_kwargs["g_array"] = np.ones(np.shape(self.radii_array))
+
+        self.my_agn.add_generic_accretion_disk(**agn_kwargs)
+
+        assert self.my_agn.update_smbh_mass_exponent(new_mass_exp)
+
+        
 
     def test_update_inclination(self):
 
@@ -663,6 +828,17 @@ class TestAgn:
                     self.my_populated_agn.components[component].inclination_angle
                     == new_inclination
                 )
+
+        agn_kwargs = self.my_accretion_disk_kwargs.copy()
+
+        agn_kwargs["radii_array"] = self.radii_array
+        agn_kwargs["phi_array"] = self.phi_array
+        agn_kwargs["temp_array"] = 10 * self.radii_array
+        agn_kwargs["g_array"] = np.ones(np.shape(self.radii_array))
+
+        self.my_agn.add_generic_accretion_disk(**agn_kwargs)
+
+        assert not self.my_agn.update_inclination(new_inclination)
 
     def test_update_redshift(self):
 
@@ -719,14 +895,19 @@ class TestAgn:
         self.my_blr_kwargs["line_strength"] = 4
         self.my_populated_agn.add_blr(blr_index=88, **self.my_blr_kwargs)
 
-        for index in self.my_populated_agn.line_strengths.keys():
-            assert self.my_populated_agn.line_strengths[index] != new_line_strength
+        for index in self.my_populated_agn.blr_indicies:
+            assert self.my_populated_agn.components[
+                'blr_'+str(index)
+            ] != new_line_strength
 
         for index in self.my_populated_agn.blr_indicies:
-            assert self.my_populated_agn.update_line_strength(index, new_line_strength)
+            assert self.my_populated_agn.update_line_strength(
+                index, new_line_strength
+            )
 
-        for index in self.my_populated_agn.line_strengths.keys():
-            assert self.my_populated_agn.line_strengths[index] == new_line_strength
+        for index in self.my_populated_agn.blr_indicies:
+            assert self.my_populated_agn.components[
+                'blr_'+str(index)].line_strength == new_line_strength
 
     def test_calculate_accretion_disk_transfer_function(self):
 
@@ -838,15 +1019,12 @@ class TestAgn:
                     )
                 else:
                     for key in all_my_signals[jj].keys():
-                        if isinstance(all_my_signals[jj][key][0], list):
-                            assert len(all_my_signals[jj][key][0]) == len(
-                                all_my_signals[jj][key][1]
-                            )
-                        else:
-                            assert (
-                                all_my_signals[jj][key][0][0]
-                                == all_my_signals[jj][key][1][0]
-                            )
+                        assert len(all_my_signals[jj][key][0]) == len(
+                            all_my_signals[jj][key][1]
+                        )
+                       
+
+        self.my_populated_agn.update_line_strength(blr_index=0, new_line_strength=0.3)
 
         # must also work for a set of wavelength ranges
         all_my_signals_2 = self.my_populated_agn.intrinsic_signal_propagation_pipeline(
@@ -872,15 +1050,9 @@ class TestAgn:
                     )
                 else:
                     for key in all_my_signals_2[jj].keys():
-                        if isinstance(all_my_signals_2[jj][key][0], list):
-                            assert len(all_my_signals_2[jj][key][0]) == len(
-                                all_my_signals_2[jj][key][1]
-                            )
-                        else:
-                            assert (
-                                all_my_signals_2[jj][key][0][0]
-                                == all_my_signals_2[jj][key][1][-1]
-                            )
+                        assert len(all_my_signals_2[jj][key][0]) == len(
+                            all_my_signals_2[jj][key][1]
+                        )
 
         # must also work for a set of wavelengths
         all_my_signals_3 = self.my_populated_agn.intrinsic_signal_propagation_pipeline(
@@ -891,27 +1063,10 @@ class TestAgn:
         assert len(all_my_signals_3) == 5
         # each component has 3 bands (100, 500, 10000, 750, 850)
         for jj in range(len(all_my_signals_3)):
-            if isinstance(all_my_signals_3[jj], list):
-                assert len(all_my_signals_3[jj]) == 2
-            else:
-                for key in all_my_signals_3[jj].keys():
-                    for band in range(len(all_my_signals_3[jj][key])):
-                        assert len(all_my_signals_3[jj][key][band]) == 3
+            assert len(all_my_signals_3[jj]) == 2
         for jj in range(len(all_my_signals_3)):
             for kk in range(len(all_my_signals_3[jj])):
-                if isinstance(all_my_signals_3[jj], list):
-                    assert len(all_my_signals_3[jj][0]) == len(all_my_signals_3[jj][1])
-                else:
-                    for key in all_my_signals_3[jj].keys():
-                        if isinstance(all_my_signals_3[jj][key][0], list):
-                            assert len(all_my_signals_3[jj][key][0]) == len(
-                                all_my_signals_3[jj][key][1]
-                            )
-                        else:
-                            assert (
-                                all_my_signals_3[jj][key][0][-1]
-                                == all_my_signals_3[jj][key][1][0]
-                            )
+                assert len(all_my_signals_3[jj][0]) == len(all_my_signals_3[jj][1])
 
         # must also work for one wavelength range
         my_only_signal = self.my_populated_agn.intrinsic_signal_propagation_pipeline(

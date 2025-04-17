@@ -29,6 +29,7 @@ def intrinsic_signal_propagation_pipeline_for_agn(
     :param speclite_filter: a speclite filter, list of speclite filters, or list of speclite filter names.
     :param return_components: a bool which allows the return of each component light curve in addition to
         the combined light curve.
+    :param output_cadence: float/int representing the output cadence in days
     :return: a list with the length of wavelengths/filters of light curves represented by lists of time
         axes and amplitudes. If return_components, then the BLR light curves are returned as a dictionary
         with the key being the BLR index. 
@@ -54,8 +55,8 @@ def intrinsic_signal_propagation_pipeline_for_agn(
             for item in speclite_filter:
                 if isinstance(item, str):
                     try:
-                        cur_filter = load_filter(item)
-                        successful_filters.append(cur_filter)
+                        current_filter = load_filter(item)
+                        successful_filters.append(current_filter)
                     except:
                         continue
                 elif isinstance(item, speclite.filters.FilterResponse):
@@ -129,26 +130,26 @@ def intrinsic_signal_propagation_pipeline_for_agn(
 
     reprocessed_signals = []
     for wavelength in mean_wavelengths:
-        cur_tf = AGN.components[
+        current_tf = AGN.components[
             "accretion_disk"
         ].construct_accretion_disk_transfer_function(wavelength)
 
         if "diffuse_continuum" in AGN.components.keys():
-            cur_dc_mean_lag_increase = AGN.components[
+            current_dc_mean_lag_increase = AGN.components[
                 "diffuse_continuum"
             ].get_diffuse_continuum_lag_contribution(wavelength)
-            lag_increase = np.zeros(int(cur_dc_mean_lag_increase))
-            cur_tf = np.concatenate((lag_increase, cur_tf))
+            lag_increase = np.zeros(int(current_dc_mean_lag_increase))
+            current_tf = np.concatenate((lag_increase, current_tf))
 
-        t_ax, cur_signal = convolve_signal_with_transfer_function(
+        t_ax, current_signal = convolve_signal_with_transfer_function(
             smbh_mass_exp=AGN.smbh_mass_exp,
             driving_signal=intrinsic_light_curve,
             initial_time_axis=time_axis,
-            transfer_function=cur_tf,
+            transfer_function=current_tf,
             redshift_source=0,
             desired_cadence_in_days=0.1,
         )
-        reprocessed_signals.append([t_ax, cur_signal])
+        reprocessed_signals.append([t_ax, current_signal])
     output_signals = reprocessed_signals.copy()
 
     blr_signals = {}
@@ -162,27 +163,18 @@ def intrinsic_signal_propagation_pipeline_for_agn(
             ].rest_frame_wavelength_in_nm * (1 + AGN.redshift_source)
 
             for jj, wavelength_range in enumerate(wavelength_ranges):
-                if blr_weightings is not None:
-                    weighting_factor, cur_blr_tf = AGN.components[
-                        "blr_" + str(index)
-                    ].calculate_blr_emission_line_transfer_function(
-                        AGN.inclination_angle,
-                        observed_wavelength_range_in_nm=wavelength_range,
-                        emission_efficiency_array=blr_weightings[str(index)],
-                    )
-                else:
-                    weighting_factor, cur_blr_tf = AGN.components[
-                        "blr_" + str(index)
-                    ].calculate_blr_emission_line_transfer_function(
-                        AGN.inclination_angle,
-                        observed_wavelength_range_in_nm=wavelength_range,
-                    )
+                weighting_factor, current_blr_tf = AGN.components[
+                    "blr_" + str(index)
+                ].calculate_blr_emission_line_transfer_function(
+                    AGN.inclination_angle,
+                    observed_wavelength_range_in_nm=wavelength_range,
+                )
 
                 t_ax, contaminated_signals = convolve_signal_with_transfer_function(
                     smbh_mass_exp=AGN.smbh_mass_exp,
                     driving_signal=reprocessed_signals[jj][1],
                     initial_time_axis=reprocessed_signals[jj][0],
-                    transfer_function=cur_blr_tf,
+                    transfer_function=current_blr_tf,
                     redshift_source=0,
                     desired_cadence_in_days=0.1,
                 )
@@ -193,40 +185,40 @@ def intrinsic_signal_propagation_pipeline_for_agn(
 
     for jj, wavelength_range in enumerate(wavelength_ranges):
 
-        cur_weighting = 1
+        current_weighting = 1
         original_mean = np.mean(reprocessed_signals[jj][1])
         original_std = np.std(reprocessed_signals[jj][1])
 
-        cur_signal = reprocessed_signals[jj][1] - original_mean
+        current_signal = reprocessed_signals[jj][1] - original_mean
         if original_std != 0:
-            cur_signal /= original_std
+            current_signal /= original_std
 
         if len(AGN.blr_indicies) > 0:
             for index in AGN.blr_indicies:
                 if isinstance(blr_signals[str(index)], list):
                     if not isinstance(blr_signals[str(index)][jj], list):
                         continue
-                    cur_weighting += AGN.line_strengths[str(index)]
+                    current_weighting += AGN.components['blr_'+str(index)].line_strength
 
-                    cur_blr_signal = blr_signals[str(index)][jj][1]
-                    cur_blr_signal -= np.mean(cur_blr_signal)
-                    if np.std(cur_blr_signal) != 0:
-                        cur_blr_signal /= np.std(cur_blr_signal)
+                    current_blr_signal = blr_signals[str(index)][jj][1]
+                    current_blr_signal -= np.mean(current_blr_signal)
+                    if np.std(current_blr_signal) != 0:
+                        current_blr_signal /= np.std(current_blr_signal)
 
-                    cur_signal += (
-                        cur_blr_signal
-                        * AGN.line_strengths[str(index)]
+                    current_signal += (
+                        current_blr_signal
+                        * AGN.components['blr_'+str(index)].line_strength
                         * blr_signals[str(index)][jj][2]
                     )
-        if cur_weighting != 0:
-            cur_signal /= cur_weighting
+        if current_weighting != 0:
+            current_signal /= current_weighting
         if original_std != 0:
-            cur_signal *= original_std
-        cur_signal += original_mean
+            current_signal *= original_std
+        current_signal += original_mean
 
         output_signals[jj] = [
             reprocessed_signals[jj][0] * (1 + AGN.redshift_source),
-            cur_signal,
+            current_signal,
         ]
 
     if return_components is True:
@@ -282,8 +274,8 @@ def visualization_pipeline(
             for item in speclite_filter:
                 if isinstance(item, str):
                     try:
-                        cur_filter = load_filter(item)
-                        successful_filters.append(cur_filter)
+                        current_filter = load_filter(item)
+                        successful_filters.append(current_filter)
                     except:
                         continue
                 elif isinstance(item, speclite.filters.FilterResponse):
@@ -347,46 +339,50 @@ def visualization_pipeline(
     for jj, wavelength in enumerate(mean_wavelengths):
         list_of_projections = []
         if "accretion_disk" in AGN.components.keys():
-            cur_img = AGN.components["accretion_disk"].calculate_surface_intensity_map(
+            current_img = AGN.components["accretion_disk"].calculate_surface_intensity_map(
                 wavelength
             )
-            list_of_projections.append(cur_img)
+            list_of_projections.append(current_img)
 
-            reference_flux = cur_img.total_flux
+            reference_flux = current_img.total_flux
 
         if "diffuse_continuum" in AGN.components.keys():
-            cur_img = AGN.components[
+            current_img = AGN.components[
                 "diffuse_continuum"
             ].get_diffuse_continuum_emission(wavelength)
-            list_of_projections.append(cur_img)
+            list_of_projections.append(current_img)
 
-            cur_flux = cur_img.total_flux
+            current_flux = current_img.total_flux
 
             if AGN.components['diffuse_continuum'].emissivity_etas is not None:
                 emissivity = AGN.components['diffuse_continuum'].interpolate_spectrum_to_wavelength(
                     wavelength
                 )
-                cur_img.flux_array *= emissivity * reference_flux / cur_flux
+                current_img.flux_array *= emissivity * reference_flux / current_flux
 
         if len(AGN.blr_indicies) > 0:
 
             for kk, index in enumerate(AGN.blr_indicies):
 
-                cur_projection = AGN.components[
+                current_projection = AGN.components[
                     "blr_" + str(index)
                 ].project_blr_intensity_over_velocity_range(
                     AGN.inclination_angle,
                     observed_wavelength_range_in_nm=[wavelength_ranges[jj]],
                 )
 
-                if cur_projection.total_flux > 0:
-                    cur_projection.flux_array *= AGN.line_strengths[str(index)] * reference_flux / cur_projection.total_flux
-                    cur_projection.total_flux *= AGN.line_strengths[str(index)] * reference_flux / cur_projection.total_flux
+                if current_projection.total_flux > 0:
+                    current_projection.flux_array *= AGN.components[
+                        'blr_'+str(index)
+                    ].line_strength * reference_flux / current_projection.total_flux
+                    current_projection.total_flux *= AGN.components[
+                        'blr_'+str(index)
+                    ].line_strength * reference_flux / current_projection.total_flux
                     
                 if kk == 0:
-                    output_blr_projection = cur_projection
+                    output_blr_projection = current_projection
                 else:
-                    output_blr_projection.add_flux_projection(cur_projection)
+                    output_blr_projection.add_flux_projection(current_projection)
 
             list_of_projections.append(output_blr_projection)
         list_of_wavelength_resolved_projections.append(list_of_projections)

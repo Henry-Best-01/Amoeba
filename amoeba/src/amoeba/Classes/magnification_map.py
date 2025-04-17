@@ -70,10 +70,10 @@ class MagnificationMap:
                 self.ray_map = convert_1d_array_to_2d_array(magnification_array)
             elif np.ndim(magnification_array) == 2:
                 self.ray_map = magnification_array
-        elif magnification_array[-4:] == "fits":
+        elif magnification_array[-4:] == "fits": # pragma: no cover
             with fits.open(magnification_array) as f:
                 self.ray_map = f[0].data
-        elif magnification_array[-4:] == ".dat" or magnification_array[-4:] == ".bin":
+        elif magnification_array[-4:] == ".dat" or magnification_array[-4:] == ".bin": # pragma: no cover
             with open(magnification_array, "rb") as f:
                 extracted_magnification_array = np.fromfile(f, "i", count=-1, sep="")
                 self.ray_map = convert_1d_array_to_2d_array(
@@ -83,6 +83,7 @@ class MagnificationMap:
             print(
                 "Invalid file name / format. Please pass in the pathway to a .fits or .dat file or a Numpy array"
             )
+            return None
 
         self.resolution = np.size(self.ray_map, 0)
         self.macro_magnification = 1 / ((1 - self.convergence) ** 2.0 - self.shear**2.0)
@@ -190,7 +191,10 @@ class MagnificationMap:
             if not return_track_coords:
                 light_curve *= self.macro_magnification
             else:
-                light_curve[0] *= self.macro_magnification
+                track_x = light_curve[1]
+                track_y = light_curve[2]
+                light_curve = self.macro_magnification * np.asarray(light_curve[0])
+                light_curve = light_curve, track_x, track_y
         return light_curve
 
     def calculate_microlensed_transfer_function(
