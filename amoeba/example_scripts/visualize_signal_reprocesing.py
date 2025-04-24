@@ -92,17 +92,26 @@ ax.plot(
 )
 ax.set_xlabel(r"$\nu$ [day$^{-1}$]")
 ax.set_ylabel("Power [arb.]")
-ax.legend(loc=3)
 fig.set_figheight(3)
 
-# regenerate the power spectrum of drw produced by the convenience function
-sample_frequencies, regenerated_drw_pwd = welch(signal_drw)
-ax.plot(sample_frequencies, regenerated_drw_pwd, label="regenerated psd")
+# regenerate the power spectra of signals produced
+sample_frequencies, regenerated_drw_psd = welch(
+    signal_drw, nperseg=min(10 * time_scale_breakpoint, int(length_light_curve / 10))
+)
+ax.plot(sample_frequencies, regenerated_drw_psd, label="regenerated drw")
 
 
 time_bpl, bpl_signal = generate_signal_from_psd(
     length_light_curve, my_bpl_psd, frequency_axis, random_seed=random_seed
 )
+
+sample_frequencies, regenerated_bpl_psd = welch(
+    bpl_signal, nperseg=min(10 * time_scale_breakpoint, int(length_light_curve / 10))
+)
+ax.plot(sample_frequencies, regenerated_bpl_psd, label="regenerated bpl")
+
+ax.legend(loc=3)
+ax.set_xlim(10**-3, 0.5)
 
 time_drw, drw_signal = generate_signal_from_psd(
     length_light_curve, my_drw_psd, frequency_axis, random_seed=random_seed

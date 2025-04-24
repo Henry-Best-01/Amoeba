@@ -83,10 +83,7 @@ class TestAccretionDisk:
         accretion_disk_data_albedo_no_r_out["albedo_array"] = 0.7
         del accretion_disk_data_albedo_no_r_out["r_out_in_gravitational_radii"]
 
-        self.NewDisk = AccretionDisk(
-            **accretion_disk_data_albedo_no_r_out
-        )
-
+        self.NewDisk = AccretionDisk(**accretion_disk_data_albedo_no_r_out)
 
     def test_initializtion(self):
         assert self.FaceOnDisk1.smbh_mass_exp == 8.0
@@ -296,12 +293,9 @@ class TestAccretionDisk:
             observer_frame_wavelength,
             time_stamps,
             driving_signal,
-            driving_signal_fractional_strength
+            driving_signal_fractional_strength,
         )
 
         assert len(snapshots) == len(time_stamps)
 
-        assert np.sum(
-            snapshots[0]**2 - snapshots[2]**2
-        ) > 0
-            
+        assert np.sum(snapshots[0].flux_array ** 2 - snapshots[2].flux_array ** 2) > 0

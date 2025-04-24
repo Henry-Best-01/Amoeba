@@ -32,7 +32,7 @@ def intrinsic_signal_propagation_pipeline_for_agn(
     :param output_cadence: float/int representing the output cadence in days
     :return: a list with the length of wavelengths/filters of light curves represented by lists of time
         axes and amplitudes. If return_components, then the BLR light curves are returned as a dictionary
-        with the key being the BLR index. 
+        with the key being the BLR index.
     """
 
     if observer_frame_wavelengths_in_nm is None and speclite_filter is None:
@@ -158,9 +158,6 @@ def intrinsic_signal_propagation_pipeline_for_agn(
 
         for index in AGN.blr_indicies:
             blr_signals[str(index)] = []
-            observer_frame_emission_line_wavelength = AGN.components[
-                "blr_" + str(index)
-            ].rest_frame_wavelength_in_nm * (1 + AGN.redshift_source)
 
             for jj, wavelength_range in enumerate(wavelength_ranges):
                 weighting_factor, current_blr_tf = AGN.components[
@@ -179,6 +176,10 @@ def intrinsic_signal_propagation_pipeline_for_agn(
                     desired_cadence_in_days=0.1,
                 )
 
+                contaminated_signals -= np.mean(contaminated_signals)
+                if np.std(contaminated_signals) != 0:
+                    contaminated_signals /= np.std(contaminated_signals)
+
                 blr_signals[str(index)].append(
                     [t_ax, contaminated_signals, weighting_factor]
                 )
@@ -196,25 +197,20 @@ def intrinsic_signal_propagation_pipeline_for_agn(
         if len(AGN.blr_indicies) > 0:
             for index in AGN.blr_indicies:
                 if isinstance(blr_signals[str(index)], list):
-                    if not isinstance(blr_signals[str(index)][jj], list):
+                    if not isinstance(
+                        blr_signals[str(index)][jj], list
+                    ):  # pragma: no cover
                         continue
-                    current_weighting += AGN.components['blr_'+str(index)].line_strength
 
+                    current_weighting += blr_signals[str(index)][jj][-1]
                     current_blr_signal = blr_signals[str(index)][jj][1]
                     current_blr_signal -= np.mean(current_blr_signal)
                     if np.std(current_blr_signal) != 0:
                         current_blr_signal /= np.std(current_blr_signal)
 
                     current_signal += (
-                        current_blr_signal
-                        * AGN.components['blr_'+str(index)].line_strength
-                        * blr_signals[str(index)][jj][2]
+                        current_blr_signal * blr_signals[str(index)][jj][2]
                     )
-        if current_weighting != 0:
-            current_signal /= current_weighting
-        if original_std != 0:
-            current_signal *= original_std
-        current_signal += original_mean
 
         output_signals[jj] = [
             reprocessed_signals[jj][0] * (1 + AGN.redshift_source),
@@ -323,7 +319,7 @@ def visualization_pipeline(
                     mean_wavelengths.append(np.mean(band))
                     wavelength_ranges.append([np.min(band), np.max(band)])
 
-    if len(mean_wavelengths) == 0:
+    if len(mean_wavelengths) == 0:  # pragma: no cover
         print(
             "please provide a speclite filter, wavelength, wavelength range, or list containing \n previously mentioned types"
         )
@@ -339,9 +335,9 @@ def visualization_pipeline(
     for jj, wavelength in enumerate(mean_wavelengths):
         list_of_projections = []
         if "accretion_disk" in AGN.components.keys():
-            current_img = AGN.components["accretion_disk"].calculate_surface_intensity_map(
-                wavelength
-            )
+            current_img = AGN.components[
+                "accretion_disk"
+            ].calculate_surface_intensity_map(wavelength)
             list_of_projections.append(current_img)
 
             reference_flux = current_img.total_flux
@@ -354,10 +350,10 @@ def visualization_pipeline(
 
             current_flux = current_img.total_flux
 
-            if AGN.components['diffuse_continuum'].emissivity_etas is not None:
-                emissivity = AGN.components['diffuse_continuum'].interpolate_spectrum_to_wavelength(
-                    wavelength
-                )
+            if AGN.components["diffuse_continuum"].emissivity_etas is not None:
+                emissivity = AGN.components[
+                    "diffuse_continuum"
+                ].interpolate_spectrum_to_wavelength(wavelength)
                 current_img.flux_array *= emissivity * reference_flux / current_flux
 
         if len(AGN.blr_indicies) > 0:
@@ -372,13 +368,17 @@ def visualization_pipeline(
                 )
 
                 if current_projection.total_flux > 0:
-                    current_projection.flux_array *= AGN.components[
-                        'blr_'+str(index)
-                    ].line_strength * reference_flux / current_projection.total_flux
-                    current_projection.total_flux *= AGN.components[
-                        'blr_'+str(index)
-                    ].line_strength * reference_flux / current_projection.total_flux
-                    
+                    current_projection.flux_array *= (
+                        AGN.components["blr_" + str(index)].line_strength
+                        * reference_flux
+                        / current_projection.total_flux
+                    )
+                    current_projection.total_flux *= (
+                        AGN.components["blr_" + str(index)].line_strength
+                        * reference_flux
+                        / current_projection.total_flux
+                    )
+
                 if kk == 0:
                     output_blr_projection = current_projection
                 else:
@@ -395,6 +395,5 @@ def visualization_pipeline(
         for jj in range(len(list_of_projections) - 1):
             index = jj + 1
             output_projections[-1].add_flux_projection(list_of_projections[index])
-            print(output_projections[-1].total_flux)
 
     return output_projections

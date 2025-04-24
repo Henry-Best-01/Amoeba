@@ -7,7 +7,21 @@ Development Lead
 
 * Henry James Best V <hbest@gradcenter.cuny.edu>
 
+
 Contributors
 ------------
 
-None yet. Why not be the first?
+Joshua Fagin
+James H.H. Chan
+Matthew O'Dowd
+
+
+Beta Testers
+------------
+
+Bridget Ierace
+Padma Venkatraman
+Paras Sharma
+Jolie L'Heureux
+
+

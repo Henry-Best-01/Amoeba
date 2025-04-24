@@ -103,7 +103,8 @@ def create_maps(
     """
     try:
         import sim5
-        sim5_installed = True # pragma: no cover
+
+        sim5_installed = True  # pragma: no cover
     except ModuleNotFoundError:
         sim5_installed = False
 
@@ -232,7 +233,9 @@ def convert_spin_to_isco_radius(spin):
     return 3 + z2 - np.sign(spin) * ((3 - z1) * (3 + z1 + 2 * z2)) ** (1 / 2)
 
 
-def convert_eddington_ratio_to_accreted_mass(mass_in_solar_masses, eddington_ratio, efficiency=0.1):
+def convert_eddington_ratio_to_accreted_mass(
+    mass_in_solar_masses, eddington_ratio, efficiency=0.1
+):
     """This function converts an Eddington Ratio (i.e. 0.15) into the corresponding
     accretion rate in physical units assuming bol_lum = eddington_ratio * edd_lum.
 
@@ -268,7 +271,9 @@ def convert_eddington_ratio_to_accreted_mass(mass_in_solar_masses, eddington_rat
     """
     if type(mass_in_solar_masses) != u.Quantity:
         mass_in_solar_masses *= const.M_sun.to(u.kg)
-    edd_lum = 4 * np.pi * const.G * mass_in_solar_masses * const.m_p * const.c / const.sigma_T
+    edd_lum = (
+        4 * np.pi * const.G * mass_in_solar_masses * const.m_p * const.c / const.sigma_T
+    )
     bol_lum = edd_lum * eddington_ratio
     return bol_lum / (efficiency * const.c**2)
 
@@ -358,7 +363,6 @@ def accretion_disk_temperature(
     else:
         mass_in_kg = mass_in_solar_masses * const.M_sun.to(u.kg).value
     grav_rad_in_meters = calculate_gravitational_radius(mass_in_solar_masses)
-    print(mass_in_kg / const.M_sun.to(u.kg))
     schwarz_rad_in_meters = 2 * grav_rad_in_meters
 
     radius_in_grav_rad = radius_in_meters / grav_rad_in_meters
@@ -393,7 +397,7 @@ def accretion_disk_temperature(
         x2 = 2 * np.cos((np.arccos(spin) + np.pi) / 3)
         x3 = -2 * np.cos(np.arccos(spin) / 3)
 
-        '''
+        """
         F_NT = (
             1.0
             / (x**7 - 3 * x**5 + 2 * spin * x**4)
@@ -429,30 +433,34 @@ def accretion_disk_temperature(
             )
             ** (0.25)
         ).value
-        '''
+        """
         F_NT = (
-            (
-                1 + spin * x**-3
-            ) / (
-                x * (1 - 3 * x**-2 + 2 * spin * x**-3)**(1/2)
-            )
+            (1 + spin * x**-3) / (x * (1 - 3 * x**-2 + 2 * spin * x**-3) ** (1 / 2))
         ) * (
-            x - x0 - 3 * spin / 2 * np.log(x/x0) - (
-                3 * (x1 - spin)**2 / (x1 * (x1 - x2) * (x1 - x3))
-            ) * np.log((x - x1) / (x0 - x1)) - (
-                3 * (x2 - spin)**2 / (x2 * (x2 - x3) * (x2 - x1))
-            ) * np.log((x - x2) / (x0 - x2)) - (
-                3 * (x3 - spin)**2 / (x3 * (x3 - x1) * (x3 - x2))
-            ) * np.log((x - x3) / (x0 - x3))
+            x
+            - x0
+            - 3 * spin / 2 * np.log(x / x0)
+            - (3 * (x1 - spin) ** 2 / (x1 * (x1 - x2) * (x1 - x3)))
+            * np.log((x - x1) / (x0 - x1))
+            - (3 * (x2 - spin) ** 2 / (x2 * (x2 - x3) * (x2 - x1)))
+            * np.log((x - x2) / (x0 - x2))
+            - (3 * (x3 - spin) ** 2 / (x3 * (x3 - x1) * (x3 - x2)))
+            * np.log((x - x3) / (x0 - x3))
         )
 
         temp_map = (
             (
-                F_NT * 3 * const.G * mass_in_kg * m0_dot / (8 * np.pi * const.sigma_sb * schwarz_rad_in_meters**3)
-            ) ** (0.25)
+                F_NT
+                * 3
+                * const.G
+                * mass_in_kg
+                * m0_dot
+                / (8 * np.pi * const.sigma_sb * schwarz_rad_in_meters**3)
+            )
+            ** (0.25)
         ).decompose().value * (
             (radius_in_meters / schwarz_rad_in_meters) ** ((beta - 3) / 4)
-        )        
+        )
     else:
         print(
             "Please use visc_temp_prof = 'SS' or 'NT', other values are not supported at this time. \n Revering to SS disk."
@@ -473,9 +481,6 @@ def accretion_disk_temperature(
             (radius_in_meters / schwarz_rad_in_meters) ** ((beta - 3) / 4)
         )
     visc_temp = temp_map
-
-    print(visc_temp)
-
 
     geometric_term = (
         (
@@ -769,45 +774,64 @@ def pull_value_from_grid(array_2d, x_position, y_position):
     :param y_position: y coordinate in array_2d in pixels
     :return: approximation of array_2d at point (x_position, y_position)
     """
-    assert x_position >= 0 and y_position >= 0
-    assert x_position < np.size(array_2d, 0) and y_position < np.size(array_2d, 1)
 
-    if int(x_position) == x_position:
-        if int(y_position) == y_position:
-            return array_2d[int(x_position), int(y_position)]
-        else:
-            dy = y_position % 1
-            df_dy = (
-                array_2d[int(x_position), int(y_position + 1)]
-                - array_2d[int(x_position), int(y_position)]
-            )
-            value = array_2d[int(x_position), int(y_position)] + dy * df_dy
-            return value
-    if int(y_position) == y_position:
-        dx = x_position % 1
-        df_dx = (
-            array_2d[int(x_position + 1), int(y_position)]
-            - array_2d[int(x_position), int(y_position)]
+    array_2d = np.pad(array_2d, (0, 1), mode="edge")
+
+    if isinstance(x_position, (int, float)) and isinstance(y_position, (int, float)):
+        assert x_position >= 0 and y_position >= 0
+        assert (
+            x_position <= np.size(array_2d, 0) - 1
+            and y_position <= np.size(array_2d, 1) - 1
         )
-        value = array_2d[int(x_position), int(y_position)] + dx * df_dx
+
+        x_int = x_position // 1
+        y_int = y_position // 1
+        dx = x_position % 1
+        dy = y_position % 1
+
+        base_value = array_2d[int(x_int), int(y_int)]
+        base_plus_x = array_2d[int(x_int) + 1, int(y_int)]
+        base_plus_y = array_2d[int(x_int), int(y_int) + 1]
+        base_plus_x_plus_y = array_2d[int(x_int) + 1, int(y_int) + 1]
+
+        value = (
+            base_value * (1 - dx) * (1 - dy)
+            + base_plus_x * (1 - dx) * dy
+            + base_plus_y * dx * (1 - dy)
+            + base_plus_x_plus_y * dx * dy
+        )
+
+        array_2d = array_2d[:-2, :-2]
+
         return value
-    x_int = x_position // 1
-    y_int = y_position // 1
-    dx = x_position % 1
-    dy = y_position % 1
-    base_value = array_2d[int(x_int) - 1, int(y_int) - 1]
-    base_plus_x = array_2d[int(x_int), int(y_int) - 1]
-    base_plus_y = array_2d[int(x_int) - 1, int(y_int)]
-    base_plus_x_plus_y = array_2d[int(x_int), int(y_int)]
 
-    value = (
-        base_value * (1 - dx) * (1 - dy)
-        + base_plus_x * (1 - dx) * dy
-        + base_plus_y * dx * (1 - dy)
-        + base_plus_x_plus_y * dx * dy
-    )
+    else:
+        assert min(x_position) >= 0 and min(y_position) >= 0
+        assert (
+            max(x_position) <= np.size(array_2d, 0) - 1
+            and max(y_position) <= np.size(array_2d, 1) - 1
+        )
 
-    return value
+        x_int = x_position // 1
+        y_int = y_position // 1
+        dx = x_position % 1
+        dy = y_position % 1
+
+        base_value = array_2d[(x_int.astype(int)), (y_int.astype(int))]
+        base_plus_x = array_2d[(x_int.astype(int) + 1), (y_int.astype(int))]
+        base_plus_y = array_2d[(x_int.astype(int)), (y_int.astype(int) + 1)]
+        base_plus_x_plus_y = array_2d[(x_int.astype(int) + 1), (y_int.astype(int) + 1)]
+
+        value = (
+            base_value * (1 - dx) * (1 - dy)
+            + base_plus_x * (1 - dx) * dy
+            + base_plus_y * dx * (1 - dy)
+            + base_plus_x_plus_y * dx * dy
+        )
+
+        array_2d = array_2d[:-2, :-2]
+
+        return value
 
 
 def convert_1d_array_to_2d_array(array_1d):
@@ -985,7 +1009,9 @@ def extract_light_curve(
     rng = np.random.default_rng(seed=random_seed)
 
     if type(effective_transverse_velocity) == u.Quantity:
-        effective_transverse_velocity = effective_transverse_velocity.to(u.m / u.s).value
+        effective_transverse_velocity = effective_transverse_velocity.to(
+            u.m / u.s
+        ).value
     else:
         effective_transverse_velocity *= u.km.to(u.m)
     if type(light_curve_time_in_years) == u.Quantity:
@@ -1009,7 +1035,7 @@ def extract_light_curve(
 
     if pixel_shift > 0:
         safe_convolution_array = convolution_array[
-            pixel_shift:-pixel_shift, pixel_shift:-pixel_shift
+            pixel_shift : -pixel_shift - 1, pixel_shift : -pixel_shift - 1
         ]
     else:
         safe_convolution_array = convolution_array
@@ -1075,19 +1101,15 @@ def extract_light_curve(
         y_start_position, y_start_position + delta_y, int(n_points)
     )
 
-    light_curve = []
-    for position in range(int(n_points)):
-        light_curve.append(
-            pull_value_from_grid(
-                safe_convolution_array, x_positions[position], y_positions[position]
-            )
-        )
+    light_curve = pull_value_from_grid(safe_convolution_array, x_positions, y_positions)
+
     if return_track_coords:
         return (
             np.asarray(light_curve),
             x_positions + pixel_shift,
             y_positions + pixel_shift,
         )
+
     return np.asarray(light_curve)
 
 
@@ -1742,7 +1764,7 @@ def generate_snapshots_of_radiation_pattern(
             driving_signal = np.concatenate((driving_signal, driving_signal))
 
     burn_in_time = maximum_time_lag_in_days
-    accretion_disk_mask = temp_array > 0
+    accretion_disk_mask = temp_array > 1000
 
     list_of_snapshots = []
     for time in time_stamps:
@@ -2031,12 +2053,10 @@ def calculate_blr_transfer_function(
         )
 
         transfer_function_of_slab = np.histogram(
-            rescale(time_delays_of_current_slab, 2 * radial_resolution),
+            time_delays_of_current_slab,
             range=(0, np.max(time_delays_of_current_slab) + 1),
             bins=int(np.max(time_delays_of_current_slab) + 1),
-            weights=np.nan_to_num(
-                rescale(response_of_current_slab, 2 * radial_resolution)
-            ),
+            weights=np.nan_to_num(response_of_current_slab),
             density=True,
         )[0]
 

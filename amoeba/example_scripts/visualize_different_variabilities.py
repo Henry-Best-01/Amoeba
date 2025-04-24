@@ -9,11 +9,11 @@ from scipy.interpolate import interp1d
 
 
 # signal
-signal_length = 20000
-maxtau = 1000
+signal_length = 2000
+maxtau = 500
 tax = np.linspace(0, signal_length - 1, signal_length)
 frequencies = np.linspace(1 / (2 * signal_length), 1 / 2, signal_length)
-power_spectrum = frequencies ** (-3.0)
+power_spectrum = frequencies ** (-2.0)
 random_seed = None
 
 time_axis, driving_signal = generate_signal_from_psd(
@@ -171,7 +171,13 @@ for tau in range(maxtau):
 
 fig, ax = plt.subplots(3, gridspec_kw={"height_ratios": [3, 1, 1]})
 
-ax[0].plot(tax, driving_signal / np.std(driving_signal))
+ax[0].plot(
+    tax,
+    driving_signal / np.std(driving_signal),
+    color="black",
+    linewidth=0.5,
+    label="driving signal",
+)
 ax[0].plot(
     tax,
     conv_signal_disk_1[: len(tax)] / np.std(conv_signal_disk_1[: len(tax)]),

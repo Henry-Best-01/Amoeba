@@ -310,7 +310,7 @@ class AccretionDisk:
 
         :param observer_frame_wavelength_in_nm: Wavelength in nm in the observer's frame
             which we are observing the source at
-        :param time_stamps: 1d array or list of times associated with the driving signal
+        :param time_stamps: 1d array or list of times to pull the snapshots at
         :param driving_signal: 1d array or list representing the driving light curve
         :param driving_signal_fractional_strength: float representing how strong the
             reprocessed signal is with respect to the continuum emission
@@ -352,7 +352,23 @@ class AccretionDisk:
             self.albedo_array,
         )
 
-        return radiation_patterns
+        radiation_patterns_flux_projections = []
+
+        for current_pattern in radiation_patterns:
+            current_projection = FluxProjection(
+                current_pattern,
+                observer_frame_wavelength_in_nm,
+                self.smbh_mass_exp,
+                self.redshift_source,
+                self.r_out_in_gravitational_radii,
+                self.inclination_angle,
+                OmM=self.OmM,
+                H0=self.H0,
+            )
+
+            radiation_patterns_flux_projections.append(current_projection)
+
+        return radiation_patterns_flux_projections
 
     def get_plotting_axes(self):
         """Method to get plotting axes for the accretion disk. Useful for plotting any

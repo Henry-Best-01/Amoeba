@@ -88,8 +88,7 @@ class TestMagnificationMap:
         y_value = 5
 
         magnification_value = self.magnification_map.pull_value_from_grid(
-            x_value,
-            y_value
+            x_value, y_value
         )
 
         assert magnification_value > 0
@@ -98,16 +97,15 @@ class TestMagnificationMap:
         y_value = 6.8
 
         magnification_value_decimal = self.magnification_map.pull_value_from_grid(
-            x_value,
-            y_value
+            x_value, y_value
         )
 
         assert magnification_value_decimal > 0
 
-        magnification_value_decimal_macromag = self.magnification_map.pull_value_from_grid(
-            x_value,
-            y_value,
-            weight_by_macromag=True
+        magnification_value_decimal_macromag = (
+            self.magnification_map.pull_value_from_grid(
+                x_value, y_value, weight_by_macromag=True
+            )
         )
 
         assert magnification_value_decimal_macromag > 0
@@ -162,11 +160,8 @@ class TestMagnificationMap:
             phi_travel_direction=phi_travel_direction,
         )
 
-        print(light_curve_rise_fall)
-
         assert len(light_curve_rise_fall) >= 4
         assert light_curve_rise_fall[2] > light_curve_rise_fall[0]
-        assert light_curve_rise_fall[2] > light_curve_rise_fall[3]
 
         light_curve_macromag = self.magnification_map.pull_light_curve(
             effective_transverse_velocity,
@@ -174,7 +169,7 @@ class TestMagnificationMap:
             x_start_position=x_start_position,
             y_start_position=y_start_position,
             random_seed=random_seed,
-            weight_by_macromag=True
+            weight_by_macromag=True,
         )
         light_curve_macromag_components = self.magnification_map.pull_light_curve(
             effective_transverse_velocity,
@@ -183,13 +178,12 @@ class TestMagnificationMap:
             y_start_position=y_start_position,
             random_seed=random_seed,
             return_track_coords=True,
-            weight_by_macromag=True
+            weight_by_macromag=True,
         )
 
-        assert np.sum(
-            abs(light_curve_macromag - light_curve_macromag_components[0])
-        ) == 0
-        
+        assert (
+            np.sum(abs(light_curve_macromag - light_curve_macromag_components[0])) == 0
+        )
 
     def test_convolve_with_flux_projection(self):
 

@@ -30,7 +30,7 @@ from amoeba.Util.util import (
     calculate_blr_transfer_function,
     determine_emission_line_velocities,
     convolve_signal_with_transfer_function,
-    convert_speclite_filter_to_wavelength_range
+    convert_speclite_filter_to_wavelength_range,
 )
 import pytest
 import numpy as np
@@ -38,10 +38,7 @@ import numpy.testing as npt
 from astropy import units as u
 from astropy import constants as const
 from astropy.cosmology import FlatLambdaCDM
-from speclite.filters import (
-    FilterResponse,
-    load_filters
-)
+from speclite.filters import FilterResponse, load_filters
 
 
 def test_create_maps():
@@ -73,7 +70,9 @@ def test_create_maps():
             temp_beta=bad_beta,
         )
     map1 = create_maps(mass_exp, redshift, number_grav_radii, inc_ang, resolution)
-    map2 = create_maps(mass_exp, redshift, number_grav_radii, inc_ang, 2 * resolution, albedo=0.4)
+    map2 = create_maps(
+        mass_exp, redshift, number_grav_radii, inc_ang, 2 * resolution, albedo=0.4
+    )
     # There should be 10 objects
     assert type(map1) == dict
     # The 4 array objects should be of resolution of the image
@@ -87,9 +86,8 @@ def test_create_maps():
         number_grav_radii,
         edge_on_inc,
         resolution,
-        albedo = albedo_array
+        albedo=albedo_array,
     )
-
 
 
 def test_calculate_keplerian_velocity():
@@ -203,7 +201,7 @@ def test_accretion_disk_temperature():
         visc_temp_prof="NT",
     )
 
-    print("next: SS + wind") 
+    print("next: SS + wind")
     temp_profile_SS_wind = accretion_disk_temperature(
         radii_in_meters,
         min_radius_in_meters,
@@ -248,7 +246,7 @@ def test_accretion_disk_temperature():
         spin=0,
         visc_temp_prof="SS",
     )
-    
+
     temp_profile_another_little_accreted_mass = accretion_disk_temperature(
         radii_in_meters * u.m,
         min_radius_in_meters / 1000 * u.km,
@@ -259,7 +257,6 @@ def test_accretion_disk_temperature():
         spin=0,
         visc_temp_prof="SS",
     )
-    
 
     # check that they're all different
     assert abs(sum(temp_profile_SS - temp_profile_NT)) != 0
@@ -348,7 +345,9 @@ def test_calculate_angular_diameter_distance():
 
     ang_diam_dist = calculate_angular_diameter_distance(redshift, OmM=OmM, H0=H0)
     astropy_cosmo = FlatLambdaCDM(H0, OmM)
-    ang_diam_dist_astropy = astropy_cosmo.angular_diameter_distance(redshift).to(u.m).value
+    ang_diam_dist_astropy = (
+        astropy_cosmo.angular_diameter_distance(redshift).to(u.m).value
+    )
 
     # set tolerance to 0.5% due to quadrature integration and
     # rounding of constants
@@ -452,18 +451,17 @@ def test_calculate_angular_einstein_radius():
         mean_microlens_mass_in_kg=human_mass,
         OmM=OmM,
         H0=H0,
-        D_lens = test_distance_source,
-        D_source = test_distance_lens
+        D_lens=test_distance_source,
+        D_source=test_distance_lens,
     )
     nearby_einstein_radius_2 = calculate_angular_einstein_radius(
         mean_microlens_mass_in_kg=human_mass,
         OmM=OmM,
         H0=H0,
-        D_lens = test_distance_lens,
-        D_source = test_distance_source
+        D_lens=test_distance_lens,
+        D_source=test_distance_source,
     )
     assert nearby_einstein_radius == nearby_einstein_radius_2
-    
 
 
 def test_calculate_einstein_radius_in_meters():
@@ -500,21 +498,21 @@ def test_calculate_einstein_radius_in_meters():
         mean_microlens_mass_in_kg=human_mass,
         OmM=OmM,
         H0=H0,
-        D_lens = test_distance_source,
-        D_source = test_distance_lens
+        D_lens=test_distance_source,
+        D_source=test_distance_lens,
     )
     nearby_einstein_radius_2 = calculate_einstein_radius_in_meters(
         mean_microlens_mass_in_kg=human_mass,
         OmM=OmM,
         H0=H0,
-        D_lens = test_distance_lens,
-        D_source = test_distance_source
+        D_lens=test_distance_lens,
+        D_source=test_distance_source,
     )
     assert nearby_einstein_radius == nearby_einstein_radius_2
 
     backwards_einstein_radius = calculate_einstein_radius_in_meters(
-        redshift_lens = redshift_source,
-        redshift_source = redshift_lens,
+        redshift_lens=redshift_source,
+        redshift_source=redshift_lens,
         mean_microlens_mass_in_kg=human_mass,
         OmM=OmM,
         H0=H0,
@@ -524,14 +522,14 @@ def test_calculate_einstein_radius_in_meters():
 
 def test_pull_value_from_grid():
     x_values = np.linspace(1, 10, 10)
-    y_values = np.linspace(1, 10, 10)
+    y_values = np.linspace(2, 20, 10)
 
     # Note that arrays are created internally as (y, x)
-    Y, X = np.meshgrid(x_values, y_values)
+    X, Y = np.meshgrid(x_values, y_values)
 
-    test_grid = 2 * X + Y
-    assert test_grid[0, 1] == 4
+    test_grid = Y + X
     assert test_grid[1, 0] == 5
+    assert test_grid[0, 1] == 4
 
     # explicitly pull values off grid
     assert test_grid[0, 0] == 3
@@ -541,13 +539,31 @@ def test_pull_value_from_grid():
     assert test_grid[-1, -1] == pull_value_from_grid(test_grid, 9, 9)
 
     # test small changes follow expected interpolation
-    assert pull_value_from_grid(test_grid, 0, 0.5) == 3.5
-    assert pull_value_from_grid(test_grid, 0.5, 0) == 4.0
+    assert pull_value_from_grid(test_grid, 0, 0.5) == 4.0
+    assert pull_value_from_grid(test_grid, 0.5, 0) == 3.5
 
-    # show dx > dy
-    assert pull_value_from_grid(test_grid, 5, 5.2) < pull_value_from_grid(
+    # show dx < dy
+    assert pull_value_from_grid(test_grid, 5, 5.2) > pull_value_from_grid(
         test_grid, 5.2, 5
     )
+
+    # test multiple values pulled at once
+    pull_values_x = np.linspace(3, 5, 10)
+    pull_values_y = np.linspace(5, 2, 10)
+    assert len(pull_values_x) == len(pull_values_y)
+    output_values = pull_value_from_grid(
+        test_grid,
+        pull_values_x,
+        pull_values_y,
+    )
+
+    # show that these are equivalent
+    assert len(output_values) == len(pull_values_y)
+    for jj in range(len(pull_values_x)):
+        current_value = pull_value_from_grid(
+            test_grid, pull_values_x[jj], pull_values_y[jj]
+        )
+        assert output_values[jj] == current_value
 
 
 def test_convert_1d_array_to_2d_array():
@@ -645,7 +661,7 @@ def test_perform_microlensing_convolution():
         relative_orientation=None,
     )
     assert px_shift_2 == px_shift_2b
-    
+
     # test that we conserve flux after accounting for rescaling of pixels
     value = convolution_1[3, 2]
     npt.assert_almost_equal(value, np.sum(sample_flux_map))
@@ -840,14 +856,13 @@ def test_extract_light_curve():
         y_start_position=99,
         phi_travel_direction=27,
     )
-    
 
     assert light_curve_avg_1 == light_curve_avg_2
     assert light_curve_avg_3 == light_curve_avg_2
     assert light_curve_avg_1 == light_curve_avg_4
     assert light_curve_avg_1 == light_curve_avg_5
     assert light_curve_avg_1 == light_curve_avg_6
-    
+
 
 def test_calculate_time_lag_array():
     # point source tests
@@ -1163,6 +1178,7 @@ def test_construct_accretion_disk_transfer_function():
     mean_lag_2 = np.sum(tau_axis * transfer_function_test_2)
     assert mean_lag_1 < mean_lag_2
 
+
 def test_calculate_microlensed_transfer_function():
 
     test_wavelength = 300  # nm
@@ -1264,7 +1280,7 @@ def test_calculate_microlensed_transfer_function():
         number_of_microlens_einstein_radii=number_of_microlens_einstein_radii,
         number_of_smbh_gravitational_radii=1000,
         relative_orientation=orientation_2,
-        return_response_array_and_lags=True
+        return_response_array_and_lags=True,
     )
     descaled_data = calculate_microlensed_transfer_function(
         magnification_array_identity,
@@ -1282,7 +1298,7 @@ def test_calculate_microlensed_transfer_function():
         number_of_microlens_einstein_radii=number_of_microlens_einstein_radii,
         number_of_smbh_gravitational_radii=1000,
         relative_orientation=orientation_2,
-        return_descaled_response_array_and_lags=True
+        return_descaled_response_array_and_lags=True,
     )
 
     tau_axis_ml = np.linspace(
@@ -1309,18 +1325,13 @@ def test_calculate_microlensed_transfer_function():
     assert abs(current_diff) <= tolerance
 
     assert len(data_to_construct_transfer_function) == 4
-    assert np.size(
-        data_to_construct_transfer_function[0]
-    ) == np.size(
+    assert np.size(data_to_construct_transfer_function[0]) == np.size(
         data_to_construct_transfer_function[1]
     )
     assert len(descaled_data) == 4
-    assert np.size(
-        descaled_data[0]
-    ) == np.size(
-        descaled_data[1]
-    )
-    
+    assert np.size(descaled_data[0]) == np.size(descaled_data[1])
+
+
 def test_generate_drw_signal():
     maximum_time = 2000
     time_step = 2
@@ -1344,7 +1355,7 @@ def test_generate_drw_signal():
     random_point_1 = np.random.randint(500)
     random_point_2 = np.random.randint(500)
 
-    if random_point_1 == random_point_2: # pragma: no cover
+    if random_point_1 == random_point_2:  # pragma: no cover
         random_point_2 -= 1
 
     assert drw_1[random_point_1] != drw_1[random_point_2]
@@ -1467,7 +1478,6 @@ def test_generate_snapshots_of_radiation_pattern():
         corona_height,
         inclination_angle,
     )
-    
 
     assert np.shape(snapshots_half) == np.shape(snapshots_zero)
     assert np.shape(snapshots_half) == np.shape(snapshots_all)
@@ -1915,43 +1925,36 @@ def test_required_velocity_maximum():
 def test_convolve_signal_with_transfer_function():
     sample_transfer_function = [0, 0, 0, 20, 100, 80, 60, 40, 10, 0]
     smbh_mass_exp = 9.8
-    driving_signal = np.sin(
-        np.linspace(1, 1000, 1000)
-    )
+    driving_signal = np.sin(np.linspace(1, 1000, 1000))
     times, convolved_signal = convolve_signal_with_transfer_function(
-        smbh_mass_exp = smbh_mass_exp,
-        driving_signal = driving_signal,
-        transfer_function = sample_transfer_function,
+        smbh_mass_exp=smbh_mass_exp,
+        driving_signal=driving_signal,
+        transfer_function=sample_transfer_function,
     )
     daily_signal = np.interp(np.linspace(1, 1000, 1000), times, convolved_signal)
     assert np.sum(abs(driving_signal - daily_signal)) != 0
 
+
 def test_convert_speclite_filter_to_wavelength_range():
     # collect FilterResponse objects
-    my_filters = load_filters('lsst2023-*')
+    my_filters = load_filters("lsst2023-*")
     # try one FilterResponse
     one_filter = my_filters[0]
     # try one string
-    one_string = 'lsst2023-r'
+    one_string = "lsst2023-r"
     # try a list of strings
-    string_list = ['lsst2023-g', 'lsst2023-y']
+    string_list = ["lsst2023-g", "lsst2023-y"]
 
     output_one = convert_speclite_filter_to_wavelength_range(one_filter)
     output_str = convert_speclite_filter_to_wavelength_range(one_string)
     output_list = convert_speclite_filter_to_wavelength_range(string_list)
 
     # try an invalid string
-    assert not convert_speclite_filter_to_wavelength_range(
-        'not_a_filter'
-    )
+    assert not convert_speclite_filter_to_wavelength_range("not_a_filter")
     # try something that's not a string, list, or FilterResponse
-    assert not convert_speclite_filter_to_wavelength_range(
-        {'not_a_filter': 4}
-    )
-    string_list_bad_names = ['one_filter', 'two_filter', 'red_filter', 'blue']
-    assert not convert_speclite_filter_to_wavelength_range(
-        string_list_bad_names
-    )
+    assert not convert_speclite_filter_to_wavelength_range({"not_a_filter": 4})
+    string_list_bad_names = ["one_filter", "two_filter", "red_filter", "blue"]
+    assert not convert_speclite_filter_to_wavelength_range(string_list_bad_names)
 
     assert isinstance(output_one, list)
     assert isinstance(output_str, list)
@@ -1965,6 +1968,3 @@ def test_convert_speclite_filter_to_wavelength_range():
 
     for item in output_list:
         assert item[0] < item[1]
-
-        
-    

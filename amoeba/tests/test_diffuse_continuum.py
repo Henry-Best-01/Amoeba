@@ -106,8 +106,8 @@ def test_initialization():
         )
 
     undefined_bounds_kwargs = my_kwargs.copy()
-    del undefined_bounds_kwargs['r_out_in_gravitational_radii']
-    del undefined_bounds_kwargs['r_in_in_gravitational_radii']
+    del undefined_bounds_kwargs["r_out_in_gravitational_radii"]
+    del undefined_bounds_kwargs["r_in_in_gravitational_radii"]
     my_unbound_diffuse_continuum = DiffuseContinuum(**undefined_bounds_kwargs)
 
 

@@ -188,13 +188,10 @@ class BroadLineRegion:
             old_efficiency_array = self.emission_efficiency_array
             new_efficiency_array = np.zeros(self.blr_array_shape)
             new_efficiency_array[
-                :np.size(old_efficiency_array, 0),
-                :np.size(old_efficiency_array, 1)
+                : np.size(old_efficiency_array, 0), : np.size(old_efficiency_array, 1)
             ] = old_efficiency_array
-            
-            self.set_emission_efficiency_array(
-                new_efficiency_array
-            )
+
+            self.set_emission_efficiency_array(new_efficiency_array)
 
         return True
 
@@ -465,7 +462,7 @@ class BroadLineRegion:
             plane. Primarily used to selectively weight regions in the local optimally
             emitting cloud model.
         :return: list representing the BLR's transfer function under only a subset of
-            the BLR particles can scatter photons in time units of R_g / c 
+            the BLR particles can scatter photons in time units of R_g / c
         """
 
         if velocity_range is not None and observed_wavelength_range_in_nm is not None:
@@ -618,11 +615,7 @@ class BroadLineRegion:
         :return: R and Z coordinates in a numpy meshgrid
         """
 
-        R, Z = np.meshgrid(
-            self.radii_values,
-            self.height_values,
-            indexing='ij'
-        )
+        R, Z = np.meshgrid(self.radii_values, self.height_values, indexing="ij")
         return R, Z
 
     def set_emission_efficiency_array(self, emission_efficiency_array=None):
@@ -635,21 +628,8 @@ class BroadLineRegion:
         """
         R, Z = self.get_density_axis()
         if emission_efficiency_array is None:
-            self.emission_efficiency_array = np.ones(
-                np.shape(R)
-            )
+            self.emission_efficiency_array = np.ones(np.shape(R))
         else:
             assert np.shape(emission_efficiency_array) == np.shape(R)
             self.emission_efficiency_array = emission_efficiency_array
         return True
-                    
-
-
-
-
-
-
-
-
-
-    

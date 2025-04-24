@@ -46,7 +46,7 @@ class Agn:
         "smbh_mass_exp", "mass_height", "rest_frame_wavelength_in_nm",
         "redshift_source", "radial_step", "height_step", "max_radius"
         "line_strength"
-        
+
         ----- torus kwargs -----
 
         "smbh_mass_exp", "max_height", "redshift_source", "radial_step",
@@ -186,7 +186,7 @@ class Agn:
             "max_radius",
             "OmM",
             "H0",
-            "line_strength"
+            "line_strength",
         ]
 
         for kwarg in all_kwargs:
@@ -242,10 +242,12 @@ class Agn:
             blr_index = self.blr_indicies
         elif isinstance(blr_index, (int, float, str)):
             blr_index = [blr_index]
-        
+
         output_axes = []
         for index in blr_index:
-            current_R, current_Z = self.components['blr_'+str(index)].get_density_axis()
+            current_R, current_Z = self.components[
+                "blr_" + str(index)
+            ].get_density_axis()
             output_axes.append([current_R, current_Z])
         return output_axes
 
@@ -262,28 +264,28 @@ class Agn:
         """
         if efficiency_array is None and blr_index is None:
             for index in self.blr_indicies:
-                if self.components[
-                    'blr_'+str(index)
-                ].emission_efficiency_array is None:
-                    print(index)
+                if (
+                    self.components["blr_" + str(index)].emission_efficiency_array
+                    is None
+                ):
+                    print("indexes without efficiency arrays:", index)
             return False
         if blr_index is None:
             print("Please give the index to associate this efficiency array with.")
             print("Note that the default blr index is '0'")
             return False
         if efficiency_array is None:
-            if self.components[
-                'blr_'+str(blr_index)
-            ].emission_efficiency_array is None:
+            if (
+                self.components["blr_" + str(blr_index)].emission_efficiency_array
+                is None
+            ):
                 print("this index does not have an efficiency array associated with it")
             else:
                 print("this index has an efficiency array associated with it")
             return False
 
-        self.components[
-            'blr_'+str(blr_index)
-        ].set_emission_efficiency_array(
-            emission_efficiency_array = efficiency_array
+        self.components["blr_" + str(blr_index)].set_emission_efficiency_array(
+            emission_efficiency_array=efficiency_array
         )
         return True
 
@@ -362,11 +364,12 @@ class Agn:
         for kwarg in all_kwargs:
             if kwarg in kwargs:
                 self.diffuse_continuum_kwargs[kwarg] = kwargs[kwarg]
+
         if "r_out_in_gravitational_radii" in self.diffuse_continuum_kwargs.keys():
             xax = np.linspace(
                 -self.diffuse_continuum_kwargs["r_out_in_gravitational_radii"],
                 self.diffuse_continuum_kwargs["r_out_in_gravitational_radii"],
-                int(2 * self.diffuse_continuum_kwargs["r_out_in_gravitational_radii"]),
+                100,
             )
             X, Y = np.meshgrid(xax, xax)
             R, Phi = convert_cartesian_to_polar(X, Y)
@@ -665,7 +668,7 @@ class Agn:
         :return: True if successful
         """
 
-        self.components['blr_'+str(blr_index)].update_line_strength(new_line_strength)
+        self.components["blr_" + str(blr_index)].update_line_strength(new_line_strength)
 
         return True
 
@@ -872,7 +875,7 @@ class Agn:
             "radial_step",
             "height_step",
             "max_radius",
-            "line_strength"
+            "line_strength",
         ]
         diffuse_continuum_kwargs = [
             "radii_array",

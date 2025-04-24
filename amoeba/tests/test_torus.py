@@ -68,12 +68,12 @@ class TestTorus:
         wavelengths = [100, 500, 10000]
         extinction_coefficients = [10**-5, 10**-20, 0]
         kwarg_dict = {
-            'smbh_mass_exp': smbh_mass_exp,
-            'redshift_source': redshift_source,
-            'max_height': max_height,
-            'rest_frame_wavelengths': wavelengths,
-            'extinction_coefficients': extinction_coefficients,
-            'height_step': height_step
+            "smbh_mass_exp": smbh_mass_exp,
+            "redshift_source": redshift_source,
+            "max_height": max_height,
+            "rest_frame_wavelengths": wavelengths,
+            "extinction_coefficients": extinction_coefficients,
+            "height_step": height_step,
         }
 
         self.preset_torus = Torus(**kwarg_dict)

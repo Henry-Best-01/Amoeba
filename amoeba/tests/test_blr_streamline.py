@@ -86,7 +86,7 @@ def test_init():
     )
 
     manual_radii = np.linspace(20, 100, 101)
-    manual_velocities = 0.1 + 0.05 * np.sin(np.linspace(0, 10, 101)/np.pi)
+    manual_velocities = 0.1 + 0.05 * np.sin(np.linspace(0, 10, 101) / np.pi)
 
     strange_but_okay_streamline = Streamline(
         launch_radius,
@@ -95,7 +95,7 @@ def test_init():
         characteristic_distance,
         asymptotic_poloidal_velocity,
         velocity_vector=manual_velocities,
-        radial_vector=manual_radii
+        radial_vector=manual_radii,
     )
 
     with npt.assert_raises(AssertionError):
@@ -106,7 +106,7 @@ def test_init():
             characteristic_distance,
             asymptotic_poloidal_velocity,
             velocity_vector=manual_velocities,
-            radial_vector=bad_radial_vector
+            radial_vector=bad_radial_vector,
         )
 
     strange_but_differently_overridden_streamline = Streamline(
@@ -115,7 +115,7 @@ def test_init():
         max_height,
         characteristic_distance,
         asymptotic_poloidal_velocity,
-        radial_vector=manual_radii
+        radial_vector=manual_radii,
     )
 
     automatic_radii_streamline = Streamline(
@@ -124,10 +124,8 @@ def test_init():
         max_height,
         characteristic_distance,
         asymptotic_poloidal_velocity,
-        velocity_vector=manual_velocities
+        velocity_vector=manual_velocities,
     )
-        
-
 
     assert test_blr_streamline.launch_radius == launch_radius
     assert test_blr_streamline.launch_theta == launch_theta * np.pi / 180

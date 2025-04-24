@@ -70,10 +70,12 @@ class MagnificationMap:
                 self.ray_map = convert_1d_array_to_2d_array(magnification_array)
             elif np.ndim(magnification_array) == 2:
                 self.ray_map = magnification_array
-        elif magnification_array[-4:] == "fits": # pragma: no cover
+        elif magnification_array[-4:] == "fits":  # pragma: no cover
             with fits.open(magnification_array) as f:
                 self.ray_map = f[0].data
-        elif magnification_array[-4:] == ".dat" or magnification_array[-4:] == ".bin": # pragma: no cover
+        elif (
+            magnification_array[-4:] == ".dat" or magnification_array[-4:] == ".bin"
+        ):  # pragma: no cover
             with open(magnification_array, "rb") as f:
                 extracted_magnification_array = np.fromfile(f, "i", count=-1, sep="")
                 self.ray_map = convert_1d_array_to_2d_array(
