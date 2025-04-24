@@ -11,17 +11,19 @@ Development Lead
 Contributors
 ------------
 
-Joshua Fagin
-James H.H. Chan
-Matthew O'Dowd
+Joshua Fagin,
+James H.H. Chan,
+Matthew O'Dowd,
+Narayan Khadka,
+Simon Birrer
 
 
 Beta Testers
 ------------
 
-Bridget Ierace
-Padma Venkatraman
-Paras Sharma
+Bridget Ierace,
+Padma Venkatraman,
+Paras Sharma,
 Jolie L'Heureux
 
 
