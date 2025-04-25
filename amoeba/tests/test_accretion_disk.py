@@ -7,15 +7,15 @@ from astropy import units as u
 
 class TestAccretionDisk:
 
-    def setup(self):
+    def setup_method(self):
 
         # basic, face on disk
         smbh_mass_exp = 8.0
         redshift_source = 1.0
         inclination_angle = 0.0
         corona_height = 10
-        number_grav_radii = 1000
-        resolution = 1000
+        number_grav_radii = 500
+        resolution = 500
         spin = 0
 
         accretion_disk_data_1 = create_maps(
@@ -83,9 +83,9 @@ class TestAccretionDisk:
         assert self.FaceOnDisk1.smbh_mass_exp == 8.0
         assert self.FaceOnDisk1.redshift_source == 1.0
         assert self.FaceOnDisk1.spin == 0.0
-        assert np.shape(self.FaceOnDisk1.radii_array) == (1000, 1000)
-        npt.assert_almost_equal(np.max(self.FaceOnDisk1.radii_array), 1000 * 2**0.5)
-        npt.assert_almost_equal(self.FaceOnDisk1.r_out_in_gravitational_radii, 1000, 3)
+        assert np.shape(self.FaceOnDisk1.radii_array) == (500, 500)
+        npt.assert_almost_equal(np.max(self.FaceOnDisk1.radii_array), 500 * 2**0.5)
+        npt.assert_almost_equal(self.FaceOnDisk1.r_out_in_gravitational_radii, 500, 3)
         assert np.shape(self.FaceOnDisk1.radii_array) == np.shape(
             self.FaceOnDisk1.phi_array
         )

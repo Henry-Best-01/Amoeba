@@ -925,8 +925,8 @@ def test_calculate_dt_dlx():
 
 def test_construct_accretion_disk_transfer_function():
 
-    test_wavelength_1 = 200  # nm
-    test_wavelength_2 = 700
+    test_wavelength_1 = 100  # nm
+    test_wavelength_2 = 300
     smbh_mass_exponent = 8.0
     corona_height = 10
     inclination_angle = 30
@@ -936,7 +936,7 @@ def test_construct_accretion_disk_transfer_function():
     albedo_array = None
 
     # to test reasonable transfer functions, we must make a reasonable disk
-    disk_dict = create_maps(smbh_mass_exponent, 0, 1000, inclination_angle, 1000)
+    disk_dict = create_maps(smbh_mass_exponent, 0, 500, inclination_angle, 500)
 
     temp_array = disk_dict["temp_array"]
     radii_array = disk_dict["radii_array"]
@@ -994,7 +994,7 @@ def test_construct_accretion_disk_transfer_function():
 
 def test_calculate_microlensed_transfer_function():
 
-    test_wavelength = 700  # nm
+    test_wavelength = 300  # nm
     smbh_mass_exponent = 8.0
     corona_height = 10
     inclination_angle = 30
@@ -1004,7 +1004,7 @@ def test_calculate_microlensed_transfer_function():
     albedo_array = None
 
     # to test reasonable transfer functions, we must make a reasonable disk
-    disk_dict = create_maps(smbh_mass_exponent, 0, 1000, inclination_angle, 1000)
+    disk_dict = create_maps(smbh_mass_exponent, 0, 500, inclination_angle, 500)
 
     temp_array = disk_dict["temp_array"]
     radii_array = disk_dict["radii_array"]
