@@ -2055,14 +2055,18 @@ def calculate_blr_transfer_function(
         transfer_function_of_slab = np.histogram(
             time_delays_of_current_slab,
             range=(0, np.max(time_delays_of_current_slab) + 1),
-            bins=int(np.max(time_delays_of_current_slab) + 1),
+            bins=int((np.max(time_delays_of_current_slab) + 1) / radial_resolution),
             weights=np.nan_to_num(response_of_current_slab),
             density=True,
         )[0]
 
-        output_transfer_function[: np.size(transfer_function_of_slab)] += np.nan_to_num(
-            transfer_function_of_slab
+        rescaled_transfer_function_as_values = np.repeat(
+            transfer_function_of_slab, int(radial_resolution)
         )
+
+        output_transfer_function[
+            : np.size(rescaled_transfer_function_as_values)
+        ] += np.nan_to_num(rescaled_transfer_function_as_values)
 
     if np.sum(output_transfer_function) > 0:
         output_transfer_function /= np.sum(output_transfer_function)
