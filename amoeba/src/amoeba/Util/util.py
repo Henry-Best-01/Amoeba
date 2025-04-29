@@ -1424,6 +1424,7 @@ def calculate_microlensed_transfer_function(
     y_position=None,
     return_response_array_and_lags=False,
     return_descaled_response_array_and_lags=False,
+    return_magnification_map_crop=False,
     random_seed=None,
 ):
     """Calculate the transfer function assuming the response of the disk can be
@@ -1455,6 +1456,8 @@ def calculate_microlensed_transfer_function(
     :param return_descaled_response_array_and_lags: boolean toggle to return a representation
         of the amplified response and time lags at the resolution of the magnification map.
         Also returns x and y positions of where the microlensing was assumed to take place.
+    :param return_magnification_map_crop: boolean toggle to return the section of the
+        magnification map which amplifies the response function.
     :param random_seed: random seed to use for reproducibility
 
     ----- accretion disk params ------
@@ -1527,27 +1530,32 @@ def calculate_microlensed_transfer_function(
     pixel_shift = np.size(rescaled_time_lag_array, 0) // 2
 
     magnification_array_padded = np.pad(
-        magnification_array, pixel_shift, constant_values=(1, 1)
+        magnification_array, pixel_shift, mode='edge'
     )
 
     if x_position is None:
-        x_position = int(rng.random() * np.size(magnification_array, 0))
+        x_position = int(
+            rng.random() * (
+                np.size(magnification_array, 0) - np.size(rescaled_response_array, 0)
+            ) + pixel_shift
+        )
+        
     if y_position is None:
-        y_position = int(rng.random() * np.size(magnification_array, 1))
-
-    x_position += pixel_shift
-    y_position += pixel_shift
+        y_position = int(
+            rng.random() * (
+                np.size(magnification_array, 1) - np.size(rescaled_response_array, 1)
+            ) + pixel_shift
+        )
 
     magnification_crop = magnification_array_padded[
-        x_position
-        - pixel_shift : x_position
-        - pixel_shift
-        + np.size(rescaled_response_array, 0),
-        y_position
-        - pixel_shift : y_position
-        - pixel_shift
-        + np.size(rescaled_response_array, 1),
+        x_position :
+        x_position + np.size(rescaled_response_array, 0),
+        y_position :
+        y_position + np.size(rescaled_response_array, 1),
     ]
+
+    if return_magnification_map_crop:
+        return magnification_crop
 
     magnified_response_array = rescaled_response_array * magnification_crop
 

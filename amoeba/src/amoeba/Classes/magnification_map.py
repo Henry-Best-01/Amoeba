@@ -213,6 +213,7 @@ class MagnificationMap:
         H0=70,
         return_response_array_and_lags=False,
         return_descaled_response_array_and_lags=False,
+        return_magnification_map_crop=False,
         random_seed=None,
     ):
         """Calculate the transfer function of an accretion disk when the response map is
@@ -240,6 +241,8 @@ class MagnificationMap:
         :param return_descaled_response_array_and_lags: Similar to above, but returns
             the projections at the resolution of the magnification map. Useful for
             debugging.
+        :param return_magnification_map_crop: Boolean used to return the region of
+            the magnification map used to amplify the response function.
         :param random_seed: allows the user to set a random seed for reproducibility
         :return: The microlensed transfer function represented by a list.
         """
@@ -277,9 +280,9 @@ class MagnificationMap:
             y_position=y_position,
             return_response_array_and_lags=return_response_array_and_lags,
             return_descaled_response_array_and_lags=return_descaled_response_array_and_lags,
+            return_magnification_map_crop=return_magnification_map_crop,
             random_seed=random_seed,
         )
-
 
 class ConvolvedMap(MagnificationMap):
     """This child class represents the convoultion of a magnification map with a surface

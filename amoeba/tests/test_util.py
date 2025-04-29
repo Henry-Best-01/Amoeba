@@ -1216,13 +1216,13 @@ def test_calculate_microlensed_transfer_function():
         albedo_array=albedo_array,
     )
 
-    magnification_array_identity = np.ones((100, 100))
+    magnification_array_identity = np.ones((1000, 1000))
 
     redshift_l = 0.5
     redshift_s = 2.0
     relative_orientation_1 = 0
     mean_microlens_mass_in_kg = 0.3 * const.M_sun.to(u.kg)
-    number_of_microlens_einstein_radii = 1
+    number_of_microlens_einstein_radii = 5
 
     orientation_1 = 0
     orientation_2 = 45
@@ -1330,6 +1330,26 @@ def test_calculate_microlensed_transfer_function():
     )
     assert len(descaled_data) == 4
     assert np.size(descaled_data[0]) == np.size(descaled_data[1])
+
+    # test the magnification crop
+    crop_data = calculate_microlensed_transfer_function(
+        magnification_array_identity,
+        redshift_l,
+        redshift_s,
+        test_wavelength,
+        temp_array,
+        radii_array,
+        phi_array,
+        g_array,
+        inclination_angle,
+        smbh_mass_exponent,
+        corona_height,
+        mean_microlens_mass_in_kg=mean_microlens_mass_in_kg,
+        number_of_microlens_einstein_radii=number_of_microlens_einstein_radii,
+        number_of_smbh_gravitational_radii=1000,
+        relative_orientation=orientation_2,
+        return_magnification_map_crop=True,
+    )
 
 
 def test_generate_drw_signal():
