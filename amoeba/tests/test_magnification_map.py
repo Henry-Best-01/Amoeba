@@ -160,8 +160,10 @@ class TestMagnificationMap:
             phi_travel_direction=phi_travel_direction,
         )
 
-        assert len(light_curve_rise_fall) >= 4
-        assert light_curve_rise_fall[2] > light_curve_rise_fall[0]
+        len_lc = len(light_curve_rise_fall)
+        assert len_lc > 4
+
+        assert light_curve_rise_fall[20] > light_curve_rise_fall[0]
 
         light_curve_macromag = self.magnification_map.pull_light_curve(
             effective_transverse_velocity,

@@ -1058,7 +1058,7 @@ def extract_light_curve(
             ):
                 success = True
             backup_counter += 1
-            if backup_counter > 4:
+            if backup_counter > 4:  # pragma: no cover
                 break
 
     x_positions = np.linspace(
