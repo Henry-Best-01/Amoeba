@@ -105,6 +105,11 @@ def test_initialization():
             r_out_in_gravitational_radii=1000,
         )
 
+    undefined_bounds_kwargs = my_kwargs.copy()
+    del undefined_bounds_kwargs["r_out_in_gravitational_radii"]
+    del undefined_bounds_kwargs["r_in_in_gravitational_radii"]
+    my_unbound_diffuse_continuum = DiffuseContinuum(**undefined_bounds_kwargs)
+
 
 def test_set_emissivity():
 
@@ -191,6 +196,7 @@ def test_set_responsivity_constant():
 
     with pytest.raises(AssertionError):
         my_continuum.set_responsivity_constant(responsivity_constant=-1)
+    with pytest.raises(AssertionError):
         my_continuum.set_responsivity_constant(responsivity_constant=33)
 
 

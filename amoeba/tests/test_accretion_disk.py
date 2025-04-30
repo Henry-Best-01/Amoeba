@@ -79,6 +79,12 @@ class TestAccretionDisk:
             **accretion_disk_data_zoom_spin_retro
         )
 
+        accretion_disk_data_albedo_no_r_out = accretion_disk_data_1.copy()
+        accretion_disk_data_albedo_no_r_out["albedo_array"] = 0.7
+        del accretion_disk_data_albedo_no_r_out["r_out_in_gravitational_radii"]
+
+        self.NewDisk = AccretionDisk(**accretion_disk_data_albedo_no_r_out)
+
     def test_initializtion(self):
         assert self.FaceOnDisk1.smbh_mass_exp == 8.0
         assert self.FaceOnDisk1.redshift_source == 1.0
@@ -124,7 +130,7 @@ class TestAccretionDisk:
         assert intensity_map_1.total_flux > intensity_map_2.total_flux
         assert intensity_map_zoom_spin.total_flux > intensity_map_zoom_retro.total_flux
 
-        wavelength_2 = 500  # nm
+        wavelength_2 = 500 * u.nm  # nm
 
         intensity_map_blue = self.FaceOnDisk1.calculate_surface_intensity_map(
             wavelength_2
@@ -276,6 +282,20 @@ class TestAccretionDisk:
 
         assert mean_face_on_1 < mean_face_on_2
 
+    def test_generate_snapshots(self):
 
-if __name__ == "__main__":
-    pytest.main()
+        driving_signal = np.sin(np.linspace(0, 100, 100) / np.pi) + 5
+        time_stamps = [20, 25, 44.3, 80]
+        observer_frame_wavelength = 250
+        driving_signal_fractional_strength = 0.3
+
+        snapshots = self.FaceOnDisk1.generate_snapshots(
+            observer_frame_wavelength,
+            time_stamps,
+            driving_signal,
+            driving_signal_fractional_strength,
+        )
+
+        assert len(snapshots) == len(time_stamps)
+
+        assert np.sum((snapshots[0].flux_array - snapshots[2].flux_array) ** 2) > 0
