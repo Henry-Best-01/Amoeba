@@ -480,7 +480,7 @@ class TestAgn:
 
         tiny_kwargs = {"r_out_in_gravitational_radii": 400}
 
-        self.no_kwarg_agn.add_diffuse_continuum(**tiny_kwargs)
+        assert self.no_kwarg_agn.add_diffuse_continuum(**tiny_kwargs)
 
     def test_add_intrinsic_signal_parameters(self):
 

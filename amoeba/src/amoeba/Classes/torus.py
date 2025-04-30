@@ -201,7 +201,7 @@ class Torus:
         :param inclination_angle: inclination of the torus w.r.t. the observer in
             degrees
         :param observer_frame_wavelength: observer frame wavelength in nm
-        :return: FluxProjection object representing the amount of flux absorbed by the
+        :return: FluxProjection object representing the extinction due to the
             torus
         """
 

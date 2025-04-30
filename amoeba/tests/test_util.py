@@ -184,7 +184,6 @@ def test_accretion_disk_temperature():
         visc_temp_prof="SS",
     )
 
-    print("next: NT")
     temp_profile_NT = accretion_disk_temperature(
         radii_in_meters,
         min_radius_in_meters,
@@ -201,7 +200,6 @@ def test_accretion_disk_temperature():
         visc_temp_prof="NT",
     )
 
-    print("next: SS + wind")
     temp_profile_SS_wind = accretion_disk_temperature(
         radii_in_meters,
         min_radius_in_meters,
@@ -218,7 +216,6 @@ def test_accretion_disk_temperature():
         visc_temp_prof="SS",
     )
 
-    print("next: rejected, so SS + wind")
     temp_profile_rejected_profile = accretion_disk_temperature(
         radii_in_meters * u.m,
         min_radius_in_meters / 1000 * u.km,
@@ -234,7 +231,6 @@ def test_accretion_disk_temperature():
         spin=0,
         visc_temp_prof="Not_a_profile",
     )
-    print("this one below")
 
     temp_profile_little_accreted_mass = accretion_disk_temperature(
         radii_in_meters * u.m,
@@ -259,11 +255,11 @@ def test_accretion_disk_temperature():
     )
 
     # check that they're all different
-    assert abs(sum(temp_profile_SS - temp_profile_NT)) != 0
-    assert abs(sum(temp_profile_SS - temp_profile_SS_wind)) != 0
+    assert sum(abs(temp_profile_SS - temp_profile_NT)) != 0
+    assert sum(abs(temp_profile_SS - temp_profile_SS_wind)) != 0
 
     # check that the rejected profile defaulted to a SS profile
-    assert abs(sum(temp_profile_SS_wind - temp_profile_rejected_profile)) == 0
+    assert sum(abs(temp_profile_SS_wind - temp_profile_rejected_profile)) == 0
 
     assert np.sum(temp_profile_little_accreted_mass) < np.sum(temp_profile_SS)
     assert np.sum(temp_profile_little_accreted_mass) != 0
@@ -349,7 +345,7 @@ def test_calculate_angular_diameter_distance():
         astropy_cosmo.angular_diameter_distance(redshift).to(u.m).value
     )
 
-    # set tolerance to 0.5% due to quadrature integration and
+    # set tolerance to 0.2% due to quadrature integration and
     # rounding of constants
     tolerance = ang_diam_dist_astropy / 500
 

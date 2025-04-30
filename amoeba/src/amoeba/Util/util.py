@@ -294,7 +294,7 @@ def accretion_disk_temperature(
     generic_beta=False,
 ):
     """Defines the radial temperature profile of the accretion disk according to the
-    function given in Best et al. 2024, which combines a viscous temperature profile
+    function given in Best et al. 2025, which combines a viscous temperature profile
     with the irradiated disk profile and the disk + wind profile. The viscous
     temperature profile may be defined as a Shakura-Sunyaev or Novikov-Thorne profile.
     Future: update to allow any user-defined radial temperature profile.
@@ -397,43 +397,6 @@ def accretion_disk_temperature(
         x2 = 2 * np.cos((np.arccos(spin) + np.pi) / 3)
         x3 = -2 * np.cos(np.arccos(spin) / 3)
 
-        """
-        F_NT = (
-            1.0
-            / (x**7 - 3 * x**5 + 2 * spin * x**4)
-            * (
-                x
-                - x0
-                - (3.0 / 2.0) * spin * np.log(x / x0)
-                - 3
-                * (x1 - spin) ** 2
-                / (x1 * (x1 - x2) * (x1 - x3))
-                * np.log((x - x1) / (x0 - x1))
-                - 3
-                * (x2 - spin) ** 2
-                / (x2 * (x2 - x1) * (x2 - x3))
-                * np.log((x - x2) / (x0 - x2))
-                - 3
-                * (x3 - spin) ** 2
-                / (x3 * (x3 - x1) * (x3 - x2))
-                * np.log((x - x3) / (x0 - x3))
-            )
-        )
-        
-        temp_map = (
-            (
-                (
-                    3
-                    * disk_acc
-                    * const.c**6
-                    / (8 * np.pi * const.G**2 * mass_in_solar_masses**2)
-                )
-                * F_NT
-                / const.sigma_sb
-            )
-            ** (0.25)
-        ).value
-        """
         F_NT = (
             (1 + spin * x**-3) / (x * (1 - 3 * x**-2 + 2 * spin * x**-3) ** (1 / 2))
         ) * (
@@ -1081,6 +1044,7 @@ def extract_light_curve(
             return np.sum(convolution_array) / np.size(convolution_array)
     else:
         success = None
+        backup_counter = 0
         angle = rng.random() * 360 * np.pi / 180
         while success is None:
             angle += np.pi / 2
@@ -1093,12 +1057,15 @@ def extract_light_curve(
                 and y_start_position + delta_y >= 0
             ):
                 success = True
+            backup_counter += 1
+            if backup_counter > 4:
+                break
 
     x_positions = np.linspace(
-        x_start_position, x_start_position + delta_x, int(n_points)
+        x_start_position, x_start_position + delta_x, 5 * int(n_points)
     )
     y_positions = np.linspace(
-        y_start_position, y_start_position + delta_y, int(n_points)
+        y_start_position, y_start_position + delta_y, 5 * int(n_points)
     )
 
     light_curve = pull_value_from_grid(safe_convolution_array, x_positions, y_positions)
@@ -1529,29 +1496,25 @@ def calculate_microlensed_transfer_function(
 
     pixel_shift = np.size(rescaled_time_lag_array, 0) // 2
 
-    magnification_array_padded = np.pad(
-        magnification_array, pixel_shift, mode='edge'
-    )
+    magnification_array_padded = np.pad(magnification_array, pixel_shift, mode="edge")
 
     if x_position is None:
         x_position = int(
-            rng.random() * (
-                np.size(magnification_array, 0) - np.size(rescaled_response_array, 0)
-            ) + pixel_shift
+            rng.random()
+            * (np.size(magnification_array, 0) - np.size(rescaled_response_array, 0))
+            + pixel_shift
         )
-        
+
     if y_position is None:
         y_position = int(
-            rng.random() * (
-                np.size(magnification_array, 1) - np.size(rescaled_response_array, 1)
-            ) + pixel_shift
+            rng.random()
+            * (np.size(magnification_array, 1) - np.size(rescaled_response_array, 1))
+            + pixel_shift
         )
 
     magnification_crop = magnification_array_padded[
-        x_position :
-        x_position + np.size(rescaled_response_array, 0),
-        y_position :
-        y_position + np.size(rescaled_response_array, 1),
+        x_position : x_position + np.size(rescaled_response_array, 0),
+        y_position : y_position + np.size(rescaled_response_array, 1),
     ]
 
     if return_magnification_map_crop:
@@ -1934,10 +1897,11 @@ def calculate_blr_transfer_function(
     given wavelength range. The BLR emission is assumed to be proportional to the
     particle density and the weighting factor.
 
-    Todo: this is a very slow function. If there's a way to project the BLR into the
+    Todo: this is a relatively slow function. If there's a way to project the BLR into the
     3-dimensional cylindrical grid faster then compute the time lags as a function of
     (R, Z, phi) and take a single histogram over the whole space, that would probably
-    speed it up significantly. Figure out how to do this sometime!
+    speed it up significantly. It sped up by reducing the resolution of the blr transfer
+    function, but still could be faster
 
     :param blr_density_rz_grid: a 2d array of values representing the density of the blr
         at each point in (R, Z) coords.

@@ -284,6 +284,7 @@ class MagnificationMap:
             random_seed=random_seed,
         )
 
+
 class ConvolvedMap(MagnificationMap):
     """This child class represents the convoultion of a magnification map with a surface
     flux density.

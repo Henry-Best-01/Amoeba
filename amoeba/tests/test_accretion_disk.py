@@ -298,4 +298,4 @@ class TestAccretionDisk:
 
         assert len(snapshots) == len(time_stamps)
 
-        assert np.sum(snapshots[0].flux_array ** 2 - snapshots[2].flux_array ** 2) > 0
+        assert np.sum((snapshots[0].flux_array - snapshots[2].flux_array) ** 2) > 0
