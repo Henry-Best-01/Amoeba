@@ -240,7 +240,6 @@ def convert_eddington_ratio_to_accreted_mass(
     accretion rate in physical units assuming bol_lum = eddington_ratio * edd_lum.
 
     The following equations hold:
-
         edd_lum = 4 * pi * G * M * M_proton * c / (sigma_T)
         bol_lum = M_dot * c^2 * efficiency
 
@@ -248,7 +247,6 @@ def convert_eddington_ratio_to_accreted_mass(
         M_dot = edd_lum / (efficiency * c^2)
 
     where:
-
         edd_lum = Eddingtion luminosity (the maximum luminosity allowed by Bondi
             accretion where the gravitational force is balanced by the radiation pressure
         pi = 3.14...
@@ -265,10 +263,11 @@ def convert_eddington_ratio_to_accreted_mass(
 
     :param mass_in_solar_masses: mass of SMBH in solar masses or astropy quantity. Note this is NOT smbh_mass_exp!
     :param eddington_ratio: percentage of theoretical Bondi limit of accretion rate
-    :param efficiency: conversion efficiency between gravitational potential energy and
-        thermal energy
+    :param efficiency: conversion efficiency between gravitational potential energy and thermal energy
+
     :return: accreted mass as astropy units
     """
+
     if type(mass_in_solar_masses) != u.Quantity:
         mass_in_solar_masses *= const.M_sun.to(u.kg)
     edd_lum = (
@@ -299,9 +298,7 @@ def accretion_disk_temperature(
     temperature profile may be defined as a Shakura-Sunyaev or Novikov-Thorne profile.
     Future: update to allow any user-defined radial temperature profile.
 
-    Note that parameters are categorized by thermal profile type (viscous, irradiated, wind).
 
-    ----- Thin disk ------
     :param radius_in_meters: radius or list of radii in meters
     :param min_radius_in_meters: inner radius in meters. Typically taken to be the innermost stable
         circular orbit, but may be greater than this if the truncated accretion disk model is used
@@ -317,8 +314,6 @@ def accretion_disk_temperature(
         as "SS" or "NT", respectively. Thanks @ Joshua Fagin for coding the Novikov-Thorne profile.
     :param efficiency: efficiency of converting gravitational potential energy into radiation. Typical
         values are ~0.1, and may be as large as ~0.42 for maximally spinning black holes.
-
-    ----- Irradiated disk ------
     :param corona_height: The height of the irradiating source in gravitational radii in the lamppost
         geometry (Cacket et al. 2007). The default value of 6 represents the Schwarzschild ISCO case.
     :param albedo: reflection coefficent of the accretion disk such that 0
@@ -328,8 +323,6 @@ def accretion_disk_temperature(
     :param eta_x_rays: efficiency coefficient of lamppost source, defined as Lx = eta_x_rays * L_bol.
         Due to conservation of energy, the sum of eta_x_rays and efficiency should NOT exceed 1,
         since the total energy must come from some physical source.
-
-    ----- Disk + wind ------
     :param beta: wind strength providing the following accretion rate relationship
         m_dot = m0_dot * (r / r_in)^beta from Sun et al. 2018. Note that this can greatly increase
         the total radiated energy and the Eddington ratio is no longer conserved.
@@ -1401,7 +1394,6 @@ def calculate_microlensed_transfer_function(
     magnification map, weighting each pixel by its corresponding magnification, then
     computing the transfer function.
 
-    ----- microlensing params -----
     :param magnification_array: a 2d array of magnifications in the source plane
     :param redshift_lens: int/float representing the redshift of the lens
     :param redshift_source: int/float representing the redshift of the source
@@ -1426,8 +1418,6 @@ def calculate_microlensed_transfer_function(
     :param return_magnification_map_crop: boolean toggle to return the section of the
         magnification map which amplifies the response function.
     :param random_seed: random seed to use for reproducibility
-
-    ----- accretion disk params ------
     :param rest_wavelength_in_nm: rest frame wavelength in nanometers to calculate the
         transfer function at
     :param temp_array: a 2d array representing the effective temperatures of the
