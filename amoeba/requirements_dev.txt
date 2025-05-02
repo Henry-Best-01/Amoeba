@@ -10,5 +10,6 @@ astropy
 scikit-image
 tqdm
 speclite
+matplotlib
 
 pytest>=6.0.0
