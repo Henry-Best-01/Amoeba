@@ -27,21 +27,43 @@ class DiffuseContinuum:
         name="",
         **kwargs
     ):
-        """
-        Object representing the diffuse continuum component of the AGN.
+        """Object representing the diffuse continuum component of the AGN. The diffuse
+        continuum model follows Korista+Goad 2019, where the increase in time lag
+        is defined as:
+
+        tau_lam(inci + DC) \approx tau_lam(DC) (1 - A)x / (1 - Ax)
+
+        where:
+        tau_lam(DC) is the time delay of the diffuse continuum and depends
+            heavily on the cloud_density_array
+        A is a constant on the range (0, 1)
+        x is the fractional contribution of the DC to the total light
+
+        These must be set using methods:
+        A = self.set_responsivity_constant()
+        x = self.set_emissivity()
+
 
         :param smbh_mass_exp: mass exponent of the sumpermassive black hole at the
             center of the disk expressed as log_10(M / M_sun). Typical ranges are 6-11
             for AGN.
-        :param radii_array: a 2d representation of the radii on the accretion disk, in
-            R_g = GM/c^2
+        :param redshift_source: redshift of the diffuse continuum
+        :param inclination_angle: inclination of the object w.r.t. the observer, in degrees
+        :param radii_array: a 2d representation of the radii of the diffuse continuum, in
+            gravitational radii R_g = GM/c^2
+        :param phi_array: a 2d representation of the azimuths of the diffuse continuum
+            in radians.
+        :param cloud_density_radial_dependence: radial dependence of the clound density
+            according to \rho \propto r^{alpha} where alpha is cloud_density_radial_dependence
         :param cloud_density_array: either an int, float, or 2d representation of the
             diffuse continuum cloud density.
         :param OmM: Cosmological parameter representing the mass fraction of the
             universe
         :param H0: Hubble constant in units of km/s/Mpc
-        :param r_out_in_gravitational_radii: maximum radius of the accretion disk, in
-            R_g = GM/c^2
+        :param r_in_in_gravitational_radii: inner radius of the diffuse continuum in R_g.
+            Note that this parameter dominates the time lag of the diffuse continuum.
+        :param r_out_in_gravitational_radii: maximum radius of the diffuse continuum, in
+            gravitational radii
         :param name: Name space
         """
 
@@ -85,9 +107,8 @@ class DiffuseContinuum:
 
         self.OmM = OmM
         self.H0 = H0
-        self.little_h = self.H0 / 100
         self.lum_dist = calculate_luminosity_distance(
-            self.redshift_source, OmM=self.OmM, little_h=self.little_h
+            self.redshift_source, OmM=self.OmM, H0=self.H0
         )
         self.rg = calculate_gravitational_radius(10**self.smbh_mass_exp)
         self.pixel_size = (
@@ -114,17 +135,30 @@ class DiffuseContinuum:
             self.set_responsivity_constant()
 
     def set_emissivity(self, rest_frame_wavelengths=None, emissivity_etas=None):
-        """
-        Hand me a representation of the diffuse continuum spectrum and I can then define
-        the 2d emissivity of the diffuse continuum
+        """Define the diffuse continuum's emission spectrum according to a rest frame
+        wavelength spectrum. Required for estimating the increase in time lags.
+        Determines the value of "x" in the equation in the init function.
+
+        :param rest_frame_wavelengths: list representing the rest frame wavelengths in
+            nanometers. Should cover the range of wavelengths expected to be observed.
+        :param emissivity_etas: list representing the emissivities of the diffuse
+            continuum clouds at each wavelength in rest_frame_wavelengths. Must be the
+            same length as rest_frame_wavelengths.
+        :return: True if successful
         """
 
         self.rest_frame_wavelengths = rest_frame_wavelengths
         self.emissivity_etas = emissivity_etas
 
+        return True
+
     def set_responsivity_constant(self, responsivity_constant=1):
-        """
-        Hand me a responsivity constant which will go into the responsivity calculation
+        """Define the responsivity constant of the BLR according to Korista+Goad 2019.
+        Sets the value of "A" in the equation in the init function.
+
+        :param responsivity_constant: define A, the percentage of flux that comes from
+            the diffuse continuum w.r.t. the total flux. Must be between 0 and 1.
+        :return: True if successful
         """
 
         assert responsivity_constant >= 0
@@ -132,9 +166,14 @@ class DiffuseContinuum:
 
         self.responsivity_constant = responsivity_constant
 
+        return True
+
     def interpolate_spectrum_to_wavelength(self, observer_frame_wavelength_in_nm):
-        """
-        Interpolates known spectra to a particular wavelength. Returns total emissivity.
+        """Interpolates known spectra to a particular wavelength via linear
+        interpolation.
+
+        :param observer_frame_wavelength_in_nm: observer frame wavelength in nm
+        :return: emissivity at observer frame wavenegth
         """
 
         if self.rest_frame_wavelengths is None:
@@ -155,9 +194,17 @@ class DiffuseContinuum:
     def get_diffuse_continuum_emission(
         self, observer_frame_wavelength_in_nm, incident_continuum_weighting=1
     ):
-        """
-        Give me a wavelength, and if I have the diffuse continuum spectrum I will produce
-        a FluxProjection object based on the interpolated spectrum
+        """Produce a FluxProjection object of the diffuse continuum under the assumption
+        that there is no inclination dependence. Primarily used for the AGN projection
+        pipeline. Note that there is a geometric weighting of r^{-2} from the incident
+        light.
+
+        :param observer_frame_wavelength_in_nm: wavelength the diffuse continuum is
+            observed at in nanometers
+        :param incident_continuum_weighting: optional weighting factor to scale the flux
+            array by
+        :return: FluxProjection object containing metadata of the diffuse continuum and
+            the emission array
         """
         rest_frame_wavelength_in_nm = observer_frame_wavelength_in_nm / (
             1 + self.redshift_source
@@ -185,13 +232,16 @@ class DiffuseContinuum:
         return projection
 
     def get_diffuse_continuum_mean_lag(self, observer_frame_wavelength_in_nm):
-        """
-        determine the diffuse continuum's mean time lag at some wavelength
+        """Calculate the diffuse continuum's mean time lag at a given wavelength in the
+        observer's frame. The integration constant is assumed to enforce tau_min = R_in
+        / c.
+
+        :param observer_frame_wavelength_in_nm: observer frame wavelength in nanometers
+        :return: float representing the mean increase in time delay in units R_g / c
         """
 
         if self.cloud_density_radial_dependence is not None:
 
-            # integration constant is set based on normalizing r_in = r_out, then we expect tau_mean = r_dc
             integration_constant = self.r_in_in_gravitational_radii
 
             if self.cloud_density_radial_dependence < 0:
@@ -237,8 +287,6 @@ class DiffuseContinuum:
                 )
 
         else:
-            # otherwise, brute force calculation of its transfer function to get the mean lag
-            # note the diffuse continuum mean lag does not depend on inclination
             time_delays = calculate_time_lag_array(
                 self.radii_array, self.phi_array, 0, 0
             )
@@ -271,13 +319,12 @@ class DiffuseContinuum:
         self,
         observer_frame_wavelength_in_nm,
     ):
-        """
-        Give me a wavelength, and if I have the diffuse continuum responsivity, I will
-        estimate the mean increase in time lag for an accretion disk due to the diffuse
-        continuum, which must be added by the mean lag of the continuum.
-        Follows equation 3 in Korista + Goad 2019
+        """Estimate the mean increase in time lag for an accretion disk due to the
+        diffuse continuum, which must be added by the mean lag of the continuum. Solves
+        the equation from Korista+Goad 2019 in the init function.
 
-        tau_lam(inc - DC) ~ tau_lam(DC) * (1 - const_a) * DC_percent_flux / ( 1 - const_a * DC_percent_flux )
+        :param observer_frame_wavelength_in_nm: observer frame wavelength in nanometers
+        :return: increase in mean time lag at an observer frame wavelength in R_g / c
         """
 
         tau_diffuse = self.get_diffuse_continuum_mean_lag(
