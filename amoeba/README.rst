@@ -70,9 +70,15 @@ This package was created with Cookiecutter_ and the `audreyr/cookiecutter-pypack
 This package supports Sim5 ray tracing: https://ascl.net/1811.011
 
 [^1]: https://ui.adsabs.harvard.edu/abs/2014ApJS..211...16V/abstract
+        
 [^2]: https://ui.adsabs.harvard.edu/abs/2018ascl.soft11011B/abstract
+        
 [^3]: https://ui.adsabs.harvard.edu/abs/1973A%26A....24..337S/abstract
+        
 [^4]: https://ui.adsabs.harvard.edu/abs/2007MNRAS.380..669C
+        
 [^5]: https://ui.adsabs.harvard.edu/abs/2019MNRAS.482.2788S
+        
 [^6]: https://ui.adsabs.harvard.edu/abs/2017PASA...34...42Y
+        
 

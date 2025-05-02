@@ -1,4 +1,3 @@
-
 """Top-level package for Amoeba."""
 
 __author__ = """Henry James Best V"""
