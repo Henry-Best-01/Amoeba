@@ -8,5 +8,6 @@ Sphinx==5.3.0
 numpy
 astropy
 scikit-image
+tqdm
 
 pytest>=6.0.0
