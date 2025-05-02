@@ -9,5 +9,6 @@ numpy
 astropy
 scikit-image
 tqdm
+speclite
 
 pytest>=6.0.0
