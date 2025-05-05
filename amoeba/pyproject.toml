@@ -21,7 +21,7 @@ classifiers = [
 ]
 license = {text = "MIT license"}
 dependencies = [
-  "astropy", "numpy", "scipy", "scikit-image", "speclite"
+  "astropy", "numpy", "scipy", "scikit-image", "speclite", "tqdm", "matplotlib"
 ]
 
 [project.optional-dependencies]

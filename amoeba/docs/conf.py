@@ -154,7 +154,6 @@ texinfo_documents = [
         "Amoeba Documentation",
         author,
         "amoeba",
-        "One line description of project.",
-        "Miscellaneous",
+        "This package is designed to model agn variability self consistently across multiple models",
     ),
 ]
