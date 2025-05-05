@@ -1,4 +1,9 @@
-.. automodule:: amoeba.src.amoeba
+.. automodule:: amoeba.Classes
+   :members:
+   :show-inheritance:
+   :undoc-members:
+
+.. automodule:: amoeba.Util
    :members:
    :show-inheritance:
    :undoc-members:
