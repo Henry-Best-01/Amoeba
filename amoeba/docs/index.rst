@@ -1,4 +1,4 @@
-.. automodule:: amoeba
+.. automodule:: amoeba.src.amoeba
    :members:
 
 .. toctree::
