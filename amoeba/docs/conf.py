@@ -21,7 +21,7 @@ import os
 import sys
 
 sys.path.insert(0, os.path.abspath(".."))
-sys.path.append(os.path.abspath("../src"))
+sys.path.append(os.path.abspath("../src/"))
 
 import amoeba
 
@@ -154,7 +154,6 @@ texinfo_documents = [
         "Amoeba Documentation",
         author,
         "amoeba",
-        "One line description of project.",
-        "Miscellaneous",
+        "This package is designed to model agn variability self consistently across multiple models",
     ),
 ]

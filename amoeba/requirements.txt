@@ -5,5 +5,12 @@ watchdog==0.9.0
 tox==3.14.0
 coverage>=4.5.4
 Sphinx==5.3.0
+numpy
+astropy
+scikit-image
+tqdm
+speclite
+matplotlib
+myst-parser
 
 pytest>=6.0.0
