@@ -11,5 +11,6 @@ scikit-image
 tqdm
 speclite
 matplotlib
+myst-parser
 
 pytest>=6.0.0
