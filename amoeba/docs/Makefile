@@ -5,7 +5,7 @@
 SPHINXOPTS    =
 SPHINXBUILD   = python3 -msphinx
 SPHINXPROJ    = amoeba
-SOURCEDIR     = ../amoeba
+SOURCEDIR     = ../src/amoeba/
 BUILDDIR      = ./_build
 
 # Put it first so that "make" without argument is like "make help".
