@@ -1,6 +1,7 @@
 .. automodule:: amoeba.src.amoeba
    :members:
    :show-inheritance:
+   :undoc-members:
 
 .. toctree::
    :maxdepth: 4
