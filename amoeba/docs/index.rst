@@ -9,7 +9,7 @@
    :undoc-members:
 
 .. toctree::
-   :maxdepth: 4
+   :maxdepth: 5
    :caption: Contents:
 
    readme
