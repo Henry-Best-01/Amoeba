@@ -6,9 +6,8 @@ Subpackages
 
 .. toctree::
 
-    amoeba.Notebooks
-    amoeba.src
-    amoeba.tests
+    amoeba.Classes
+    amoeba.Util
 
 Module contents
 ---------------
