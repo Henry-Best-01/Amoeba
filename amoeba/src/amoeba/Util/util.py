@@ -800,7 +800,7 @@ def convert_1d_array_to_2d_array(array_1d):
     :return: A 2d numpy array representation of the input
     """
     resolution = int(np.size(array_1d) ** 0.5)
-    array_2d = np.reshape(np.asarray(array_1d), shape=(resolution, resolution))
+    array_2d = np.reshape(np.asarray(array_1d), newshape=(resolution, resolution))
 
     return array_2d
 
