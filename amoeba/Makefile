@@ -70,7 +70,7 @@ docs: ## generate Sphinx HTML documentation, including API docs
 	rm -f docs/amoeba.rst
 	rm -f docs/modules.rst
 	rm -f docs/amoeba.*.rst
-	sphinx-apidoc -o docs/ .
+	sphinx-apidoc -o docs/ ./amoeba/src/amoeba/
 	$(MAKE) -C docs clean
 	$(MAKE) -C docs html
 	$(BROWSER) docs/_build/html/index.html
