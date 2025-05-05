@@ -6,7 +6,6 @@ Subpackages
 
 .. toctree::
 
-    amoeba.Notebooks
     amoeba.src
     amoeba.tests
 
