@@ -138,11 +138,11 @@ def create_maps(
                 if error.value():
                     continue
                 P = sim5.geodesic_find_midplane_crossing(gd, 0)
-                if isnan(P):
+                if np.isnan(P):
                     continue
                 r = sim5.geodesic_position_rad(gd, P)
                 pol = sim5.geodesic_position_pol(gd, P)
-                if isnan(r):
+                if np.isnan(r):
                     continue
                 if r >= convert_spin_to_isco_radius(spin):
                     phi = (
