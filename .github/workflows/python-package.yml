@@ -42,7 +42,7 @@ jobs:
     - name: Code Coverage Report
       uses: irongut/CodeCoverageSummary@v1.3.0
       with:
-          filename: junit/test-results.xml
+          filename: /home/runner/work/Amoeba/Amoeba/junit/test-results.xml
           badge: true
           fail_below_min: true
           format: markdown
