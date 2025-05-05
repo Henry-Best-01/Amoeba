@@ -2,6 +2,6 @@ amoeba
 ======
 
 .. toctree::
-   :maxdepth: 5
+   :maxdepth: 10
 
    amoeba
