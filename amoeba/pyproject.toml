@@ -49,6 +49,15 @@ pythonpath = [
     ".", "src"
 ]
 
+[tool.coverage.report]
+fail-under = 98
+
+[tool.coverage.run]
+branch = true
+include = ["amoeba/src/*"]
+source = ["."]
+command_line = "-m unittest discover -s tests/"
+fail-under = 98
 
 
 # Mypy

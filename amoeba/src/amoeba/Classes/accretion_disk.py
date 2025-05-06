@@ -52,7 +52,8 @@ class AccretionDisk:
         :param g_array: a 2d representation of the g-factors (relativistic correction
             factors) on the accretion disk. Requires general relativistic ray tracing.
         :param radii_array: a 2d representation of the radii on the accretion disk, in
-            R_g = GM/c^2
+            R_g = GM/c^2. Note that these arrays represent the projection of the disk in
+            the plane of the sky.
         :param height_array: a 2d representation of the height of the accretion disk in
             units of R_g = GM/c^2
         :param spin: float representing the dimensionless spin component of the SMBH
