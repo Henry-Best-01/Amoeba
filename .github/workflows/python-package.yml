@@ -37,5 +37,5 @@ jobs:
         flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
     - name: Test with pytest and check coverage
       run: |
-        coverage run -m --source=amoeba/src/* pytest amoeba/tests/*
+        coverage run -m --source=amoeba/src/amoeba/ pytest amoeba/tests/*
         coverage report -m --fail-under=98 --skip-covered
