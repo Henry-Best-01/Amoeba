@@ -38,4 +38,4 @@ jobs:
     - name: Test with pytest and check coverage
       run: |
         coverage run -m pytest amoeba/tests/* 
-        coverage report -m --fail-under=0.98 --skip-covered
+        coverage report -m --fail-under=98 --skip-covered
