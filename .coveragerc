@@ -1,0 +1,4 @@
+[report]
+fail_under = 98
+skip_covered = true
+show_missing = true
