@@ -39,7 +39,6 @@ jobs:
       run: |
         pip install pytest pytest-cov
         pytest amoeba/tests/test_* --doctest-modules --junitxml=test-results.xml --cov=com --cov-report=xml --cov-report=html
-    - name: Code Coverage Report
       uses: irongut/CodeCoverageSummary@v1.3.0
       with:
           filename: './test-results.xml'
