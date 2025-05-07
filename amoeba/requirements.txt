@@ -12,5 +12,6 @@ tqdm
 speclite
 matplotlib
 myst-parser
+black
 
 pytest>=6.0.0
