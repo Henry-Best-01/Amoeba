@@ -16,7 +16,7 @@ Amoeba
 .. image:: https://img.shields.io/badge/%20style-sphinx-0a507a.svg
         :target: https://www.sphinx-doc.org/en/master/usage/index.html
 
-.. [![CI](https://github.com/Henry-Best-01/Amoeba/actions/workflows/CI.yml/badge.svg?branch=main)](https://github.com/Henry-Best-01/Amoeba/actions/workflows/CI.yml)
+[![CI](https://github.com/Henry-Best-01/Amoeba/actions/workflows/CI.yml/badge.svg?branch=main)](https://github.com/Henry-Best-01/Amoeba/actions/workflows/CI.yml)
 
 
 `Amoeba <https://ui.adsabs.harvard.edu/abs/2025MNRAS.539.1269B/abstract>`_
