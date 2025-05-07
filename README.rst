@@ -19,7 +19,6 @@ Amoeba
 .. [![CI](https://github.com/Henry-Best-01/Amoeba/actions/workflows/CI.yml/badge.svg)](https://github.com/Henry-Best-01/Amoeba/actions/workflows/CI.yml)
 
 
-
 Amoeba (an Agn Model of Optical Emissions Beyond steady-state Accretion disks) is a new, modular, and open source
 quasar modeling code designed to model intrinsic and extrinsic variability within the context of wide field
 optical surveys such as LSST. It has the capability to treat both emission and reverberation with general
