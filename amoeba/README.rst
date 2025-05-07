@@ -16,11 +16,11 @@ Amoeba
 .. image:: https://img.shields.io/badge/%20style-sphinx-0a507a.svg
         :target: https://www.sphinx-doc.org/en/master/usage/index.html
 
-.. [![CI](https://github.com/Henry-Best-01/Amoeba/actions/workflows/CI.yml/badge.svg)](https://github.com/Henry-Best-01/Amoeba/actions/workflows/CI.yml)
+.. [![CI](https://github.com/Henry-Best-01/Amoeba/actions/workflows/CI.yml/badge.svg?branch=main)](https://github.com/Henry-Best-01/Amoeba/actions/workflows/CI.yml)
 
 
-
-Amoeba (an Agn Model of Optical Emissions Beyond steady-state Accretion disks) is a new, modular, and open source
+`Amoeba <https://ui.adsabs.harvard.edu/abs/2025MNRAS.539.1269B/abstract>`_
+(an Agn Model of Optical Emissions Beyond steady-state Accretion disks) is a new, modular, and open source
 quasar modeling code designed to model intrinsic and extrinsic variability within the context of wide field
 optical surveys such as LSST. It has the capability to treat both emission and reverberation with general
 relativistic corrections, including Doppler shifting, gravitational redshifting, and light bending around the
@@ -35,12 +35,12 @@ arbitrary surface brightness / response maps. Transfer functions may be construc
 the assumed lamppost model.
 
 We cannot upload magnification maps due to size limits. This code was written to use external microlensing magnification
-maps, where many can be found on the [GERLUMPH](https://gerlumph.swin.edu.au) database[^1]. Alternatively, they may be
-generated using the code found [here](https://github.com/weisluke/microlensing).
+maps, where many can be found on the `GERLUMPH database <https://gerlumph.swin.edu.au>`_ [^1]. Alternatively, they may be
+generated using the code found `here <https://github.com/weisluke/microlensing>`_ .
 
 **Important** The function create_maps within Util.util is designed to generate all accretion disk maps required for
 making a disk object. For most users, this will be the primary interface between your parameters and the amoeba code.
-This function calls [Sim5](https://github.com/mbursa/sim5), a public geodesic ray-tracing code[^2], if available to
+This function calls `Sim5 <https://github.com/mbursa/sim5>`_ , a public geodesic ray-tracing code[^2], if available to
 calculate impact positions of observed photons on the accretion disk. It creates a full dictionary of parameters
 designed to be passed into the AccretionDisk or Agn object.
 
@@ -52,9 +52,9 @@ defining streamlines, similar to the disk-wind model[^6]. Simple projections, li
 and transfer functions may be constructed now.
 
 Further examples are provided in the example_scripts directory, with individual scripts aimed at visualizing certain
-aspects of amoeba.
+aspects of Amoeba.
 
-For those particularly interested in how amoeba works, please see the in-depth notebooks in the Notebooks directory.
+For those particularly interested in how Amoeba works, please see the in-depth notebooks in the Notebooks directory.
 
 Unit tests are included in the tests directory and our goal is to remain as close to 100% coverage throughout development!
 
@@ -73,8 +73,7 @@ Amoeba's primary function is to simulate flux distributions of AGN components at
 modern telescopes and use that information to generate the expected variability which we can see in time-variable sources.
 The accretion disk provides the natural source of the variable continuum which depends on both the parameters of the source
 and the wavelength it is observed at. The accretion disk is believed to be in close proximity to the supermassive black hole,
-leading to the desire of relativistic corrections. Amoeba handles this by running Sim5, where installation instructions
-may be found [here](https://github.com/mbursa/sim5). The python interface must be installed for Amoeba to use it. 
+leading to the desire of relativistic corrections. The accretion disk module of Amoeba handles these processes.
 
 Beyond the accretion disk, it is well known that type 1 AGN have braod emission lines. These may be simulated assuming a
 rest frame emission and a distribution of particles, which may be given some bulk velocity and acceleration. Based on the
@@ -98,10 +97,10 @@ requires a representation of the 2-dimensional magnification map generated from 
 microlens' Einstein radius is calculated, angular diameter distances are computed, and flux distributions and magnification maps
 are convolved to provide microlensing light curves of each source.
 
-Some precomputed ray tracings may be found [here](https://drive.google.com/drive/folders/1vx8HUBXw6SaDq5uS4jQCyWdg13XfCRCv?usp=share_link)
+Some precomputed ray tracings may be found `here <https://drive.google.com/drive/folders/1vx8HUBXw6SaDq5uS4jQCyWdg13XfCRCv?usp=share_link>`_
 which contains a zipped folder of .fits files for various inclination angles of Schwarzschild black holes.
 
-More explicit use cases may be found at the [ReadTheDocs](https://amoeba.readthedocs.io/en/latest/?version=latest).
+More explicit use cases may be found at the `ReadTheDocs <https://amoeba.readthedocs.io/en/latest/?version=latest>`_ .
 
 
 Citing (It's important for developers!)
