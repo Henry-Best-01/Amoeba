@@ -1972,6 +1972,7 @@ def calculate_blr_transfer_function(
             magnification_array,
             redshift_lens,
             redshift_source,
+            1000,
             smbh_mass_exp=smbh_mass_exp,
             mean_microlens_mass_in_kg=mean_microlens_mass_in_kg,
             number_of_microlens_einstein_radii=number_of_microlens_einstein_radii,
