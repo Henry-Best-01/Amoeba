@@ -1861,6 +1861,8 @@ def test_calculate_blr_transfer_function():
         weighting_grid=None,
         radial_resolution=r_step,
         vertical_resolution=z_step,
+        redshift_lens=1,
+        redshift_source=2,
         magnification_array=test_magnifications_unit,
     )
 
