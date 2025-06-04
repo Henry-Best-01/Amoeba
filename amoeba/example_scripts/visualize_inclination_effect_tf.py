@@ -60,7 +60,6 @@ ax.set_xlabel(r"$\tau [r_{\rm{g}}]$")
 ax.set_ylabel(r"$\Psi$ (" + str(wavelength) + " nm $| i)$")
 
 ax.set_xlim(-10, 1000)
-ax.set_ylim(-0.0001, 0.006)
 
 ax.legend(loc=1)
 

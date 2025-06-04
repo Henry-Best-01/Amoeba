@@ -10,15 +10,15 @@ from astropy import constants as const
 mexp = 8.6  # solution to log_10(M_smbh/M_sun)
 redshift = 0.2  # dimensionless
 number_grav_rad = 1000  # Rg
-resolution = 500  # total px
+resolution = 1000  # total px
 eddington_ratio = 0.05  # dimensionless
-inclination = 25  # deg
+inclination = 45  # deg
 my_observed_wavelength = 750  # nm
 min_radius = 10  # Rg
 spin = 0.2
 
 # define observation times
-snapshot_timestamps = np.linspace(4500, 8000, 10)
+snapshot_timestamps = np.linspace(3500, 8000, 50)
 
 # define the driving signal
 total_time = 10000  # days
@@ -54,7 +54,6 @@ my_driving_signal_times, my_driving_signal = generate_signal_from_psd(
 
 my_driving_signal = signal_amplitude * my_driving_signal
 
-
 my_snapshots = my_accretion_disk.generate_snapshots(
     my_observed_wavelength,
     snapshot_timestamps,
@@ -62,16 +61,20 @@ my_snapshots = my_accretion_disk.generate_snapshots(
     driving_signal_strength,
 )
 
-my_static_flux.flux_array = -my_static_flux.flux_array
+my_normalization = np.sum(my_static_flux.flux_array) / np.sum(
+    my_snapshots[0].flux_array
+)
 
 fig, ax = plt.subplots(3, 4, sharex="all", sharey="all")
 
 for jj in range(min(len(my_snapshots), 10)):
 
-    current_snapshot = my_snapshots[jj].flux_array
+    current_snapshot = (
+        my_snapshots[jj].flux_array * my_normalization - my_static_flux.flux_array
+    )
 
     X, Y = my_snapshots[jj].get_plotting_axes()
-    contours = ax[jj // 4, jj % 4].contourf(X, Y, (abs(current_snapshot)))
+    contours = ax[jj // 4, jj % 4].contourf(X, Y, (current_snapshot), 20)
     cbar = plt.colorbar(contours, ax=ax[jj // 4, jj % 4])
     ax[jj // 4, jj % 4].set_aspect(1)
     ax[jj // 4, jj % 4].set_label(
@@ -82,17 +85,11 @@ X, Y = my_static_flux.get_plotting_axes()
 contours = ax[-1, -1].contourf(X, Y, (abs(my_static_flux.flux_array)))
 cbar = plt.colorbar(contours, ax=ax[-1, -1])
 ax[-1, -1].set_title("static case")
+ax[-1, -1].set_aspect(1)
 
 fig2, ax2 = plt.subplots(2, sharex="all")
 ax2[0].plot(my_driving_signal_times, my_driving_signal, label="driving signal")
 for jj in range(len(my_snapshots)):
-    ax2[0].plot(
-        [snapshot_timestamps[jj], snapshot_timestamps[jj]],
-        [min(my_driving_signal), max(my_driving_signal)],
-        "--",
-        color="black",
-        alpha=0.4,
-    )
     ax2[1].scatter(
         [snapshot_timestamps[jj]],
         [np.nansum(my_snapshots[jj].flux_array)],

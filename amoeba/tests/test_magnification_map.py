@@ -304,8 +304,8 @@ class TestMagnificationMap:
             name="identity",
         )
 
-        wavelength_1 = 100
-        wavelength_2 = 300
+        wavelength_1 = 500
+        wavelength_2 = 800
 
         micro_tf_1_id = (
             self.identity_magnification_array.calculate_microlensed_transfer_function(

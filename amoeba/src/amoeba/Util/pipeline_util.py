@@ -8,6 +8,8 @@ from speclite.filters import (
 import speclite
 from amoeba.Util.util import convolve_signal_with_transfer_function
 
+# todo: add pipeline support for microlensing
+
 
 def intrinsic_signal_propagation_pipeline_for_agn(
     AGN,

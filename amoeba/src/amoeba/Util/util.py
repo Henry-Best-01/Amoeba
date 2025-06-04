@@ -1194,25 +1194,26 @@ def calculate_geometric_disk_factor(
 
     gravitational_radius = calculate_gravitational_radius(10**smbh_mass_exp)
 
-    height_gradient_x, height_gradient_y = np.gradient(height_array)
-    radii_gradient_x, radii_gradient_y = np.gradient(new_radii)
+    height_gradient_y, height_gradient_x = np.gradient(height_array)
 
-    dh_dr = (
-        (height_gradient_x / radii_gradient_x) ** 2
-        + (height_gradient_y / radii_gradient_y) ** 2
-    ) ** 0.5
+    mod_dist = (x_array**2 + y_array**2 + height_array**2) ** 0.5
 
-    theta_star = np.pi - np.arctan(dh_dr) - np.arctan2(height_array, new_radii)
+    mod_grad = (height_gradient_x**2 + height_gradient_y**2 + 1) ** 0.5
 
-    theta_star = abs(theta_star % (np.pi))
+    cos_vector_angle_of_incidence = (
+        -height_array / mod_dist * 1 / mod_grad
+        + x_array / mod_dist * height_gradient_x / mod_grad
+        + y_array / mod_dist * height_gradient_y / mod_grad
+    )
 
-    cos_theta_star = np.cos(theta_star)
+    mask = cos_vector_angle_of_incidence < 0
+    cos_vector_angle_of_incidence[mask] = 0
 
     radii_star = (new_radii**2 + height_array**2) ** 0.5 * gravitational_radius
 
     return np.nan_to_num(
         (1 - albedo_array)
-        * cos_theta_star
+        * cos_vector_angle_of_incidence
         / (4 * np.pi * const.sigma_sb * radii_star**2)
     )
 
@@ -1363,13 +1364,13 @@ def calculate_microlensed_transfer_function(
     redshift_lens,
     redshift_source,
     rest_wavelength_in_nm,
-    temp_array,
-    radii_array,
-    phi_array,
-    g_array,
-    inclination_angle,
-    smbh_mass_exp,
-    corona_height,
+    temp_array=None,
+    radii_array=None,
+    phi_array=None,
+    g_array=None,
+    inclination_angle=None,
+    smbh_mass_exp=None,
+    corona_height=None,
     mean_microlens_mass_in_kg=1.0 * const.M_sun.to(u.kg),
     number_of_microlens_einstein_radii=25,
     number_of_smbh_gravitational_radii=1000,
@@ -1386,13 +1387,15 @@ def calculate_microlensed_transfer_function(
     return_descaled_response_array_and_lags=False,
     return_magnification_map_crop=False,
     random_seed=None,
+    response_array=None,
+    time_lag_array=None,
 ):
     """Calculate the transfer function assuming the response of the disk can be
     amplified by microlensing. Essentially this is done by calculating the response and
     time lag maps of the accretion disk, determining the scale ratio between sizes in
     the source plane, rescaling the accretion disk's arrays to the resolution of the
     magnification map, weighting each pixel by its corresponding magnification, then
-    computing the transfer function.
+    computing the transfer function. Extended to allow for response arrays of BLR.
 
     :param magnification_array: a 2d array of magnifications in the source plane
     :param redshift_lens: int/float representing the redshift of the lens
@@ -1440,6 +1443,11 @@ def calculate_microlensed_transfer_function(
         flexability in disk model. Note that this is experimental!
     :param albedo_array: int, float, or array of albedos (reflectivities) to use for the
         disk
+    :param response_array: a 2d array representing the responsivity of the object. Must be
+        equal in shape to the time_lag_array. Calculated innately for accretion disk.
+    :param time_lag_array: a 2d array representing the time delay to each point on the
+        response_array. Must be equal in shape to response_array. Calculated innately for
+        accretion disk.
 
     :return: transfer function calculated assuming the response of the disk is amplified
         by the magnification_array
@@ -1448,25 +1456,29 @@ def calculate_microlensed_transfer_function(
 
     assert redshift_lens != redshift_source
 
-    disk_response_array, time_lag_array = construct_accretion_disk_transfer_function(
-        rest_wavelength_in_nm,
-        temp_array,
-        radii_array,
-        phi_array,
-        g_array,
-        inclination_angle,
-        smbh_mass_exp,
-        corona_height,
-        axis_offset_in_gravitational_radii=axis_offset_in_gravitational_radii,
-        angle_offset_in_degrees=angle_offset_in_degrees,
-        height_array=height_array,
-        albedo_array=albedo_array,
-        return_response_array_and_lags=True,
-    )
+    if response_array is None and time_lag_array is None:
+
+        response_array, time_lag_array = construct_accretion_disk_transfer_function(
+            rest_wavelength_in_nm,
+            temp_array,
+            radii_array,
+            phi_array,
+            g_array,
+            inclination_angle,
+            smbh_mass_exp,
+            corona_height,
+            axis_offset_in_gravitational_radii=axis_offset_in_gravitational_radii,
+            angle_offset_in_degrees=angle_offset_in_degrees,
+            height_array=height_array,
+            albedo_array=albedo_array,
+            return_response_array_and_lags=True,
+        )
+
+    assert np.shape(response_array) == np.shape(time_lag_array)
 
     rescaled_response_array = perform_microlensing_convolution(
         magnification_array,
-        disk_response_array,
+        response_array,
         redshift_lens,
         redshift_source,
         smbh_mass_exp=smbh_mass_exp,
@@ -1479,7 +1491,7 @@ def calculate_microlensed_transfer_function(
         return_preconvolution_information=True,
     )
 
-    scale_ratio = np.size(rescaled_response_array, 0) / np.size(disk_response_array, 0)
+    scale_ratio = np.size(rescaled_response_array, 0) / np.size(response_array, 0)
 
     rescaled_time_lag_array = rescale(time_lag_array, scale_ratio)
     assert np.shape(rescaled_time_lag_array) == np.shape(rescaled_response_array)
@@ -1508,6 +1520,13 @@ def calculate_microlensed_transfer_function(
     ]
 
     if return_magnification_map_crop:
+        np.random.seed(random_seed)
+        if not isinstance(relative_orientation, (int, float)):
+            relative_orientation = np.random.rand() * 360
+
+        magnification_crop = rotate(
+            magnification_crop, -relative_orientation, axes=(0, 1), reshape=False
+        )
         return magnification_crop
 
     magnified_response_array = rescaled_response_array * magnification_crop
@@ -1882,6 +1901,17 @@ def calculate_blr_transfer_function(
     weighting_grid=None,
     radial_resolution=1,
     vertical_resolution=1,
+    magnification_array=None,
+    number_of_microlens_einstein_radii=25,
+    redshift_lens=None,
+    redshift_source=None,
+    mean_microlens_mass_in_kg=1 * const.M_sun.to(u.kg),
+    x_position=None,
+    y_position=None,
+    random_seed=None,
+    relative_orientation=0,
+    OmM=0.3,
+    H0=70,
 ):
     """Calculate the response function of the BLR by assuming weighting factors for some
     given wavelength range. The BLR emission is assumed to be proportional to the
@@ -1923,6 +1953,42 @@ def calculate_blr_transfer_function(
     if weighting_grid is None:
         weighting_grid = np.ones(np.shape(blr_density_rz_grid))
     assert np.shape(weighting_grid) == np.shape(blr_density_rz_grid)
+
+    if magnification_array is not None:
+
+        projection, max_projected_radius = project_blr_to_source_plane(
+            blr_density_rz_grid,
+            blr_vertical_velocity_grid,
+            blr_radial_velocity_grid,
+            inclination_angle,
+            smbh_mass_exp,
+            velocity_range=velocity_range,
+            weighting_grid=weighting_grid,
+            radial_resolution=radial_resolution,
+            vertical_resolution=vertical_resolution,
+        )
+
+        magnification_crop = calculate_microlensed_transfer_function(
+            magnification_array,
+            redshift_lens,
+            redshift_source,
+            smbh_mass_exp=smbh_mass_exp,
+            mean_microlens_mass_in_kg=mean_microlens_mass_in_kg,
+            number_of_microlens_einstein_radii=number_of_microlens_einstein_radii,
+            relative_orientation=relative_orientation,
+            OmM=OmM,
+            H0=H0,
+            x_position=x_position,
+            y_position=y_position,
+            number_of_smbh_gravitational_radii=max_projected_radius,
+            response_array=projection,
+            time_lag_array=projection,
+            return_magnification_map_crop=True,
+            random_seed=random_seed,
+        )
+
+    else:
+        magnification_crop = None
 
     x_coordinates = np.linspace(
         -np.size(blr_density_rz_grid, 0) * radial_resolution,
@@ -2004,6 +2070,13 @@ def calculate_blr_transfer_function(
             * weighting_grid[index_grid.astype(int), height]
         )
 
+        if magnification_crop is None:
+            magnification_crop = np.ones(np.shape(response_of_current_slab))
+
+        rescale_factor = np.size(response_of_current_slab, 0) / np.size(
+            magnification_crop, 0
+        )
+
         time_delays_of_current_slab = calculate_time_lag_array(
             R,
             Phi,
@@ -2012,6 +2085,13 @@ def calculate_blr_transfer_function(
             height_array=np.ones(np.shape(R * radial_resolution))
             * height
             * vertical_resolution,
+        )
+
+        response_of_current_slab = (
+            rescale(response_of_current_slab, rescale_factor) * magnification_crop
+        )
+        time_delays_of_current_slab = rescale(
+            time_delays_of_current_slab, rescale_factor
         )
 
         transfer_function_of_slab = np.histogram(

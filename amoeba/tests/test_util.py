@@ -1750,6 +1750,8 @@ def test_calculate_blr_transfer_function():
     max_radius = 100
     max_height = 100
 
+    test_magnifications_unit = np.ones((1000, 1000))
+
     r_points = 20
     z_points = 10
 
@@ -1859,6 +1861,7 @@ def test_calculate_blr_transfer_function():
         weighting_grid=None,
         radial_resolution=r_step,
         vertical_resolution=z_step,
+        magnification_array=test_magnifications_unit,
     )
 
     mean_response_2 = np.sum(tau_ax * face_on_blr_tf_2)
