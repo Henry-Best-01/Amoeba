@@ -2088,12 +2088,10 @@ def calculate_blr_transfer_function(
             * vertical_resolution,
         )
 
-        response_of_current_slab = (
-            rescale(response_of_current_slab, rescale_factor) * magnification_crop
+        response_of_current_slab = response_of_current_slab * rescale(
+            magnification_crop, rescale_factor
         )
-        time_delays_of_current_slab = rescale(
-            time_delays_of_current_slab, rescale_factor
-        )
+        time_delays_of_current_slab = time_delays_of_current_slab
 
         transfer_function_of_slab = np.histogram(
             time_delays_of_current_slab,
