@@ -2476,8 +2476,6 @@ def generate_snapshots_of_radiation_pattern(
     assert driving_signal_fractional_strength <= 1
     static_flux = planck_law(temp_array, rest_wavelength_in_nm) * g_array**4
 
-    total_static_flux = np.sum(static_flux)
-
     response_array, time_lag_array = construct_accretion_disk_transfer_function(
         rest_wavelength_in_nm,
         temp_array,
@@ -2499,16 +2497,7 @@ def generate_snapshots_of_radiation_pattern(
 
     time_lag_array *= gr_per_day
     maximum_time_lag_in_days = np.max(time_lag_array)
-    # print('response_array: ', response_array.sum())
-    # print('total_static_flux: ', total_static_flux)
-    # print('total driving signal: ', np.sum(driving_signal))
-
-    # scale_by_this = total_static_flux/np.sum(driving_signal)
     response_array *=  np.sum(driving_signal)
-    # response_array *= total_static_flux / np.sum(response_array)
-    # unnormalized flux
-    # driving_signal = (1 + scale * driving_signal) * np.mean(static_flux)
-    # response_array *= scale_by_this
     if len(driving_signal) < np.max(time_stamps + maximum_time_lag_in_days):
         print('Driving signal length: ', len(driving_signal))
         print('', np.max(time_stamps + maximum_time_lag_in_days))
@@ -2532,7 +2521,6 @@ def generate_snapshots_of_radiation_pattern(
             * response_array
             * accretion_disk_mask
         )
-    # print('snapshot 0: ',np.array(list_of_snapshots[0]).sum())
     return np.array(list_of_snapshots), time_lag_array
 
 def project_blr_to_source_plane(
