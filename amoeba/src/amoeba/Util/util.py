@@ -125,7 +125,6 @@ def create_maps(
     r_array = temp_array.copy()
     phi_array = temp_array.copy()
     if sim5_installed == True:  # pragma: no cover
-        print("sim5_installed")
         if inclination_angle == 0:
             inclination_angle += 0.1
         bh_rms = sim5.r_ms(spin)
@@ -800,7 +799,6 @@ def pull_value_from_grid(array_2d, x_position, y_position):
         y_int = y_position // 1
         dx = x_position % 1
         dy = y_position % 1
-        print("x_int: ", x_int, "y_int: ", y_int, "dx: ", dx, "dy: ", dy)
         base_value = array_2d[int(x_int), int(y_int)]
         base_plus_x = array_2d[int(x_int) + 1, int(y_int)]
         base_plus_y = array_2d[int(x_int), int(y_int) + 1]
@@ -812,8 +810,6 @@ def pull_value_from_grid(array_2d, x_position, y_position):
             + base_plus_y * dx * (1 - dy)
             + base_plus_x_plus_y * dx * dy
         )
-        print("value: ", value)
-        print("array_2d: ", array_2d)
 
         array_2d = array_2d[:-2, :-2]
 
@@ -950,7 +946,6 @@ def perform_microlensing_convolution(
         * (number_of_smbh_gravitational_radii * gravitational_radius_of_smbh)
         / np.size(flux_array, 0)
     )
-    # print(pixel_size_flux_array)
 
     pixel_size_magnification_array = (
         number_of_microlens_einstein_radii
@@ -963,10 +958,7 @@ def perform_microlensing_convolution(
         )
     ) / np.size(magnification_array, 0)
 
-    # print('pixel_size_flux_array: ',pixel_size_flux_array)
-    # print('pixel_size_magnification_array: ', pixel_size_magnification_array)
     pixel_ratio = pixel_size_flux_array / pixel_size_magnification_array
-    # print('pixel_ratio: ', pixel_ratio)
     flux_array_rescaled = rescale(flux_array, pixel_ratio)
     new_total_flux = np.sum(flux_array_rescaled)
 
@@ -974,7 +966,6 @@ def perform_microlensing_convolution(
 
     if return_preconvolution_information:
         return flux_array_rescaled
-    # print(flux_array.shape, np.size(flux_array_rescaled, 0), np.shape(magnification_array))
     dummy_map = np.zeros(np.shape(magnification_array))
     if np.size(flux_array_rescaled, 0) < np.size(dummy_map, 0):
         dummy_map[
@@ -1046,7 +1037,6 @@ def extract_light_curve(
 
     # check convolution if the map was large enough. Otherwise return original total flux.
     # Note the convolution should be weighted by the square of the pixel shift to conserve flux.
-    print("pixel_shift: ", pixel_shift)
     if pixel_shift >= np.size(convolution_array, 0) / 2:
         print(
             "warning, flux projection too large for this magnification map. Returning average flux."
@@ -1197,7 +1187,6 @@ def extract_path_on_microlensing_map(
     else:
         light_curve_time_in_years *= u.yr.to(u.s)
 
-    # print(np.size(convolution_array,0)/2)
     if pixel_shift >= np.size(convolution_array, 0) / 2:
         print(
             "warning, flux projection too large for this magnification map. Returning average flux."
@@ -2034,7 +2023,6 @@ def generate_drw_signal(
         )
 
     output_drw = output_drw[int(number_of_points // 2) :]
-    print(np.std(output_drw))
     output_drw -= np.mean(output_drw)
     output_drw /= np.std(output_drw)
 
