@@ -99,10 +99,13 @@ class AccretionDisk:
             * 2
             / np.size(self.temp_array, 0)
         )
-        print('pixel_size: ',self.pixel_size)
-        print('gravitational_radius given bh mass: ',self.rg)
-        print('maximum radius of accretion disk in r_g: ',self.r_out_in_gravitational_radii)
-        print('np.size(self.temp_array, 0): ',np.size(self.temp_array, 0))
+        print("pixel_size: ", self.pixel_size)
+        print("gravitational_radius given bh mass: ", self.rg)
+        print(
+            "maximum radius of accretion disk in r_g: ",
+            self.r_out_in_gravitational_radii,
+        )
+        print("np.size(self.temp_array, 0): ", np.size(self.temp_array, 0))
 
         self.corona_height = corona_height
 
