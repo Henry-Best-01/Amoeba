@@ -1,4 +1,3 @@
-import pytest
 import numpy as np
 from amoeba.Classes.blr_streamline import Streamline
 from amoeba.Classes.torus import Torus
