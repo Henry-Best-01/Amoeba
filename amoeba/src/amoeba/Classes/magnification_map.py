@@ -220,7 +220,7 @@ class MagnificationMap:
         return_descaled_response_array_and_lags=False,
         return_magnification_map_crop=False,
         random_seed=None,
-        disk_tf = None,
+        disk_tf=None,
     ):
         """Calculate the transfer function of an accretion disk when the response map is
         microlensed at a particular location.
@@ -288,7 +288,7 @@ class MagnificationMap:
             return_descaled_response_array_and_lags=return_descaled_response_array_and_lags,
             return_magnification_map_crop=return_magnification_map_crop,
             random_seed=random_seed,
-            disk_tf=disk_tf
+            disk_tf=disk_tf,
         )
 
 

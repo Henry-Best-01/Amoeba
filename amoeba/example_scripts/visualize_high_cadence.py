@@ -3,7 +3,6 @@ import numpy as np
 import matplotlib.pyplot as plt
 import numpy.testing as npt
 
-
 tax = np.linspace(0, 1000, 1001)
 sample_tf = np.linspace(0, 1000, 1001) * np.linspace(1000, 0, 1001)
 sample_tf /= np.sum(sample_tf)

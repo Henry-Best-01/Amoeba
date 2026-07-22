@@ -125,7 +125,7 @@ def create_maps(
     r_array = temp_array.copy()
     phi_array = temp_array.copy()
     if sim5_installed == True:  # pragma: no cover
-        print('sim5_installed')
+        print("sim5_installed")
         if inclination_angle == 0:
             inclination_angle += 0.1
         bh_rms = sim5.r_ms(spin)
@@ -721,53 +721,58 @@ def calculate_einstein_radius_in_meters(
 
     return einstein_radius_in_meters
 
+
 def pull_subarray_from_grid(array_2d, x_position, y_position, x_length, y_length):
-        """
-        Extracts a 2D subarray of shape (x_length, y_length) centered at (x_position, y_position)
-        from array_2d. Handles edge cases by padding the array as needed.
+    """
+    Extracts a 2D subarray of shape (x_length, y_length) centered at (x_position, y_position)
+    from array_2d. Handles edge cases by padding the array as needed.
 
-        :param array_2d: 2D numpy array to extract from.
-        :param x_position: Center x coordinate (float or int).
-        :param y_position: Center y coordinate (float or int).
-        :param x_length: Side length in x direction (int).
-        :param y_length: Side length in y direction (int).
-        :return: 2D numpy array of shape (x_length, y_length).
-        """
-        x_position = np.rint(x_position).astype(int)
-        y_position = np.rint(y_position).astype(int)
-        x_length = int(x_length)
-        y_length = int(y_length)
+    :param array_2d: 2D numpy array to extract from.
+    :param x_position: Center x coordinate (float or int).
+    :param y_position: Center y coordinate (float or int).
+    :param x_length: Side length in x direction (int).
+    :param y_length: Side length in y direction (int).
+    :return: 2D numpy array of shape (x_length, y_length).
+    """
+    x_position = np.rint(x_position).astype(int)
+    y_position = np.rint(y_position).astype(int)
+    x_length = int(x_length)
+    y_length = int(y_length)
 
-        half_x = x_length // 2
-        half_y = y_length // 2
+    half_x = x_length // 2
+    half_y = y_length // 2
 
-        x_start = x_position - half_x
-        x_end = x_start + x_length
-        y_start = y_position - half_y
-        y_end = y_start + y_length
+    x_start = x_position - half_x
+    x_end = x_start + x_length
+    y_start = y_position - half_y
+    y_end = y_start + y_length
 
-        pad_x_before = max(0, np.min(-x_start))
-        pad_x_after = max(0, np.max(x_end - array_2d.shape[0]))
-        pad_y_before = max(0, np.min(-y_start))
-        pad_y_after = max(0, np.max(y_end - array_2d.shape[1]))
+    pad_x_before = max(0, np.min(-x_start))
+    pad_x_after = max(0, np.max(x_end - array_2d.shape[0]))
+    pad_y_before = max(0, np.min(-y_start))
+    pad_y_after = max(0, np.max(y_end - array_2d.shape[1]))
 
-        array_padded = np.pad(array_2d, ((pad_x_before, pad_x_after), (pad_y_before, pad_y_after)), mode="edge")
+    array_padded = np.pad(
+        array_2d,
+        ((pad_x_before, pad_x_after), (pad_y_before, pad_y_after)),
+        mode="edge",
+    )
 
-        x_start_padded = x_start + pad_x_before
-        # x_end_padded = x_end + pad_x_before
-        y_start_padded = y_start + pad_y_before
-        # y_end_padded = y_end + pad_y_before
-        top_left_coords = np.vstack((x_start_padded, y_start_padded)).T
-        row_offsets = np.arange(x_length).reshape(1, -1, 1)  # shape (1, h, 1)
-        col_offsets = np.arange(y_length).reshape(1, 1, -1)  # shape (1, 1, w)
+    x_start_padded = x_start + pad_x_before
+    # x_end_padded = x_end + pad_x_before
+    y_start_padded = y_start + pad_y_before
+    # y_end_padded = y_end + pad_y_before
+    top_left_coords = np.vstack((x_start_padded, y_start_padded)).T
+    row_offsets = np.arange(x_length).reshape(1, -1, 1)  # shape (1, h, 1)
+    col_offsets = np.arange(y_length).reshape(1, 1, -1)  # shape (1, 1, w)
 
-        # Extract row and column indices
-        rows = top_left_coords[:, 0].reshape(-1, 1, 1) + row_offsets  # shape (n, h, 1)
-        cols = top_left_coords[:, 1].reshape(-1, 1, 1) + col_offsets  # shape (n, 1, w)
+    # Extract row and column indices
+    rows = top_left_coords[:, 0].reshape(-1, 1, 1) + row_offsets  # shape (n, h, 1)
+    cols = top_left_coords[:, 1].reshape(-1, 1, 1) + col_offsets  # shape (n, 1, w)
 
-        # Use indexing to extract subarrays
-        result = array_padded[rows, cols]
-        return result
+    # Use indexing to extract subarrays
+    result = array_padded[rows, cols]
+    return result
 
 
 def pull_value_from_grid(array_2d, x_position, y_position):
@@ -795,12 +800,11 @@ def pull_value_from_grid(array_2d, x_position, y_position):
         y_int = y_position // 1
         dx = x_position % 1
         dy = y_position % 1
-        print('x_int: ', x_int, 'y_int: ', y_int, 'dx: ', dx, 'dy: ', dy)
+        print("x_int: ", x_int, "y_int: ", y_int, "dx: ", dx, "dy: ", dy)
         base_value = array_2d[int(x_int), int(y_int)]
         base_plus_x = array_2d[int(x_int) + 1, int(y_int)]
         base_plus_y = array_2d[int(x_int), int(y_int) + 1]
         base_plus_x_plus_y = array_2d[int(x_int) + 1, int(y_int) + 1]
-
 
         value = (
             base_value * (1 - dx) * (1 - dy)
@@ -808,8 +812,8 @@ def pull_value_from_grid(array_2d, x_position, y_position):
             + base_plus_y * dx * (1 - dy)
             + base_plus_x_plus_y * dx * dy
         )
-        print('value: ', value)
-        print('array_2d: ',array_2d)
+        print("value: ", value)
+        print("array_2d: ", array_2d)
 
         array_2d = array_2d[:-2, :-2]
 
@@ -854,7 +858,7 @@ def convert_1d_array_to_2d_array(array_1d):
     :return: A 2d numpy array representation of the input
     """
     resolution = int(np.size(array_1d) ** 0.5)
-    array_2d = np.reshape(np.asarray(array_1d), newshape=(resolution, resolution))
+    array_2d = np.reshape(np.asarray(array_1d), shape=(resolution, resolution))
 
     return array_2d
 
@@ -1042,7 +1046,7 @@ def extract_light_curve(
 
     # check convolution if the map was large enough. Otherwise return original total flux.
     # Note the convolution should be weighted by the square of the pixel shift to conserve flux.
-    print('pixel_shift: ', pixel_shift)
+    print("pixel_shift: ", pixel_shift)
     if pixel_shift >= np.size(convolution_array, 0) / 2:
         print(
             "warning, flux projection too large for this magnification map. Returning average flux."
@@ -1129,9 +1133,13 @@ def extract_light_curve(
         y_start_position, y_start_position + delta_y, 5 * int(n_points)
     )
     if return_sub_grids:
-        light_curve = pull_subarray_from_grid(safe_convolution_array, x_positions, y_positions, grid_length, grid_length)
+        light_curve = pull_subarray_from_grid(
+            safe_convolution_array, x_positions, y_positions, grid_length, grid_length
+        )
     else:
-        light_curve = pull_value_from_grid(safe_convolution_array, x_positions, y_positions)
+        light_curve = pull_value_from_grid(
+            safe_convolution_array, x_positions, y_positions
+        )
 
     if return_track_coords:
         return (
@@ -1140,6 +1148,7 @@ def extract_light_curve(
             y_positions + pixel_shift,
         )
     return np.asarray(light_curve)
+
 
 def extract_path_on_microlensing_map(
     convolution_array,
@@ -1271,7 +1280,7 @@ def extract_path_on_microlensing_map(
         y_start_position, y_start_position + delta_y, int(n_points)
     )
 
-    return x_positions,y_positions
+    return x_positions, y_positions
 
 
 def calculate_time_lag_array(
@@ -1559,6 +1568,7 @@ def construct_accretion_disk_transfer_function(
 
     return transfer_function / np.sum(transfer_function)
 
+
 def calculate_microlensed_transfer_function(
     magnification_array,
     redshift_lens,
@@ -1583,222 +1593,13 @@ def calculate_microlensed_transfer_function(
     albedo_array=None,
     x_position=None,
     y_position=None,
-    return_response_array_and_lags=False,
-    return_descaled_response_array_and_lags=False,
-    return_magnification_map_crop=False,
-    random_seed=None,
     response_array=None,
     time_lag_array=None,
-):
-    """Calculate the transfer function assuming the response of the disk can be
-    amplified by microlensing. Essentially this is done by calculating the response and
-    time lag maps of the accretion disk, determining the scale ratio between sizes in
-    the source plane, rescaling the accretion disk's arrays to the resolution of the
-    magnification map, weighting each pixel by its corresponding magnification, then
-    computing the transfer function. Extended to allow for response arrays of BLR.
-
-    :param magnification_array: a 2d array of magnifications in the source plane
-    :param redshift_lens: int/float representing the redshift of the lens
-    :param redshift_source: int/float representing the redshift of the source
-    :param mean_microlens_mass_in_kg: average mass of the microlensing objects in
-        kg. Typical values range from 0.1 to 1.0 M_sun.
-    :param number_of_microlens_einstein_radii: number of R_e the magnification map
-        covers along one edge.
-    :param relative_orientation: orientation of the accretion disk w.r.t. the
-        magnification map
-    :param OmM: mass contribution to the energy budget of the universe
-    :param H0: Hubble constant in units km/s/Mpc
-    :param x_position: an optional x coordinate location to use on the magnification
-        map. Otherwise, will be chosen randomly
-    :param y_position: an optional y coordinate location to use on the magnification
-        map. Otherwise, will be chosen randomly
-    :param return_response_array_and_lags: boolean toggle to return a representation of the
-        amplified response and time lags before the caluclation of the transfer function.
-        Also returns x and y positions of where the microlensing was assumed to take place.
-    :param return_descaled_response_array_and_lags: boolean toggle to return a representation
-        of the amplified response and time lags at the resolution of the magnification map.
-        Also returns x and y positions of where the microlensing was assumed to take place.
-    :param return_magnification_map_crop: boolean toggle to return the section of the
-        magnification map which amplifies the response function.
-    :param return_magnification_map_crop: boolean toggle to return the section of the
-        magnification map which amplifies the response function.
-    :param random_seed: random seed to use for reproducibility
-    :param rest_wavelength_in_nm: rest frame wavelength in nanometers to calculate the
-        transfer function at
-    :param temp_array: a 2d array representing the effective temperatures of the
-        accretion disk
-    :param radii_array: a 2d array representing the radii of each pixel in the source
-        plane with units of gravitational radii
-    :param phi_array: a 2d array representing the azimuths of each pixel in the source
-        plane in radians
-    :param g_array: a 2d array representing the redshift factors due to relativistic
-        effects.
-    :param inclination_angle: inclination of the accretion disk w.r.t. the observer in
-        degrees
-    :param smbh_mass_exp: the solution of log10(m_smbh / m_sun)
-    :param corona_height: height of the lamppost in gravitational radii
-    :param number_of_smbh_gravitational_radii: maximum radius of the accretion disk in R_g
-    :param axis_offset_in_gravitational_radii: the cylindrical radial offset of the
-        irradiation source in gravitational radii
-    :param angle_offset_in_degrees: the azimuth of the offset of the lamppost in degrees
-    :param height_array: array of heights to calculate the disk at. Allows for greater
-        flexability in disk model. Note that this is experimental!
-    :param albedo_array: int, float, or array of albedos (reflectivities) to use for the
-        disk
-    :param response_array: a 2d array representing the responsivity of the object. Must be
-        equal in shape to the time_lag_array. Calculated innately for accretion disk.
-    :param time_lag_array: a 2d array representing the time delay to each point on the
-        response_array. Must be equal in shape to response_array. Calculated innately for
-        accretion disk.
-
-    :return: transfer function calculated assuming the response of the disk is amplified
-        by the magnification_array
-    """
-    rng = np.random.default_rng(seed=random_seed)
-
-    assert redshift_lens != redshift_source
-
-    if response_array is None and time_lag_array is None:
-
-        response_array, time_lag_array = construct_accretion_disk_transfer_function(
-            rest_wavelength_in_nm,
-            temp_array,
-            radii_array,
-            phi_array,
-            g_array,
-            inclination_angle,
-            smbh_mass_exp,
-            corona_height,
-            axis_offset_in_gravitational_radii=axis_offset_in_gravitational_radii,
-            angle_offset_in_degrees=angle_offset_in_degrees,
-            height_array=height_array,
-            albedo_array=albedo_array,
-            return_response_array_and_lags=True,
-        )
-
-    assert np.shape(response_array) == np.shape(time_lag_array)
-
-    rescaled_response_array = perform_microlensing_convolution(
-        magnification_array,
-        response_array,
-        redshift_lens,
-        redshift_source,
-        smbh_mass_exp=smbh_mass_exp,
-        mean_microlens_mass_in_kg=mean_microlens_mass_in_kg,
-        number_of_microlens_einstein_radii=number_of_microlens_einstein_radii,
-        number_of_smbh_gravitational_radii=number_of_smbh_gravitational_radii,
-        relative_orientation=relative_orientation,
-        OmM=OmM,
-        H0=H0,
-        return_preconvolution_information=True,
-    )
-
-    scale_ratio = np.size(rescaled_response_array, 0) / np.size(response_array, 0)
-
-    rescaled_time_lag_array = rescale(time_lag_array, scale_ratio)
-    assert np.shape(rescaled_time_lag_array) == np.shape(rescaled_response_array)
-
-    pixel_shift = np.size(rescaled_time_lag_array, 0) // 2
-
-    magnification_array_padded = np.pad(magnification_array, pixel_shift, mode="edge")
-    magnification_array_padded = np.pad(magnification_array, pixel_shift, mode="edge")
-
-    if x_position is None:
-        x_position = int(
-            rng.random()
-            * (np.size(magnification_array, 0) - np.size(rescaled_response_array, 0))
-            + pixel_shift
-        )
-
-        x_position = int(
-            rng.random()
-            * (np.size(magnification_array, 0) - np.size(rescaled_response_array, 0))
-            + pixel_shift
-        )
-
-    if y_position is None:
-        y_position = int(
-            rng.random()
-            * (np.size(magnification_array, 1) - np.size(rescaled_response_array, 1))
-            + pixel_shift
-        )
-
-    magnification_crop = magnification_array_padded[
-        x_position : x_position + np.size(rescaled_response_array, 0),
-        y_position : y_position + np.size(rescaled_response_array, 1),
-    ]
-
-    if return_magnification_map_crop:
-        return magnification_crop
-
-    magnified_response_array = rescaled_response_array * magnification_crop
-
-    if return_response_array_and_lags:
-        return disk_response_array, time_lag_array, magnified_response_array, rescaled_time_lag_array, x_position, y_position
-
-    unscaled_magnified_response_array = rescale(
-        magnified_response_array, 1 / scale_ratio
-    )
-
-    descaling_factor = np.sum(rescaled_response_array) / np.sum(
-        unscaled_magnified_response_array
-    )
-    unscaled_magnified_response_array *= descaling_factor
-
-    unscaled_magnified_response_array *= np.sum(magnified_response_array) / np.sum(
-        unscaled_magnified_response_array
-    )
-    unscaled_time_lag_array = rescale(rescaled_time_lag_array, 1 / scale_ratio)
-
-    if return_descaled_response_array_and_lags:
-        return (
-            unscaled_magnified_response_array,
-            unscaled_time_lag_array,
-            x_position,
-            y_position,
-        )
-
-    microlensed_transfer_function = np.histogram(
-        rescale(rescaled_time_lag_array, 10),
-        range=(0, np.max(rescaled_time_lag_array) + 1),
-        bins=int(np.max(rescaled_time_lag_array) + 1),
-        weights=np.nan_to_num(rescale(magnified_response_array, 10)),
-        density=True,
-    )[0]
-
-    return np.nan_to_num(
-        microlensed_transfer_function / np.sum(microlensed_transfer_function)
-    )
-
-def calculate_microlensed_transfer_function(
-    magnification_array,
-    redshift_lens,
-    redshift_source,
-    rest_wavelength_in_nm,
-    temp_array,
-    radii_array,
-    phi_array,
-    g_array,
-    inclination_angle,
-    smbh_mass_exp,
-    corona_height,
-    mean_microlens_mass_in_kg=1.0 * const.M_sun.to(u.kg),
-    number_of_microlens_einstein_radii=25,
-    number_of_smbh_gravitational_radii=1000,
-    relative_orientation=0,
-    OmM=0.3,
-    H0=70,
-    axis_offset_in_gravitational_radii=0,
-    angle_offset_in_degrees=0,
-    height_array=None,
-    albedo_array=None,
-    x_position=None,
-    y_position=None,
     return_response_array_and_lags=False,
     return_descaled_response_array_and_lags=False,
     return_magnification_map_crop=False,
     random_seed=None,
-    disk_tf=None
+    disk_tf=None,
 ):
     """Calculate the transfer function assuming the response of the disk can be
     amplified by microlensing. Essentially this is done by calculating the response and
@@ -1860,24 +1661,29 @@ def calculate_microlensed_transfer_function(
     rng = np.random.default_rng(seed=random_seed)
 
     assert redshift_lens != redshift_source
-    if disk_tf is None:
-        disk_response_array, time_lag_array = construct_accretion_disk_transfer_function(
-            rest_wavelength_in_nm,
-            temp_array,
-            radii_array,
-            phi_array,
-            g_array,
-            inclination_angle,
-            smbh_mass_exp,
-            corona_height,
-            axis_offset_in_gravitational_radii=axis_offset_in_gravitational_radii,
-            angle_offset_in_degrees=angle_offset_in_degrees,
-            height_array=height_array,
-            albedo_array=albedo_array,
-            return_response_array_and_lags=True,
+    if disk_tf is None and response_array is None and time_lag_array is None:
+        disk_response_array, time_lag_array = (
+            construct_accretion_disk_transfer_function(
+                rest_wavelength_in_nm,
+                temp_array,
+                radii_array,
+                phi_array,
+                g_array,
+                inclination_angle,
+                smbh_mass_exp,
+                corona_height,
+                axis_offset_in_gravitational_radii=axis_offset_in_gravitational_radii,
+                angle_offset_in_degrees=angle_offset_in_degrees,
+                height_array=height_array,
+                albedo_array=albedo_array,
+                return_response_array_and_lags=True,
+            )
         )
-    else:
+    elif disk_tf is not None:
         disk_response_array, time_lag_array = disk_tf
+    elif response_array is not None and time_lag_array is not None:
+        disk_response_array = response_array
+        time_lag_array = time_lag_array
 
     rescaled_response_array = perform_microlensing_convolution(
         magnification_array,
@@ -1935,7 +1741,14 @@ def calculate_microlensed_transfer_function(
     magnified_response_array = rescaled_response_array * magnification_crop
 
     if return_response_array_and_lags:
-        return disk_response_array, time_lag_array, magnified_response_array, rescaled_time_lag_array, x_position, y_position
+        return (
+            disk_response_array,
+            time_lag_array,
+            magnified_response_array,
+            rescaled_time_lag_array,
+            x_position,
+            y_position,
+        )
 
     unscaled_magnified_response_array = rescale(
         magnified_response_array, 1 / scale_ratio
@@ -1971,8 +1784,14 @@ def calculate_microlensed_transfer_function(
         microlensed_transfer_function / np.sum(microlensed_transfer_function)
     )
 
+
 def generate_drw_signal(
-    length_of_light_curve, time_step, sf_infinity, tau_drw, random_seed=None,normalize=False
+    length_of_light_curve,
+    time_step,
+    sf_infinity,
+    tau_drw,
+    random_seed=None,
+    normalize=False,
 ):
     """Generate a damped random walk using typical parameters as defined in Kelly+ 2009.
     Uses recursion, so this is not as fast as generating directly from the psd.
@@ -2006,6 +1825,7 @@ def generate_drw_signal(
     output_drw /= np.std(output_drw)
 
     return output_drw
+
 
 def generate_signal_from_psd(
     length_of_light_curve,
@@ -2057,67 +1877,12 @@ def generate_signal_from_psd(
     if np.std(light_curve_after_normalization) > 0:
         light_curve_after_normalization /= np.std(light_curve_after_normalization)
 
-    return time_axis, light_curve_after_normalization.real, light_curve_real_before_normalization
-
-### This is taken from SLSim. Author: Henry Best.
-def generate_signal_from_generic_psd(
-    length_of_light_curve,
-    time_resolution,
-    input_frequencies,
-    input_psd,
-    mean_magnitude=0,
-    standard_deviation=None,
-    normal_magnitude_variance=True,
-    zero_point_mag=0,
-    seed=None,
-):
-    """Uses astro_util.generate_signal_from_psd() to create an intrinsic signal
-    from any input power spectrum to use as a model for X-ray variability.
-    Creates a light curve which can be sampled from using
-    sample_intrinsic_signal().
-
-    :param length_of_light_curve: Total length of desired light curve in
-        [days].
-    :param time_resolution: The time spacing between observations in
-        [days].
-    :param input_frequencies: The input frequencies that correspond to
-        the input power spectrum in [1/days]. This can be generated
-        using astro_util.define_frequencies().
-    :param input_psd: The input power spectrum. This must be the same
-        size as input_frequencies.
-    :param mean_magnitude: The desired mean value of the light curve.
-    :param standard_deviation: The desired standard deviation of the
-        light curve.
-    :param normal_magnitude_variance: Bool, a toggle between whether
-        variability is calculated in magnitude or flux units. If True,
-        variability will be assumed to have the given standard deviation
-        in magnitude. If False, variability will assume to have the
-        given standard deviation in flux. Note that if False, "negative
-        flux" becomes likely for standard deviation > 0.5 mag, and will
-        return a ValueError. If everything is assumed to be in flux
-        units, simply insert your mean flux for "mean_magnitude" and
-        define "normal_magnitude_variance" = True.
-    :param zero_point_mag: The reference amplitude to calculate the zero
-        point magnitude.
-    :param seed: The random seed to be input for reproducability.
-    :return: Two arrays, the time_array in [days] and the
-        magnitude_array of the variability.
-    """
-    time_array = np.linspace(
-        0, length_of_light_curve - 1, int(length_of_light_curve / time_resolution)
+    return (
+        time_axis,
+        light_curve_after_normalization.real,
+        light_curve_real_before_normalization,
     )
-    magnitude_array = generate_signal(
-        length_of_light_curve,
-        time_resolution,
-        input_freq=input_frequencies,
-        input_psd=input_psd,
-        mean_magnitude=mean_magnitude,
-        standard_deviation=standard_deviation,
-        normal_magnitude_variance=normal_magnitude_variance,
-        zero_point_mag=zero_point_mag,
-        seed=seed,
-    )
-    return time_array, magnitude_array
+
 
 ### This is taken from SLSim. Author: Henry Best.
 def define_bending_power_law_psd(
@@ -2153,6 +1918,7 @@ def define_bending_power_law_psd(
     ) ** -1
     return bending_power_law_psd
 
+
 ### This is taken from SLSim. Author: Henry Best.
 def define_frequencies(length_of_light_curve, time_resolution):
     """This function defines the useful frequencies for generating a power
@@ -2183,6 +1949,7 @@ def define_frequencies(length_of_light_curve, time_resolution):
     )
     return frequencies
 
+
 ### This is taken from SLSim. Author: Henry Best.
 def normalize_light_curve(light_curve, mean_magnitude, standard_deviation=None):
     """This function takes in a light curve and redefines its mean and standard
@@ -2208,6 +1975,7 @@ def normalize_light_curve(light_curve, mean_magnitude, standard_deviation=None):
         light_curve *= standard_deviation
     light_curve += mean_magnitude
     return light_curve
+
 
 ### This is taken from SLSim. Author: Henry Best.
 def generate_signal(
@@ -2425,6 +2193,7 @@ def generate_signal_from_generic_psd(
     )
     return time_array, magnitude_array
 
+
 def generate_snapshots_of_radiation_pattern(
     rest_wavelength_in_nm,
     time_stamps,
@@ -2497,10 +2266,10 @@ def generate_snapshots_of_radiation_pattern(
 
     time_lag_array *= gr_per_day
     maximum_time_lag_in_days = np.max(time_lag_array)
-    response_array *=  np.sum(driving_signal)
+    response_array *= np.mean(driving_signal)
     if len(driving_signal) < np.max(time_stamps + maximum_time_lag_in_days):
-        print('Driving signal length: ', len(driving_signal))
-        print('', np.max(time_stamps + maximum_time_lag_in_days))
+        print("Driving signal length: ", len(driving_signal))
+        print("", np.max(time_stamps + maximum_time_lag_in_days))
         print(
             "warning, driving signal is not long enough to support all snapshots. looping signal"
         )
@@ -2509,19 +2278,23 @@ def generate_snapshots_of_radiation_pattern(
 
     burn_in_time = maximum_time_lag_in_days
     accretion_disk_mask = temp_array > 1000
+    sample_days = np.arange(len(driving_signal))
+
     list_of_snapshots = []
     for time in time_stamps:
-        array_of_time_stamps = (
-            int(burn_in_time)+int(time)- time_lag_array.astype(int)
+        lookup_times = burn_in_time + time - time_lag_array
+        interpolated_driving_values = np.interp(
+            lookup_times, sample_days, driving_signal
         )
         list_of_snapshots.append(
             (1 - driving_signal_fractional_strength) * static_flux * accretion_disk_mask
             + driving_signal_fractional_strength
-            * np.take(driving_signal, array_of_time_stamps)
+            * interpolated_driving_values
             * response_array
             * accretion_disk_mask
         )
     return np.array(list_of_snapshots), time_lag_array
+
 
 def project_blr_to_source_plane(
     blr_density_rz_grid,
