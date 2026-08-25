@@ -1578,225 +1578,8 @@ def calculate_microlensed_transfer_function(
     H0=70,
     axis_offset_in_gravitational_radii=0,
     angle_offset_in_degrees=0,
-    height_array=None,
-    albedo_array=None,
-    x_position=None,
-    y_position=None,
-    return_response_array_and_lags=False,
-    return_descaled_response_array_and_lags=False,
-    return_magnification_map_crop=False,
-    random_seed=None,
     response_array=None,
     time_lag_array=None,
-):
-    """Calculate the transfer function assuming the response of the disk can be
-    amplified by microlensing. Essentially this is done by calculating the response and
-    time lag maps of the accretion disk, determining the scale ratio between sizes in
-    the source plane, rescaling the accretion disk's arrays to the resolution of the
-    magnification map, weighting each pixel by its corresponding magnification, then
-    computing the transfer function. Extended to allow for response arrays of BLR.
-
-    :param magnification_array: a 2d array of magnifications in the source plane
-    :param redshift_lens: int/float representing the redshift of the lens
-    :param redshift_source: int/float representing the redshift of the source
-    :param mean_microlens_mass_in_kg: average mass of the microlensing objects in
-        kg. Typical values range from 0.1 to 1.0 M_sun.
-    :param number_of_microlens_einstein_radii: number of R_e the magnification map
-        covers along one edge.
-    :param relative_orientation: orientation of the accretion disk w.r.t. the
-        magnification map
-    :param OmM: mass contribution to the energy budget of the universe
-    :param H0: Hubble constant in units km/s/Mpc
-    :param x_position: an optional x coordinate location to use on the magnification
-        map. Otherwise, will be chosen randomly
-    :param y_position: an optional y coordinate location to use on the magnification
-        map. Otherwise, will be chosen randomly
-    :param return_response_array_and_lags: boolean toggle to return a representation of the
-        amplified response and time lags before the caluclation of the transfer function.
-        Also returns x and y positions of where the microlensing was assumed to take place.
-    :param return_descaled_response_array_and_lags: boolean toggle to return a representation
-        of the amplified response and time lags at the resolution of the magnification map.
-        Also returns x and y positions of where the microlensing was assumed to take place.
-    :param return_magnification_map_crop: boolean toggle to return the section of the
-        magnification map which amplifies the response function.
-    :param return_magnification_map_crop: boolean toggle to return the section of the
-        magnification map which amplifies the response function.
-    :param random_seed: random seed to use for reproducibility
-    :param rest_wavelength_in_nm: rest frame wavelength in nanometers to calculate the
-        transfer function at
-    :param temp_array: a 2d array representing the effective temperatures of the
-        accretion disk
-    :param radii_array: a 2d array representing the radii of each pixel in the source
-        plane with units of gravitational radii
-    :param phi_array: a 2d array representing the azimuths of each pixel in the source
-        plane in radians
-    :param g_array: a 2d array representing the redshift factors due to relativistic
-        effects.
-    :param inclination_angle: inclination of the accretion disk w.r.t. the observer in
-        degrees
-    :param smbh_mass_exp: the solution of log10(m_smbh / m_sun)
-    :param corona_height: height of the lamppost in gravitational radii
-    :param number_of_smbh_gravitational_radii: maximum radius of the accretion disk in R_g
-    :param axis_offset_in_gravitational_radii: the cylindrical radial offset of the
-        irradiation source in gravitational radii
-    :param angle_offset_in_degrees: the azimuth of the offset of the lamppost in degrees
-    :param height_array: array of heights to calculate the disk at. Allows for greater
-        flexability in disk model. Note that this is experimental!
-    :param albedo_array: int, float, or array of albedos (reflectivities) to use for the
-        disk
-    :param response_array: a 2d array representing the responsivity of the object. Must be
-        equal in shape to the time_lag_array. Calculated innately for accretion disk.
-    :param time_lag_array: a 2d array representing the time delay to each point on the
-        response_array. Must be equal in shape to response_array. Calculated innately for
-        accretion disk.
-
-    :return: transfer function calculated assuming the response of the disk is amplified
-        by the magnification_array
-    """
-    rng = np.random.default_rng(seed=random_seed)
-
-    assert redshift_lens != redshift_source
-
-    if response_array is None and time_lag_array is None:
-
-        response_array, time_lag_array = construct_accretion_disk_transfer_function(
-            rest_wavelength_in_nm,
-            temp_array,
-            radii_array,
-            phi_array,
-            g_array,
-            inclination_angle,
-            smbh_mass_exp,
-            corona_height,
-            axis_offset_in_gravitational_radii=axis_offset_in_gravitational_radii,
-            angle_offset_in_degrees=angle_offset_in_degrees,
-            height_array=height_array,
-            albedo_array=albedo_array,
-            return_response_array_and_lags=True,
-        )
-
-    assert np.shape(response_array) == np.shape(time_lag_array)
-
-    rescaled_response_array = perform_microlensing_convolution(
-        magnification_array,
-        response_array,
-        redshift_lens,
-        redshift_source,
-        smbh_mass_exp=smbh_mass_exp,
-        mean_microlens_mass_in_kg=mean_microlens_mass_in_kg,
-        number_of_microlens_einstein_radii=number_of_microlens_einstein_radii,
-        number_of_smbh_gravitational_radii=number_of_smbh_gravitational_radii,
-        relative_orientation=relative_orientation,
-        OmM=OmM,
-        H0=H0,
-        return_preconvolution_information=True,
-    )
-
-    scale_ratio = np.size(rescaled_response_array, 0) / np.size(response_array, 0)
-
-    rescaled_time_lag_array = rescale(time_lag_array, scale_ratio)
-    assert np.shape(rescaled_time_lag_array) == np.shape(rescaled_response_array)
-
-    pixel_shift = np.size(rescaled_time_lag_array, 0) // 2
-
-    magnification_array_padded = np.pad(magnification_array, pixel_shift, mode="edge")
-    magnification_array_padded = np.pad(magnification_array, pixel_shift, mode="edge")
-
-    if x_position is None:
-        x_position = int(
-            rng.random()
-            * (np.size(magnification_array, 0) - np.size(rescaled_response_array, 0))
-            + pixel_shift
-        )
-
-        x_position = int(
-            rng.random()
-            * (np.size(magnification_array, 0) - np.size(rescaled_response_array, 0))
-            + pixel_shift
-        )
-
-    if y_position is None:
-        y_position = int(
-            rng.random()
-            * (np.size(magnification_array, 1) - np.size(rescaled_response_array, 1))
-            + pixel_shift
-        )
-
-    magnification_crop = magnification_array_padded[
-        x_position : x_position + np.size(rescaled_response_array, 0),
-        y_position : y_position + np.size(rescaled_response_array, 1),
-    ]
-
-    if return_magnification_map_crop:
-        return magnification_crop
-
-    magnified_response_array = rescaled_response_array * magnification_crop
-
-    if return_response_array_and_lags:
-        return (
-            rescaled_response_array,
-            rescaled_time_lag_array,
-            magnified_response_array,
-            rescaled_time_lag_array,
-            x_position,
-            y_position,
-        )
-
-    unscaled_magnified_response_array = rescale(
-        magnified_response_array, 1 / scale_ratio
-    )
-
-    descaling_factor = np.sum(rescaled_response_array) / np.sum(
-        unscaled_magnified_response_array
-    )
-    unscaled_magnified_response_array *= descaling_factor
-
-    unscaled_magnified_response_array *= np.sum(magnified_response_array) / np.sum(
-        unscaled_magnified_response_array
-    )
-    unscaled_time_lag_array = rescale(rescaled_time_lag_array, 1 / scale_ratio)
-
-    if return_descaled_response_array_and_lags:
-        return (
-            unscaled_magnified_response_array,
-            unscaled_time_lag_array,
-            x_position,
-            y_position,
-        )
-
-    microlensed_transfer_function = np.histogram(
-        rescale(rescaled_time_lag_array, 10),
-        range=(0, np.max(rescaled_time_lag_array) + 1),
-        bins=int(np.max(rescaled_time_lag_array) + 1),
-        weights=np.nan_to_num(rescale(magnified_response_array, 10)),
-        density=True,
-    )[0]
-
-    return np.nan_to_num(
-        microlensed_transfer_function / np.sum(microlensed_transfer_function)
-    )
-
-
-def calculate_microlensed_transfer_function(
-    magnification_array,
-    redshift_lens,
-    redshift_source,
-    rest_wavelength_in_nm,
-    temp_array,
-    radii_array,
-    phi_array,
-    g_array,
-    inclination_angle,
-    smbh_mass_exp,
-    corona_height,
-    mean_microlens_mass_in_kg=1.0 * const.M_sun.to(u.kg),
-    number_of_microlens_einstein_radii=25,
-    number_of_smbh_gravitational_radii=1000,
-    relative_orientation=0,
-    OmM=0.3,
-    H0=70,
-    axis_offset_in_gravitational_radii=0,
-    angle_offset_in_degrees=0,
     height_array=None,
     albedo_array=None,
     x_position=None,
@@ -1867,7 +1650,8 @@ def calculate_microlensed_transfer_function(
     rng = np.random.default_rng(seed=random_seed)
 
     assert redshift_lens != redshift_source
-    if disk_tf is None:
+
+    if disk_tf is None and response_array is None and time_lag_array is None:
         disk_response_array, time_lag_array = (
             construct_accretion_disk_transfer_function(
                 rest_wavelength_in_nm,
@@ -1885,8 +1669,11 @@ def calculate_microlensed_transfer_function(
                 return_response_array_and_lags=True,
             )
         )
-    else:
+    elif disk_tf is not None:
         disk_response_array, time_lag_array = disk_tf
+    elif response_array is not None and time_lag_array is not None:
+        disk_response_array = response_array
+        time_lag_array = time_lag_array
 
     rescaled_response_array = perform_microlensing_convolution(
         magnification_array,
@@ -2086,260 +1873,6 @@ def generate_signal_from_psd(
     )
 
 
-### This is taken from SLSim. Author: Henry Best.
-def generate_signal_from_generic_psd(
-    length_of_light_curve,
-    time_resolution,
-    input_frequencies,
-    input_psd,
-    mean_magnitude=0,
-    standard_deviation=None,
-    normal_magnitude_variance=True,
-    zero_point_mag=0,
-    seed=None,
-):
-    """Uses astro_util.generate_signal_from_psd() to create an intrinsic signal
-    from any input power spectrum to use as a model for X-ray variability.
-    Creates a light curve which can be sampled from using
-    sample_intrinsic_signal().
-
-    :param length_of_light_curve: Total length of desired light curve in
-        [days].
-    :param time_resolution: The time spacing between observations in
-        [days].
-    :param input_frequencies: The input frequencies that correspond to
-        the input power spectrum in [1/days]. This can be generated
-        using astro_util.define_frequencies().
-    :param input_psd: The input power spectrum. This must be the same
-        size as input_frequencies.
-    :param mean_magnitude: The desired mean value of the light curve.
-    :param standard_deviation: The desired standard deviation of the
-        light curve.
-    :param normal_magnitude_variance: Bool, a toggle between whether
-        variability is calculated in magnitude or flux units. If True,
-        variability will be assumed to have the given standard deviation
-        in magnitude. If False, variability will assume to have the
-        given standard deviation in flux. Note that if False, "negative
-        flux" becomes likely for standard deviation > 0.5 mag, and will
-        return a ValueError. If everything is assumed to be in flux
-        units, simply insert your mean flux for "mean_magnitude" and
-        define "normal_magnitude_variance" = True.
-    :param zero_point_mag: The reference amplitude to calculate the zero
-        point magnitude.
-    :param seed: The random seed to be input for reproducability.
-    :return: Two arrays, the time_array in [days] and the
-        magnitude_array of the variability.
-    """
-    time_array = np.linspace(
-        0, length_of_light_curve - 1, int(length_of_light_curve / time_resolution)
-    )
-    magnitude_array = generate_signal(
-        length_of_light_curve,
-        time_resolution,
-        input_freq=input_frequencies,
-        input_psd=input_psd,
-        mean_magnitude=mean_magnitude,
-        standard_deviation=standard_deviation,
-        normal_magnitude_variance=normal_magnitude_variance,
-        zero_point_mag=zero_point_mag,
-        seed=seed,
-    )
-    return time_array, magnitude_array
-
-
-### This is taken from SLSim. Author: Henry Best.
-def define_bending_power_law_psd(
-    log_breakpoint_frequency, low_frequency_slope, high_frequency_slope, frequencies
-):
-    """This function defines the power spectrum density (PSD) of a bending
-    power law. Note that bending power law is also sometimes referred to as a
-    broken power law.
-
-    :param log_breakpoint_frequency: The log_{10} of the breakpoint frequency where
-        the power law changes slope, in units [1/days]. Typical values range between
-        -3.5 and 1.0.
-    :param low_frequency_slope: The (negative) log-log slope of the PSD for low frequencies when
-        the power is plotted against frequency in units [1/days]. Typically ~1.0, but
-        can range from 0.0 to 2.0.
-    :param high_frequency_slope: the (negative) log-log slope of the PSD for high frequencies when
-        the power is plotted against frequency in units [1/days]. Typically ranges from
-        2.0 to 4.0, and should be a higher power than low_frequency_slope (e.g. it should
-        drop off with frequency rapidly).
-    :param frequencies: A numpy array or list of frequencies to calculate the PSD at.
-        This array is well defined through the define_frequencies() function.
-        Note that define_frequencies() will prepare minimum and maximum frequencies, and
-        there will not be a "bend" in the PSD if the breakpoint frequency does not
-        fall within this range.
-    :return: The PSD of the bending power law defined through the input parameters.
-    """
-
-    breakpoint_frequency = 10**log_breakpoint_frequency
-    bending_power_law_psd = (frequencies**-low_frequency_slope) * (
-        1
-        + (frequencies / breakpoint_frequency)
-        ** (high_frequency_slope - low_frequency_slope)
-    ) ** -1
-    return bending_power_law_psd
-
-
-### This is taken from SLSim. Author: Henry Best.
-def define_frequencies(length_of_light_curve, time_resolution):
-    """This function defines the useful frequencies for generating a power
-    spectrum density (PSD). Frequencies below the low frequency limit will not
-    contribute to the light curve. Frequencies above the high frequency limit
-    (the Nyquist frequency) will not be able to be probed with the
-    time_resolution, and will suffer from aliasing.
-
-    :param length_of_light_curve: The total length of the light curve to
-        simulate, in units of [days]. The generated frequencies will
-        have a 10 times lower limit than required, as the function
-        generate_signal_from_psd will generate extended light curves to
-        deal with periodicity issues.
-    :param time_resolution: The time resolution to generate the light
-        curve at, in units of [days]. This parameter defines the high
-        frequency limit. If generating light curves takes too long,
-        consider increasing this parameter to generate fewer
-        frequencies.
-    :return: A numpy array of the frequencies that are probed by the
-        light curve in [1/days].
-    """
-
-    length_of_generated_light_curve = 10 * length_of_light_curve
-    frequencies = np.linspace(
-        1 / length_of_generated_light_curve,
-        1 / (2 * time_resolution),
-        int(length_of_generated_light_curve) + 1,
-    )
-    return frequencies
-
-
-### This is taken from SLSim. Author: Henry Best.
-def normalize_light_curve(light_curve, mean_magnitude, standard_deviation=None):
-    """This function takes in a light curve and redefines its mean and standard
-    deviation. It may also be used to re-normalize any time series.
-
-    :param light_curve: A time series list or array which represents a
-        one-dimensional light curve. This function does not require any
-        specific units or spacings.
-    :param mean_magnitude: The new mean value of the light curve. This
-        is done through a simple shifting of the y-axis.
-    :param standard_deviation: The new standard deviation of the light
-        curve. Note this only makes sense for a variable signal (e.g. a
-        constant signal cannot be given a new standard_deviation). A
-        negative standard deviation will invert the x and y axis.
-    :return: A rescaled version of the original light curve, with new
-        mean and standard deviation.
-    """
-    light_curve = np.asarray(light_curve)
-    light_curve -= light_curve.mean()
-    if light_curve.std() > 0 and standard_deviation is not None:
-        light_curve /= light_curve.std()
-    if standard_deviation != 0 and standard_deviation is not None:
-        light_curve *= standard_deviation
-    light_curve += mean_magnitude
-    return light_curve
-
-
-### This is taken from SLSim. Author: Henry Best.
-def generate_signal(
-    length_of_light_curve,
-    time_resolution,
-    log_breakpoint_frequency=-2,
-    low_frequency_slope=1,
-    high_frequency_slope=3,
-    mean_magnitude=0,
-    standard_deviation=0.1,
-    normal_magnitude_variance=True,
-    zero_point_mag=0,
-    input_freq=None,
-    input_psd=None,
-    seed=None,
-):
-    """This function creates a stochastic signal to model AGN X-ray
-    variability. This may be used to generate either a bending power law
-    signal, or a signal following any input power spectrum density (psd).
-
-    :param length_of_light_curve: The total length of the light curve to simulate, in units
-        of [days]. The generated signal will be 10 times longer than this to
-        deal with periodicity issues which may arise.
-    :param time_resolution: The time spacing between regularly sampled points in the light curve,
-        in units of [days]. This parameter defines the high frequency limit of the PSD and the
-        number of points defining the light curve. If generating light curves takes too long,
-        consider increasing this parameter to generate fewer frequencies.
-    :param log_breakpoint_frequency: The log_{10} of the breakpoint frequency as defined in
-        the bending power law, in units days^{-1}. Typical values range from -3.5 to 1.0.
-    :param low_frequency_slope: The (negative) log-log slope of the PSD for low frequencies when
-        the power is plotted against frequency in units [1/days]. Typically ~1.0, but
-        can range from 0.0 to 2.0.
-    :param high_frequency_slope: The (negative) log-log slope of the PSD for high frequencies when
-        the power is plotted against frequency in units [1/days]. Typically ranges from
-        2.0 to 4.0, and should be a higher power than low_frequency_slope (e.g. it should
-        drop off with frequency rapidly).
-    :param mean_magnitude: The mean value of the light curve to simulate. The
-        PSD will produce a stochastic light curve with some mean and some standard
-        deviation. This parameter will fix the mean value of the output light curve.
-    :param standard_deviation: The desired standard deviation (std) of the light curve's
-        variability.
-    :param normal_magnitude_variance: Bool, a toggle between whether variability is calculated in
-        magnitude or flux units. If True, variability will be assumed to have the given standard
-        deviation in magnitude. If False, variability will assume to have the given standard
-        deviation in flux. Note that if False, "negative flux" becomes likely for standard
-        deviation > 0.5 mag, and will return a ValueError.
-        If everything is assumed to be in flux units, simply insert your mean flux for
-        "mean_magnitude" and define "normal_magnitude_variance" = True.
-    :param zero_point_mag: The reference amplitude to calculate the zero point magnitude.
-    :param input_freq: None or an input array of frequencies in [1/days] to use to overwrite the
-        frequencies generated by astro_util.generate_frequencies(). If none, no action
-        will be taken. If an array of frequencies is input, this array will override
-        the frequencies used o generate the signal. This must be equal length to input_psd.
-        This may be useful for testing.
-    :param input_psd: None or an input array representing the PSD at input_freq. If
-        None, no action will be taken. If an array is input, this must be of equal length
-        to the array input_freq. Then this input_psd will override the bending power law
-        generated using astro_util.define_bending_power_law_psd(). This may be useful
-        for defining more complex power spectrums, or other testing.
-    :param seed: None or value. If a value is provided, the random seed may be defined
-        within this function.
-    """
-    if seed is not None:
-        np.random.seed(seed)
-
-    if input_freq is not None:
-        frequencies = np.asarray(input_freq)
-        assert input_psd is not None
-    else:
-        frequencies = define_frequencies(length_of_light_curve, time_resolution)
-    if input_psd is not None:
-        power_spectrum_density = np.asarray(input_psd)
-        assert len(input_freq) == len(power_spectrum_density)
-    else:
-        power_spectrum_density = define_bending_power_law_psd(
-            log_breakpoint_frequency,
-            low_frequency_slope,
-            high_frequency_slope,
-            frequencies,
-        )
-    random_phases = 2.0 * np.pi * np.random.random(size=len(frequencies))
-    fourier_transform = np.sqrt(power_spectrum_density) * np.exp(1j * random_phases)
-    fourier_transform = np.concatenate(
-        (fourier_transform, fourier_transform[-2:0:-1].conjugate())
-    )
-    generated_light_curve = ifft(fourier_transform)[
-        : int(length_of_light_curve / time_resolution)
-    ]
-    if normal_magnitude_variance is False:
-        raise NotImplementedError(
-            "normal_magnitude_variance=False is not supported. "
-            "Please set normal_magnitude_variance=True or implement flux-based variance handling."
-        )
-
-    else:
-        output_light_curve = normalize_light_curve(
-            generated_light_curve, mean_magnitude, standard_deviation
-        )
-    return output_light_curve.real
-
-
 def generate_signal_from_bending_power_law(
     length_of_light_curve,
     time_resolution,
@@ -2529,7 +2062,7 @@ def generate_snapshots_of_radiation_pattern(
 
     time_lag_array *= gr_per_day
     maximum_time_lag_in_days = np.max(time_lag_array)
-    response_array *= np.sum(driving_signal)
+    response_array *= np.mean(driving_signal)
     if len(driving_signal) < np.max(time_stamps + maximum_time_lag_in_days):
         print("Driving signal length: ", len(driving_signal))
         print("", np.max(time_stamps + maximum_time_lag_in_days))
@@ -2541,15 +2074,18 @@ def generate_snapshots_of_radiation_pattern(
 
     burn_in_time = maximum_time_lag_in_days
     accretion_disk_mask = temp_array > 1000
+    sample_days = np.arange(len(driving_signal))
+
     list_of_snapshots = []
     for time in time_stamps:
-        array_of_time_stamps = (
-            int(burn_in_time) + int(time) - time_lag_array.astype(int)
+        lookup_times = burn_in_time + time - time_lag_array
+        interpolated_driving_values = np.interp(
+            lookup_times, sample_days, driving_signal
         )
         list_of_snapshots.append(
             (1 - driving_signal_fractional_strength) * static_flux * accretion_disk_mask
             + driving_signal_fractional_strength
-            * np.take(driving_signal, array_of_time_stamps)
+            * interpolated_driving_values
             * response_array
             * accretion_disk_mask
         )

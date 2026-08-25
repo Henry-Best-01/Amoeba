@@ -1331,7 +1331,7 @@ def test_calculate_microlensed_transfer_function():
     current_diff = mean_tau_no_ml - mean_tau_id_ml_rotated
     assert abs(current_diff) <= tolerance
 
-    assert len(data_to_construct_transfer_function) == 4
+    assert len(data_to_construct_transfer_function) == 6
     assert np.size(data_to_construct_transfer_function[0]) == np.size(
         data_to_construct_transfer_function[1]
     )
@@ -1419,14 +1419,14 @@ def test_generate_signal_from_psd():
     psd_power_law = frequencies ** (-2)
     random_seed = 33
 
-    time_ax, lc_flat_spectrum = generate_signal_from_psd(
+    time_ax, lc_flat_spectrum, lc_real_before_norm = generate_signal_from_psd(
         length_of_light_curve,
         psd_flat_spectrum,
         frequencies,
         random_seed=random_seed,
     )
 
-    time_ax, lc_power_spectrum = generate_signal_from_psd(
+    time_ax, lc_power_spectrum, lc_real_before_norm = generate_signal_from_psd(
         length_of_light_curve,
         psd_power_law,
         frequencies,
@@ -1472,7 +1472,7 @@ def test_generate_snapshots_of_radiation_pattern():
         maximum_time, time_step, sf_inf, tau_drw, random_seed=random_seed
     )
 
-    snapshots_half = generate_snapshots_of_radiation_pattern(
+    snapshots_half, time_lag_array_half = generate_snapshots_of_radiation_pattern(
         test_wavelength,
         snapshot_list,
         temp_array,
@@ -1486,7 +1486,7 @@ def test_generate_snapshots_of_radiation_pattern():
         inclination_angle,
     )
 
-    snapshots_zero = generate_snapshots_of_radiation_pattern(
+    snapshots_zero, time_lag_array_zero = generate_snapshots_of_radiation_pattern(
         test_wavelength,
         snapshot_list,
         temp_array,
@@ -1500,7 +1500,7 @@ def test_generate_snapshots_of_radiation_pattern():
         inclination_angle,
     )
 
-    snapshots_all = generate_snapshots_of_radiation_pattern(
+    snapshots_all, time_lag_array_all = generate_snapshots_of_radiation_pattern(
         test_wavelength,
         snapshot_list,
         temp_array,
@@ -1513,18 +1513,20 @@ def test_generate_snapshots_of_radiation_pattern():
         corona_height,
         inclination_angle,
     )
-    snapshots_short_driving_signal = generate_snapshots_of_radiation_pattern(
-        test_wavelength,
-        snapshot_list,
-        temp_array,
-        radii_array,
-        phi_array,
-        g_array,
-        smbh_mass_exponent,
-        drw_signal[:5],
-        driving_signal_fractional_strength_all,
-        corona_height,
-        inclination_angle,
+    snapshots_short_driving_signal, time_lag_array_short = (
+        generate_snapshots_of_radiation_pattern(
+            test_wavelength,
+            snapshot_list,
+            temp_array,
+            radii_array,
+            phi_array,
+            g_array,
+            smbh_mass_exponent,
+            drw_signal[:5],
+            driving_signal_fractional_strength_all,
+            corona_height,
+            inclination_angle,
+        )
     )
 
     assert np.shape(snapshots_half) == np.shape(snapshots_zero)
@@ -1539,18 +1541,20 @@ def test_generate_snapshots_of_radiation_pattern():
 
     signal_increasing_power = np.linspace(1, 10000, 10000)
 
-    snapshots_rising_power = generate_snapshots_of_radiation_pattern(
-        test_wavelength,
-        snapshot_list,
-        temp_array,
-        radii_array,
-        phi_array,
-        g_array,
-        smbh_mass_exponent,
-        signal_increasing_power,
-        driving_signal_fractional_strength_all,
-        corona_height,
-        inclination_angle,
+    snapshots_rising_power, time_lag_array_rising_power = (
+        generate_snapshots_of_radiation_pattern(
+            test_wavelength,
+            snapshot_list,
+            temp_array,
+            radii_array,
+            phi_array,
+            g_array,
+            smbh_mass_exponent,
+            signal_increasing_power,
+            driving_signal_fractional_strength_all,
+            corona_height,
+            inclination_angle,
+        )
     )
 
     for jj in range(len(snapshot_list) - 1):

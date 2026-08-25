@@ -338,7 +338,7 @@ class AccretionDisk:
         if corona_height is None:
             corona_height = self.corona_height
 
-        radiation_patterns, tl_arr = generate_snapshots_of_radiation_pattern(
+        radiation_patterns, time_lag_array = generate_snapshots_of_radiation_pattern(
             rest_frame_wavelength_in_nm,
             time_stamps,
             self.temp_array,
@@ -372,7 +372,7 @@ class AccretionDisk:
 
             radiation_patterns_flux_projections.append(current_projection)
 
-        return radiation_patterns_flux_projections, tl_arr
+        return radiation_patterns_flux_projections, time_lag_array
 
     def get_plotting_axes(self):
         """Method to get plotting axes for the accretion disk. Useful for plotting any

@@ -6,7 +6,6 @@ import astropy.units as u
 import numpy.testing as npt
 import matplotlib.pyplot as plt
 
-
 smbh_mass_exp = 7.2
 launch_radius = 600  # Rg
 launch_theta = 50  # degrees
