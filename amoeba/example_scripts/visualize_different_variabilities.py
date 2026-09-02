@@ -7,7 +7,6 @@ from astropy import units as u
 from astropy import constants as const
 from scipy.interpolate import interp1d
 
-
 # signal
 signal_length = 2000
 maxtau = 500
