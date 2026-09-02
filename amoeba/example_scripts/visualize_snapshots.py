@@ -5,7 +5,6 @@ from amoeba.Util.util import create_maps, generate_signal_from_psd
 from astropy import units as u
 from astropy import constants as const
 
-
 # define an accretion disk
 mexp = 8.6  # solution to log_10(M_smbh/M_sun)
 redshift = 0.2  # dimensionless

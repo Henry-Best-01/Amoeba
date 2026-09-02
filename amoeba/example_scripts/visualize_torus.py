@@ -1,4 +1,3 @@
-import pytest
 import numpy as np
 from amoeba.Classes.blr_streamline import Streamline
 from amoeba.Classes.torus import Torus
@@ -6,7 +5,6 @@ from amoeba.Classes.flux_projection import FluxProjection
 import astropy.units as u
 import numpy.testing as npt
 import matplotlib.pyplot as plt
-
 
 smbh_mass_exp = 7.2
 launch_radius = 600  # Rg
