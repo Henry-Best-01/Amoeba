@@ -2119,7 +2119,7 @@ def test_extract_path_on_microlensing_map():
         y_start_position=5, # in pixels
         phi_travel_direction=45 # in degrees
     )
-    assert npt.assert_almost_equal(np.sum(extracted_y - extracted_x), 0)
+    npt.assert_almost_equal(extracted_y, extracted_x)
 
 
 
