@@ -31,6 +31,8 @@ from amoeba.Util.util import (
     determine_emission_line_velocities,
     convolve_signal_with_transfer_function,
     convert_speclite_filter_to_wavelength_range,
+    pull_subarray_from_grid,
+    extract_path_on_microlensing_map
 )
 import pytest
 import numpy as np
@@ -2025,3 +2027,101 @@ def test_convert_speclite_filter_to_wavelength_range():
 
     for item in output_list:
         assert item[0] < item[1]
+
+def test_pull_subarray_from_grid():
+    # set up some test array
+    full_array = np.ones((20, 20))
+    full_array[3:7, 4:9] = 2 
+    full_array[17:, 17:] = 3
+
+    # test a 1x1 array can be extracted
+    current_subarray = pull_subarray_from_grid(
+        full_array,
+        4,
+        5,
+        1,
+        1
+    )
+    assert isinstance(current_subarray, np.ndarray)
+    assert current_subarray == np.asarray([[2]])
+
+    # test a more natural subarray with decimal tests
+    current_subarray = pull_subarray_from_grid(
+        full_array,
+        11.5,
+        3.5,
+        3,
+        5
+    )
+    # support for n-subgrids
+    assert current_subarray.shape == (1, 3, 5)
+
+    # test a subarray of equal size to the main array
+    current_subarray = pull_subarray_from_grid(
+        full_array,
+        10,
+        10, 
+        20,
+        20
+    )
+    residuals = current_subarray - full_array
+    assert np.sum(residuals) == 0
+    assert np.std(residuals) == 0
+
+    # test extracting multiple subarrays
+    current_subarray = pull_subarray_from_grid(
+        full_array,
+        [5, 6, 7],
+        [7, 4, 3],
+        4,
+        5
+    )
+    assert current_subarray.shape == (3, 4, 5)
+
+    # test extracting subarray that "falls off" the main array
+    current_subarray = pull_subarray_from_grid(
+        full_array,
+        25,
+        26,
+        3,
+        3
+    )
+    assert [current_subarray[jj, kk] == 0 for jj in range(current_subarray.shape[0]) for kk in range(current_subarray.shape[1])]
+
+def test_extract_path_on_microlensing_map():
+    # at 1 km / s for a period of 1 year, we expect a path length of ~ 3.2e10 m traveled
+    blank_array = np.ones((500, 500))
+    pixel_size = 1000000000 # meters
+    v_eff = 1 # km/s
+    lc_time = 1 # years
+    random_seed = 5
+
+    extracted_x, extracted_y = extract_path_on_microlensing_map(
+        blank_array,
+        pixel_size,
+        v_eff,
+        lc_time,
+        random_seed=random_seed
+    )
+
+    # they should be the same shape
+    assert len(extracted_x) == len(extracted_y)
+    # They should not be identical
+    assert np.sum(extracted_y - extracted_x) != 0 
+
+    # we can make them identical though
+    extracted_x, extracted_y = extract_path_on_microlensing_map(
+        blank_array,
+        pixel_size,
+        v_eff,
+        lc_time,
+        x_start_position=5, # in pixels
+        y_start_position=5, # in pixels
+        phi_travel_direction=45 # in degrees
+    )
+    assert npt.assert_almost_equal(np.sum(extracted_y - extracted_x), 0)
+
+
+
+
+

@@ -727,8 +727,8 @@ def pull_subarray_from_grid(array_2d, x_position, y_position, x_length, y_length
     from array_2d. Handles edge cases by padding the array as needed.
 
     :param array_2d: 2D numpy array to extract from.
-    :param x_position: Center x coordinate (float or int).
-    :param y_position: Center y coordinate (float or int).
+    :param x_position: Center x coordinate individual or list of type float or int
+    :param y_position: Center y coordinate individual or list of type float or int
     :param x_length: Side length in x direction (int).
     :param y_length: Side length in y direction (int).
     :return: 2D numpy array of shape (x_length, y_length).
@@ -1980,7 +1980,7 @@ def generate_signal(
     input_freq=None,
     input_psd=None,
     seed=None,
-):
+): #pragma: no cover
     """This function creates a stochastic signal to model AGN X-ray
     variability. This may be used to generate either a bending power law
     signal, or a signal following any input power spectrum density (psd).

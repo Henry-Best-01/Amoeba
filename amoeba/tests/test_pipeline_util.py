@@ -276,8 +276,8 @@ def test_intrinsic_signal_propogation_pipeline():
     )
 
     assert len(alt_my_only_other_signal) == len(my_other_only_signal)
-    assert np.sum(abs(my_other_only_signal[0][0] - alt_my_only_other_signal[0][0])) == 0
-    assert np.sum(abs(my_other_only_signal[0][1] - alt_my_only_other_signal[0][1])) == 0
+    assert npt.assert_almost_equal(np.sum(abs(my_other_only_signal[0][0] - alt_my_only_other_signal[0][0])), 0)
+    assert npt.assert_almost_equal(np.sum(abs(my_other_only_signal[0][1] - alt_my_only_other_signal[0][1])), 0)
 
     smol_list_filter_responses = [
         load_filter("lsst2023-r"),
