@@ -109,3 +109,12 @@ ENV/
 .vscode/
 .idea/
 
+# macOS
+.DS_Store
+Notebooks/clean.ipynb
+../.coverage/*
+src/amoeba/Util/Generate_signal_with_all_components.py
+../amoeba_env/*
+
+amoeba_env/
+.coverage

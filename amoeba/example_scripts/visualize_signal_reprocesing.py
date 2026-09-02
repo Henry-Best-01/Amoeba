@@ -10,7 +10,6 @@ from amoeba.Util.util import (
 import matplotlib.pyplot as plt
 from scipy.signal import welch
 
-
 # define params of disk
 
 wavelength = 400
