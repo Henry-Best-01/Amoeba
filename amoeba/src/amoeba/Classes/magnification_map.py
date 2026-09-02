@@ -98,7 +98,6 @@ class MagnificationMap:
             * self.total_microlens_einstein_radii
             / self.resolution
         )
-        # print('pixel_size: ',self.pixel_size)
         self.pixel_shift = 0
 
     def convolve_with_flux_projection(
