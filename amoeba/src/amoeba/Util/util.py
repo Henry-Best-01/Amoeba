@@ -189,6 +189,7 @@ def create_maps(
         "g_array": g_array,
         "radii_array": r_array,
         "r_out_in_gravitational_radii": number_grav_radii,
+        "resolution": resolution,
         "height_array": height_array,
         "albedo_array": albedo_array,
         "spin": spin,
