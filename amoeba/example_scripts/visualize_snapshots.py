@@ -5,7 +5,6 @@ from amoeba.Util.util import create_maps, generate_signal_from_psd
 from astropy import units as u
 from astropy import constants as const
 
-
 # define an accretion disk
 mexp = 8.6  # solution to log_10(M_smbh/M_sun)
 redshift = 0.2  # dimensionless
@@ -48,16 +47,14 @@ my_static_flux = my_accretion_disk.calculate_surface_intensity_map(
     my_observed_wavelength
 )
 
-my_driving_signal_times, my_driving_signal = generate_signal_from_psd(
+my_driving_signal = generate_signal_from_psd(
     total_time, power_spectrum, frequencies, random_seed
 )
 
-my_driving_signal = signal_amplitude * my_driving_signal
-
-my_snapshots = my_accretion_disk.generate_snapshots(
+my_snapshots, lag_arrays = my_accretion_disk.generate_snapshots(
     my_observed_wavelength,
     snapshot_timestamps,
-    my_driving_signal,
+    my_driving_signal[1] * signal_amplitude,
     driving_signal_strength,
 )
 
@@ -88,7 +85,7 @@ ax[-1, -1].set_title("static case")
 ax[-1, -1].set_aspect(1)
 
 fig2, ax2 = plt.subplots(2, sharex="all")
-ax2[0].plot(my_driving_signal_times, my_driving_signal, label="driving signal")
+ax2[0].plot(my_driving_signal[0], my_driving_signal[1], label="driving signal")
 for jj in range(len(my_snapshots)):
     ax2[1].scatter(
         [snapshot_timestamps[jj]],

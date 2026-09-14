@@ -511,7 +511,7 @@ class Agn:
             )
             return False
 
-        time_axis, light_curve = generate_signal_from_psd(
+        time_axis, light_curve, lc_real_before_norm = generate_signal_from_psd(
             max_time_in_days, self.power_spectrum, self.frequencies, self.random_seed
         )
 

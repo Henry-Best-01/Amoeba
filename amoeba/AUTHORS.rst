@@ -15,14 +15,14 @@ Joshua Fagin,
 James H.H. Chan,
 Matthew O'Dowd,
 Narayan Khadka,
-Simon Birrer
+Simon Birrer,
+Padma Venkatraman,
 
 
 Beta Testers
 ------------
 
 Bridget Ierace,
-Padma Venkatraman,
 Paras Sharma,
 Jolie L'Heureux
 

@@ -7,7 +7,6 @@ from astropy import units as u
 from astropy import constants as const
 from scipy.interpolate import interp1d
 
-
 # signal
 signal_length = 2000
 maxtau = 500
@@ -16,7 +15,7 @@ frequencies = np.linspace(1 / (2 * signal_length), 1 / 2, signal_length)
 power_spectrum = frequencies ** (-2.0)
 random_seed = None
 
-time_axis, driving_signal = generate_signal_from_psd(
+my_driving_signal = generate_signal_from_psd(
     signal_length,
     power_spectrum,
     frequencies,
@@ -116,15 +115,15 @@ daily_lags_3 /= np.sum(daily_lags_3)
 
 
 conv_signal_disk_1 = convolve(
-    driving_signal,
+    my_driving_signal[1],
     daily_lags_1,
 )
 conv_signal_disk_2 = convolve(
-    driving_signal,
+    my_driving_signal[1],
     daily_lags_2,
 )
 conv_signal_disk_3 = convolve(
-    driving_signal,
+    my_driving_signal[1],
     daily_lags_3,
 )
 
@@ -173,7 +172,7 @@ fig, ax = plt.subplots(3, gridspec_kw={"height_ratios": [3, 1, 1]})
 
 ax[0].plot(
     tax,
-    driving_signal / np.std(driving_signal),
+    my_driving_signal[1] / np.std(my_driving_signal[1]),
     color="black",
     linewidth=0.5,
     label="driving signal",

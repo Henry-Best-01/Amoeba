@@ -32,6 +32,7 @@ class AccretionDisk:
         OmM=0.3,
         H0=70,
         r_out_in_gravitational_radii=None,
+        r_min=None,
         name="",
         **kwargs
     ):
@@ -64,6 +65,8 @@ class AccretionDisk:
         :param H0: Hubble constant in units of km/s/Mpc
         :param r_out_in_gravitational_radii: maximum radius of the accretion disk, in
             R_g = GM/c^2
+        :param r_min: None or minimum radius of the accretion disk,
+            in R_g = GM/c^2
         :param name: Name space
         """
 
@@ -99,6 +102,8 @@ class AccretionDisk:
             * 2
             / np.size(self.temp_array, 0)
         )
+        self.r_min = r_min
+
         self.corona_height = corona_height
 
     def calculate_surface_intensity_map(
@@ -323,7 +328,6 @@ class AccretionDisk:
         :return: a list of snapshots of the accretion disk at each time step. Note that
             this is an experimental method.
         """
-
         rest_frame_wavelength_in_nm = (
             observer_frame_wavelength_in_nm / (1 + self.redshift_source) / self.g_array
         )
@@ -331,7 +335,7 @@ class AccretionDisk:
         if corona_height is None:
             corona_height = self.corona_height
 
-        radiation_patterns = generate_snapshots_of_radiation_pattern(
+        radiation_patterns, time_lag_array = generate_snapshots_of_radiation_pattern(
             rest_frame_wavelength_in_nm,
             time_stamps,
             self.temp_array,
@@ -365,7 +369,7 @@ class AccretionDisk:
 
             radiation_patterns_flux_projections.append(current_projection)
 
-        return radiation_patterns_flux_projections
+        return radiation_patterns_flux_projections, time_lag_array
 
     def get_plotting_axes(self):
         """Method to get plotting axes for the accretion disk. Useful for plotting any

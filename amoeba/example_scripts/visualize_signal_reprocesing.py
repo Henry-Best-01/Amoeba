@@ -10,7 +10,6 @@ from amoeba.Util.util import (
 import matplotlib.pyplot as plt
 from scipy.signal import welch
 
-
 # define params of disk
 
 wavelength = 400
@@ -101,27 +100,27 @@ sample_frequencies, regenerated_drw_psd = welch(
 ax.plot(sample_frequencies, regenerated_drw_psd, label="regenerated drw")
 
 
-time_bpl, bpl_signal = generate_signal_from_psd(
+bpl_signal = generate_signal_from_psd(
     length_light_curve, my_bpl_psd, frequency_axis, random_seed=random_seed
 )
 
 sample_frequencies, regenerated_bpl_psd = welch(
-    bpl_signal, nperseg=min(10 * time_scale_breakpoint, int(length_light_curve / 10))
+    bpl_signal[1], nperseg=min(10 * time_scale_breakpoint, int(length_light_curve / 10))
 )
 ax.plot(sample_frequencies, regenerated_bpl_psd, label="regenerated bpl")
 
 ax.legend(loc=3)
 ax.set_xlim(10**-3, 0.5)
 
-time_drw, drw_signal = generate_signal_from_psd(
+drw_signal = generate_signal_from_psd(
     length_light_curve, my_drw_psd, frequency_axis, random_seed=random_seed
 )
 
 
 fig2, ax2 = plt.subplots()
 time_axis = np.linspace(0, (length_light_curve) - 1, (length_light_curve))
-ax2.plot(time_bpl, bpl_signal, alpha=0.7, label="broken power law")
-ax2.plot(time_drw, drw_signal, alpha=0.7, label="damped random walk")
+ax2.plot(bpl_signal[0], bpl_signal[1], alpha=0.7, label="broken power law")
+ax2.plot(drw_signal[0], drw_signal[1], alpha=0.7, label="damped random walk")
 ax2.plot(time_axis, signal_drw[: len(time_axis)], alpha=0.7, label="convenience drw")
 
 ax2.legend()
@@ -148,7 +147,7 @@ fig3.set_figheight(3)
 
 time_ax, reprocessed_signal = convolve_signal_with_transfer_function(
     smbh_mass_exp=mass_exponent,
-    driving_signal=bpl_signal,
+    driving_signal=bpl_signal[1],
     transfer_function=my_tf,
     redshift_source=redshift_source,
     desired_cadence_in_days=0.1,
@@ -161,7 +160,7 @@ fig4, ax4 = plt.subplots()
 ax4.plot(time_ax, reprocessed_signal, alpha=0.7, label="reprocessed light curve")
 ax4.plot(
     time_axis * (1 + redshift_source),
-    bpl_signal,
+    bpl_signal[1],
     alpha=0.7,
     color="black",
     linewidth=0.2,

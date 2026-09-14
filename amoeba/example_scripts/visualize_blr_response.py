@@ -3,7 +3,6 @@ from amoeba.Classes.blr import BroadLineRegion
 from amoeba.Classes.blr_streamline import Streamline
 import matplotlib.pyplot as plt
 
-
 inc_ang = 45  # deg
 redshift = 1
 zmax = 500  # R_g

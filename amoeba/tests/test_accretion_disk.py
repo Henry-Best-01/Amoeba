@@ -284,12 +284,12 @@ class TestAccretionDisk:
 
     def test_generate_snapshots(self):
 
-        driving_signal = np.sin(np.linspace(0, 100, 100) / np.pi) + 5
+        driving_signal = 1e16 + np.sin(np.linspace(0, 100, 100) / np.pi) * 12
         time_stamps = [20, 25, 44.3, 80]
         observer_frame_wavelength = 250
-        driving_signal_fractional_strength = 0.3
+        driving_signal_fractional_strength = 1
 
-        snapshots = self.FaceOnDisk1.generate_snapshots(
+        snapshots, time_lag_array = self.FaceOnDisk1.generate_snapshots(
             observer_frame_wavelength,
             time_stamps,
             driving_signal,
@@ -297,5 +297,4 @@ class TestAccretionDisk:
         )
 
         assert len(snapshots) == len(time_stamps)
-
         assert np.sum((snapshots[0].flux_array - snapshots[2].flux_array) ** 2) > 0

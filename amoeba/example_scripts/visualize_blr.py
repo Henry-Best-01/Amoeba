@@ -10,7 +10,6 @@ from amoeba.Util.util import (
 from astropy import units as u
 from astropy import constants as const
 
-
 # agn params
 
 smbh_mass_exp = 8.0
