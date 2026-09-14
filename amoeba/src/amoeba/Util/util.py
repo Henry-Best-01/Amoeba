@@ -38,6 +38,7 @@ def create_maps(
     OmM=0.3,
     H0=70,
     efficiency=0.1,
+    r_min=None,
     visc_temp_prof="SS",
     name="",
 ):
@@ -96,6 +97,8 @@ def create_maps(
     :param efficiency: efficiency of the conversion of gravitational potential energy to
         thermal energy. Typially taken to be ~0.1, may be spin dependent with a maximum
         efficiency of ~0.42, and minimum ~0.02.
+    :param r_min: None or minimum radius of the disk in gravitational radii. Used for 
+        truncated disk models, still experimental.
     :param visc_temp_prof: string representing viscous temperature profile to use. Currently
         implemented are "SS" for Shakura-Sunyaev and "NT" for Novikov-Thorne. Future
         implimentation: allow for a 1d array representing any radial temperature profile.
@@ -179,6 +182,9 @@ def create_maps(
         albedo_array = np.ones(np.shape(temp_array)) * albedo
     else:
         albedo_array = albedo
+    if r_min is not None:
+        temperature_mask = r_array >= r_min
+        temp_array = temp_array * temperature_mask
     disk_params = {
         "smbh_mass_exp": smbh_mass_exp,
         "redshift_source": redshift_source,
@@ -190,6 +196,7 @@ def create_maps(
         "radii_array": r_array,
         "r_out_in_gravitational_radii": number_grav_radii,
         "resolution": resolution,
+        "r_min": r_min,
         "height_array": height_array,
         "albedo_array": albedo_array,
         "spin": spin,
@@ -1411,11 +1418,13 @@ def calculate_geometric_disk_factor(
 
     radii_star = (new_radii**2 + height_array**2) ** 0.5 * gravitational_radius
 
-    return np.nan_to_num(
+    output = np.nan_to_num(
         (1 - albedo_array)
         * cos_vector_angle_of_incidence
         / (4 * np.pi * const.sigma_sb * radii_star**2)
     )
+
+    return output
 
 
 def calculate_dt_dlx(
@@ -1838,7 +1847,10 @@ def generate_signal_from_psd(
         defined in linear space as:
         np.linspace(1/length_of_light_curve, 1/(2 * desired_time_resolution), int(length_of_light_curve)+1)
     :param random_seed: random seed to use for reproducibility
-    :return: signal generated from the power spectrum ith length defined by length_of_light_curve.
+    :return: tuple of three numpy arrays, representing the:
+        - time axis
+        - normalized signal generated from the power spectrum 
+        - signal prior to normalization
     """
     rng = np.random.default_rng(seed=random_seed)
     observations_per_day = 2 * np.max(frequencies)

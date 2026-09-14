@@ -52,12 +52,14 @@ test_val = calculate_geometric_disk_factor(
     angle_offset_in_degrees=phi_offset,
 )
 
+
+
 fig2, ax2 = plt.subplots()
 fig3, ax3 = plt.subplots()
 fig4, ax4 = plt.subplots(2, sharex="all")
 
 hconts = ax2.contourf(X, Y, heights, 51)
-testconts = ax3.contourf(X, Y, test_val, 51)
+testconts = ax3.contourf(X, Y, test_val.value, 51)
 
 
 ax4[0].plot(radii, heights[line_index], label="disk surface")

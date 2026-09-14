@@ -32,6 +32,7 @@ class AccretionDisk:
         OmM=0.3,
         H0=70,
         r_out_in_gravitational_radii=None,
+        r_min=None,
         name="",
         **kwargs
     ):
@@ -64,6 +65,8 @@ class AccretionDisk:
         :param H0: Hubble constant in units of km/s/Mpc
         :param r_out_in_gravitational_radii: maximum radius of the accretion disk, in
             R_g = GM/c^2
+        :param r_min: None or minimum radius of the accretion disk,
+            in R_g = GM/c^2
         :param name: Name space
         """
 
@@ -99,13 +102,7 @@ class AccretionDisk:
             * 2
             / np.size(self.temp_array, 0)
         )
-        print("pixel_size: ", self.pixel_size)
-        print("gravitational_radius given bh mass: ", self.rg)
-        print(
-            "maximum radius of accretion disk in r_g: ",
-            self.r_out_in_gravitational_radii,
-        )
-        print("np.size(self.temp_array, 0): ", np.size(self.temp_array, 0))
+        self.r_min = r_min
 
         self.corona_height = corona_height
 
